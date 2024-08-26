@@ -45,6 +45,6 @@ See: [fw/COMPILE.md](./fw/COMPILE.md)
 * Franek 'nevvman' (no callsign)
 
 ## References
-[*RS41ng* - inspiration for this project](https://github.com/mikaelnousiainen/RS41ng)
-[*RS41HUP* - also inspiration](https://github.com/darksidelemm/RS41HUP)
-[*radiosonde_hardware* - made reversing the new version easier](https://github.com/bazjo/radiosonde_hardware)
+[*RS41ng* - inspiration for this project](https://github.com/mikaelnousiainen/RS41ng)<br>
+[*RS41HUP* - also inspiration](https://github.com/darksidelemm/RS41HUP)<br>
+[*radiosonde_hardware* - made reversing the new version easier](https://github.com/bazjo/radiosonde_hardware)<br>
