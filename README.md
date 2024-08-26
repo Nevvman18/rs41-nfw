@@ -29,17 +29,21 @@ For more details about HAB and sonde hunting, please look on google and social m
 * Support for extending hardware capabilities, including external I2C or UART sensors (coming soon to the fw)
 * User-friendly firmware and IDE allows users to easily customimze the device operation
 
-## RSM414 hardware description
-See: [hw/README.md](./hw/README.md)
-
-## Firmware and device operation description
-See: [fw/OPERATION_MANUAL.md](./fw/OPERATION_MANUAL.md)
+## Installation guide
+A thorough, detailed project guide is available at the links below to other .MD documents.<br>
+**If you want to fully utilize all capabilities of this firmware**, please, read the documentation in the following header order:
 
 ## Firmware flashing description
 See: [fw/FLASHING.md](./fw/FLASHING.md)
 
 ## Firmware compilation description
 See: [fw/COMPILE.md](./fw/COMPILE.md)
+
+## Firmware and device operation description
+See: [fw/OPERATION_MANUAL.md](./fw/OPERATION_MANUAL.md)
+
+## RSM414 hardware description
+See: [hw/README.md](./hw/README.md)
 
 ## Authors and contributors to this branch
 * Franek 'nevvman' (no callsign)
