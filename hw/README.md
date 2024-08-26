@@ -4,6 +4,11 @@ This guide has references to the [radiosonde_hardware repo](https://github.com/b
 This page mainly mentions **differences** between old and new revisions, details can be found on the page above.<br>
 The component naming also refers to this document, as well as some pin definitions.
 
+## Older vs newer - how do I know which one I'm holding now?
+Open the enclosure and take out the PCB. On the back side of it (the one without battery holder), in the middle of the coil on the bottom, there should be a PCB model, that starts with `RSM...`.<br>
+* PCB model with a **last digit of '4'** - newer **~2023** version (for example `RSM414`, `RSM424`)
+* PCB model with a **last digit other than '4'**, for example '1' or '2' - *older* version (for example `RSM412`, `RSM421` etc.)
+
 
 # Key components
 **PCB - Front photo**
