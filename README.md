@@ -2,15 +2,15 @@
 **NOTE:** This firmware currently only works with the new variant of RS41 radiosondes. More below.<br><br>
 Vaisala some time ago began launching new RS41 sondes, with new internal design. They can be recognized by a last digit of 4 of the PCB model (eg. `RSM414`, `RSM424`). This firmware is an approach for reusing them as amateur devices for many different purposes.<br>
 
-[Radiosondes?](#radiosondes)<br>
-[RS41-NFW Firmware features](#rs41-nfw-firmware-features)<br>
-[Installation guide](#installation-guide)<br>
-[Firmware flashing](#firmware-flashing)<br>
-[Firmware compilation](#firmware-compilation)<br>
-[Firmware and device operation](#firmware-and-device-operation)<br>
-[RSM414 hardware](#rsm414-hardware)<br>
-[Authors and contributors to this branch](#authors-and-contributors-to-this-branch)<br>
-[References](#references)
+* [Radiosondes?](#radiosondes)<br>
+* [RS41-NFW Firmware features](#rs41-nfw-firmware-features)<br>
+* [Installation guide](#installation-guide)<br>
+* [Firmware flashing](#firmware-flashing)<br>
+* [Firmware compilation](#firmware-compilation)<br>
+* [Firmware and device operation](#firmware-and-device-operation)<br>
+* [RSM414 hardware](#rsm414-hardware)<br>
+* [Authors and contributors to this branch](#authors-and-contributors-to-this-branch)<br>
+* [References](#references)
 
 ## Radiosondes?
 These small electronic devices are used by weather instututes to perform atmospheric sounding and high altitude measurements, up to the stratosphere (HAB - high altitude balooning). After the flight, usually they are *meaningless* for the launch company, so they can be collected by people (verify this according to the certain launch site). This acvitivty is called *radiosonde hunting*<br><br>
