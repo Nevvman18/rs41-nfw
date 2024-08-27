@@ -45,14 +45,14 @@ This is the first interesting part that a user should customize. It is located a
 #define PREAMBLE "AA"            //max 2 long
 ```
 `CALLSIGN` should be changed to the user-specific one. Maximum recommended length is 10 characters, if your desired callsign is shorter, then pad them with spaces before the callsign.<br>
-`PREABMLE` is a 2-byte long part of the text that is used in the RTTY mode. If the TX signal is weaker, some programs may have difficulties detecting the carriers on the first bit, so the preamble is transmitted first.
+`PREABMLE` is a 2-byte long part of the text that is used in the RTTY mode. If the TX signal is weaker, some programs may have difficulties detecting the carriers on the first bit, so the preamble is transmitted first. <br>
 
 ```cpp
 int radioPwrSetting = 7; //0 = -1dBm (~0.8mW), 1 = 2dBm (~1.6mW), 2 = 5dBm (~3 mW), 3 = 8dBm (~6 mW), 4 = 11dBm (~12 mW), 5 = 14dBm (25 mW), 6 = 17dBm (50 mW), 7 = 20dBm (100 mW)
 bool enableAddData = false;      //rtty-only mode, when false, the additional-data space is filled with zeros
 ```
 `radioPwrSetting` is used to set the TX power, from 0 to 7 max.<br>
-`enableAddData` RTTY-only and morse-only modes, has currently no use, in future when additional sensor support will be available, this part will be filled with the additional sensor data. Currently, setting to false fills the space with zeros.
+`enableAddData` RTTY-only and morse-only modes, has currently no use, in future when additional sensor support will be available, this part will be filled with the additional sensor data. Currently, setting to false fills the space with zeros. <br>
 
 ```cpp
 bool pipEnable = false; //pip tx mode
@@ -60,14 +60,14 @@ float pipFrequencyMhz = 434.5; //pip tx frequency
 int pipLengthMs = 1000; //pip signal length in ms
 int pipRepeat = 3; //pip signal repeat count in 1 transmit group
 ```
-`pipEnable` - this enables the PIP mode. It's frequency can be set using `pipFrequencyMhz`, the `pipLength` in ms determines the pip carrier length and `pipRepeat` says how many times to repeat the signal in one TX cycle.
+`pipEnable` - this enables the PIP mode. It's frequency can be set using `pipFrequencyMhz`, the `pipLength` in ms determines the pip carrier length and `pipRepeat` says how many times to repeat the signal in one TX cycle. <br>
 
 ```cpp
 bool morseEnable = false; //morse tx mode
 float morseFrequencyMhz = 434.65; //morse tx frequency
 int morseUnitTime = 40;  //ms
 ```
-Morse can be enabled by `morseEnable` boolean. The frequency is set by `morseFrequencyMhz` and dot length in ms is set by `morseUnitTime`.
+Morse can be enabled by `morseEnable` boolean. The frequency is set by `morseFrequencyMhz` and dot length in ms is set by `morseUnitTime`. <br>
 
 ```cpp
 bool rttyEnable = false; //rtty tx mode
@@ -80,20 +80,20 @@ int rttyBitDelay = 22000;  //22000 ~= 45bdrate, 13333 ~= 75bdr
 This is a more advanced TX mode - radioteletype. It can be enabled with `rttyEnable`, it's frequency is set with `rttyFrequencyMhz`.<br>
 Transmission baud rate is determined by the `rttyBitDelay` value and indicates the delay in microseconds used after each bit begins. For baud rate 45 set the delay to 22000 and for the 75 baud - 13333.<br>
 The message format is determined by the `rttyShortenMsg`. This setting is explained further down in the [radio operation](#radio-signals-operation).<br>
-`RTTY_RADIO_MARK_OFFSET` and `RTTY_RADIO_SPACE_OFFSET` can determine offset values written to frequency offset registers of the radio chip. If you don't want to customize the RTTY shift, leave this at default. There is an issue where offsets larger than 1 (0x02 - 0x01 = 1[base10] -> 270Hz) make errors in RTTY transmissions.
+`RTTY_RADIO_MARK_OFFSET` and `RTTY_RADIO_SPACE_OFFSET` can determine offset values written to frequency offset registers of the radio chip. If you don't want to customize the RTTY shift, leave this at default. In some tests, there was an issue where offsets larger than 1 (0x02 - 0x01 = 1[base10] -> 270Hz) made errors in RTTY transmissions. <br>
 
 ```cpp
 bool horusEnable = true; //horus v2 tx mode
 float horusFrequencyMhz = 434.74;
 int horusBdr = 100;
 ```
-This is the best transmission mode to use. Enabled via `horusEnable`, frequency set with `horusFrequencyMhz`, the baud rate is set with `horusBdr`, with 100 bdr recommmended.
+This is the best transmission mode to use. Enabled via `horusEnable`, frequency set with `horusFrequencyMhz`, the baud rate is set with `horusBdr`, with 100 bdr recommmended. <br>
 
 ```cpp
 bool bufTxEnable = false; //alpha state! mode
 float fskFrequencyMhz = 436; //txBuf tx frequency
 ```
-This mode is currently not supported - it was created during tests to apply a FSK/GFSK modulation with data transmitted at higher rates. Should remain false unless under development.
+This mode is currently not supported - it was created during tests to apply a FSK/GFSK modulation with data transmitted at higher rates. Should remain false unless under development. <br>
 
 ```cpp
 bool radioEnablePA = false;  //default tx state
@@ -101,9 +101,9 @@ bool radioSleep = true; //lowers power consumption and recalibrates oscillator (
 int modeChangeDelay = 0; //0 - disable, 0<delay<2000 - standard delay, 2000<delay - delay + radio sleep mode and recalibration (if radioSleep enabled)
 ```
 These are the radio power management settings.<br>
-`radioEnablePA` enables RF stage power amplifier to start sending signals. If you want the sonde to start transmitting signals immediatly after power ON, set to true. If set to false, the PA can be enabled with a button, described later.<br>
+`radioEnablePA` enables RF stage power amplifier to start sending signals. If you want the sonde to start transmitting signals immediatly after power ON, set this to true. If set to false, the PA can be enabled with a button, described later.<br>
 `radioSleep` allows radio to go to sleep mode, which lowers the power consumption in-between transmissions, by turning OFF unnecesary IC components. Should be true unless you encounter any problems <br>
-`modeChangeDelay` sets the delay in ms between transmissions. If set to 0 it means disabled and the transmissions occur as fast as possible, if enabled and under 2000ms it just waits in between and if over 2s it also puts the radio to sleep between transmissions to lower the power consumption.
+`modeChangeDelay` sets the delay in ms between transmissions. If set to 0 it means disabled and the transmissions occur as fast as possible, if enabled and under 2000ms it just waits in between and if over 2s it also puts the radio to sleep between transmissions to lower the power consumption. <br>
 
 ### Other operation config
 This is the part that sets other operation variables that weren't mentioned earlier. It is located under the `//===== Other operation config` section in the project file.<br>
@@ -111,12 +111,12 @@ This is the part that sets other operation variables that weren't mentioned earl
 ```cpp
 bool ledStatusEnable = true;
 ```
-This enables the LED to show device status messages.
+This enables the LED to show device status messages. <br>
 
 ```cpp
 bool xdataDebug = true; //if xdataDebug is enabled, debug messages are sent to the xdata header serial port. WARNING! THIS HAS TO BE FALSE WHEN USING XDATA DEVICES (such as OIF411 ozone sensor)
 ```
-This enables device debug messages via serial port located on the XDATA port. **Note:** when XDATA expansion devices are used (currently unsupported due to the lack of stock), it has to be disabled in order to allow commands to go through.
+This enables device debug messages via serial port located on the XDATA port. **Note:** when XDATA expansion devices are used (currently unsupported due to the lack of stock), it has to be disabled in order to allow commands to go through. <br>
 
 ```cpp
 float vBatWarnValue = 2.5; //battery warning voltage
@@ -124,18 +124,18 @@ float vBatErrValue = 2.3; //error voltage
 float batteryCutOffVoltage = 1.9; //good for nimh cell life, below 0.8V per AA cell the damage could occur
 ```
 This sets different battery voltage settings.<br>
-`vBatWarnValue` sets the voltage warning threshold, `vBatErrValue` sets the voltage error threshold and `batteryCutOffVoltage` determines at which voltage the radiosonde should automatically power OFF to protect the batteries (read your battery safety instructions and set this value according to it's safety measures!).
+`vBatWarnValue` sets the voltage warning threshold, `vBatErrValue` sets the voltage error threshold and `batteryCutOffVoltage` determines at which voltage the radiosonde should automatically power OFF to protect the batteries (read your battery safety instructions and set this value according to it's safety measures!). <br>
 
 ```cpp
 int ovhtWarnValue = 45; //overheating warning
 int ovhtErrValue = 55; //overheating error
 ```
-These settings set the warning and error thresholds for overheating messages. This protects the batteries when the device is exposed to heat, for example by laying on the sun for too long. **Note:** this safety feature gets disabled if the built-in heater is enabled and the heater uses it's own safety rules.
+These settings set the warning and error thresholds for overheating messages. This protects the batteries when the device is exposed to heat, for example by laying on the sun for too long. **Note:** this safety feature gets disabled if the built-in heater is enabled and the heater uses it's own safety rules. <br>
 
 ```cpp
 int gpsSatsWarnValue = 4; 
 ```
-`gpsSatsWarnValue` determines the warning threshold for GPS satellite visibility.
+`gpsSatsWarnValue` determines the warning threshold for GPS satellite visibility. <br>
 
 ```cpp
 int refHeatingMode = 1; //0 - off, 1 - auto, 2 - always on
@@ -145,7 +145,7 @@ int autoHeaterThreshold = 6; //auto heater temperature threshold, WARNING! If rt
 int refHeaterCriticalDisableTemp = 70; //heater critical temp which disables the heating if exceeded
 int refHeaterCriticalReenableTemp = 65; //heater temperature at which heating gets re-enabled after being cut down due to too high temperature
 ```
-These are the heater settings. The heater operation is described below or by clicking [here](#heater-algorithm). The settings should be self-explanatory, like all the previous ones.
+These are the heater settings. The heater operation is described below or by clicking [here](#heater-algorithm). The settings should be self-explanatory, like all the previous ones. <br>
 
 ```cpp
 int gpsNmeaMsgWaitTime = 1200; //waiting time for gps message
@@ -157,7 +157,7 @@ The `gpsNmeaMsgWaitTime` in ms sets the time that the device will wait for the G
 #define R25 10400  // 10k Ohms at 25°C thermistor 
 #define B 4295     // Beta parameter calculated thermistor
 ```
-These settings change the onboard thermistor characteristics, these values were calculated for the default hardware and shouldn't be changed, unless the thermistor reading differs significantly from the real temperature.
+These settings change the onboard thermistor characteristics, these values were calculated for the default hardware and shouldn't be changed, unless the thermistor reading differs significantly from the real temperature. <br>
 
 <br>
 
@@ -230,6 +230,15 @@ The button contains a page-like setting system, with pages from 1 to 7, whereas 
 * Page 6 - `refHeatingMode`. Green blinks 6 times for OFF(0), orange 6 times for AUTO(1) and red 6 times for ALWAYS-ON(2).
 * Page 7 - `SHUTDOWN`. If button is held to this page the red LED comes ON for 3 seconds and then the sonde is turned OFF.
 
+For example, changing the page 3, with for example default configured value of 100mW, changing the power to 2mW would look like this in a sequence:
+
+```
+        *btn-hold* -----> *btn-released*
+        | page1 | page2 | page3 |   |2mW confirm|   |continuing operation...
+RED_____----++++----++++----++++____------------    _______________________
+GREEN___++++----++++----++++----____++--++--++--    _______________________
+```
+<br>
 
 ### Radio signals operation
 
