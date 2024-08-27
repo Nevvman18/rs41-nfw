@@ -102,8 +102,8 @@ int modeChangeDelay = 0; //0 - disable, 0<delay<2000 - standard delay, 2000<dela
 ```
 These are the radio power management settings.<br>
 `radioEnablePA` enables RF stage power amplifier to start sending signals. If you want the sonde to start transmitting signals immediatly after power ON, set this to true. If set to false, the PA can be enabled with a button, described later.<br>
-`radioSleep` allows radio to go to sleep mode, which lowers the power consumption in-between transmissions, by turning OFF unnecesary IC components. Should be true unless you encounter any problems <br>
-`modeChangeDelay` sets the delay in ms between transmissions. If set to 0 it means disabled and the transmissions occur as fast as possible, if enabled and under 2000ms it just waits in between and if over 2s it also puts the radio to sleep between transmissions to lower the power consumption. <br>
+`radioSleep` allows radio to go to sleep mode, which lowers the power consumption in-between transmissions, by turning OFF unnecesary IC components. Should be true unless you encounter any problems. <br>
+`modeChangeDelay` sets the delay in ms between transmissions. If set to 0 it means that the sleep is disabled and the transmissions occur as fast as possible, if enabled and the delay is under 2000msmit just waits in-between the modes, and if the delay is over 2s it also puts the radio to sleep in-between transmissions to lower the power consumption. <br>
 
 ### Other operation config
 This is the part that sets other operation variables that weren't mentioned earlier. It is located under the `//===== Other operation config` section in the project file.<br>
@@ -116,7 +116,7 @@ This enables the LED to show device status messages. <br>
 ```cpp
 bool xdataDebug = true; //if xdataDebug is enabled, debug messages are sent to the xdata header serial port. WARNING! THIS HAS TO BE FALSE WHEN USING XDATA DEVICES (such as OIF411 ozone sensor)
 ```
-This enables device debug messages via serial port located on the XDATA port. **Note:** when XDATA expansion devices are used (currently unsupported due to the lack of stock), it has to be disabled in order to allow commands to go through. <br>
+This enables device debug messages via serial port located on the XDATA port. **Note:** when XDATA expansion devices are used (currently unsupported due to the lack of stock, anybody got one?), it has to be disabled in order to allow commands to go through. <br>
 
 ```cpp
 float vBatWarnValue = 2.5; //battery warning voltage
@@ -157,9 +157,7 @@ The `gpsNmeaMsgWaitTime` in ms sets the time that the device will wait for the G
 #define R25 10400  // 10k Ohms at 25°C thermistor 
 #define B 4295     // Beta parameter calculated thermistor
 ```
-These settings change the onboard thermistor characteristics, these values were calculated for the default hardware and shouldn't be changed, unless the thermistor reading differs significantly from the real temperature. <br>
-
-<br>
+These settings change the onboard thermistor characteristics, values were calculated for the default hardware and shouldn't be changed, unless the thermistor reading differs significantly from the real temperature. <br>
 
 **Note:** The later definitions are system-only and shouldn't be changed by user.
 
@@ -185,7 +183,7 @@ Plus (+) is equiv. to LED ON for 50ms, minus (-) means LED OFF for 50ms, (===) m
 
 <br>
 
-Device debug states, LED colors and condition causes, when the device is during it's normal operation:
+Device debug states, LED colors and conditions, during normal device operation:
 * OK - continuous green light
   * If no valid warning or error, ok is true
 * Warning - continuous orange light (both red and green make orange-like color)
@@ -221,16 +219,16 @@ The `heaterDebugState` calculation is described in the [Heater algorithm](#heate
 ### Button operation
 User can change different opeartion variables by using the on-board button while the device is ON.<br>
 
-The button contains a page-like setting system, with pages from 1 to 7, whereas each page can be recognized by a 500ms GREEN-RED LED cycle. Entering a page is done by holding the button until the wanted page number is selected, and then by releasing the button at the page:
+The button contains a page-like setting system, with pages from 1 to 7, whereas each page can be recognized by a 500ms GREEN-RED LED cycle. Entering a page is done by holding the button until the desired page number is selected, and then by releasing the button at this desired page number:
 * Page 1 - `empty`
-* Page 2 - `radioEnablePA`. Green blinks 2 times for tue, red 2 times for false.
+* Page 2 - `radioEnablePA`. Green blinks 2 times for true, red 2 times for false.
 * Page 3 - `radioPwrSetting`. Green blinks 3 times for 100mW (7 max), red 3 times for 2mW (0 min).
 * Page 4 - `rttyEnable`. Green blinks 4 times for true, red 4 times for false.
 * Page 5 - `rttyShortenMsg`. Green blinks 5 times for false, red 5 times for true.
 * Page 6 - `refHeatingMode`. Green blinks 6 times for OFF(0), orange 6 times for AUTO(1) and red 6 times for ALWAYS-ON(2).
 * Page 7 - `SHUTDOWN`. If button is held to this page the red LED comes ON for 3 seconds and then the sonde is turned OFF.
 
-For example, changing the page 3, with for example default configured value of 100mW, changing the power to 2mW would look like this in a sequence:
+For example, changing the page 3, with default configured value of 100mW, changing the radio power to 2mW would look like this in a sequence:
 
 ```
         *btn-hold* -----> *btn-released*
@@ -353,7 +351,35 @@ By default, it is set to AUTO mode (`refHeatingMode = 1`). In this mode, heater 
 
 User can force the heater to the ALWAYS-ON mode (`refHeatingMode = 2`), of course either by changing the code or setting the variable via button page settings (descibed [above](#button-operation)). In this mode, the heater heats up the area continuously. <br>
 
-However, it would be dumb to turn on a heater without any safety measures, so in both heating modes there is a safety governor working, that maintains the heater temperature between the defined levels. If the heater temperature rises above the `refHeaterCriticalDisableTemp`, it temporarly disables the heaters until they cool down below the `refHeaterCriticalDisableTemp` threshold. After cooling down, they are reenabled and the process goes again, unless the main heating time in AUTO mode has passed.
+However, it would be dumb to turn on a heater without any safety measures, so in both heating modes there is a safety governor working, that maintains the heater temperature between the defined levels. If the heater temperature rises above the `refHeaterCriticalDisableTemp`, it temporarly disables the heaters until they cool down below the `refHeaterCriticalDisableTemp` threshold. After cooling down, they are reenabled and the process goes again, unless the main heating time in AUTO mode has passed. <br>
+
+The heater algorithm also provides it's own debug feature - `heaterDebugState`.<br>
+These are the heater debug conditions:
+* Heater OFF - `heaterDebugState = 5`
+* Operation:
+  * AUTO mode:
+    * Heater OFF - `heaterDebugState = 10`
+    * Heater ON - `heaterDebugState = 11`
+    * Overheating - `heaterDebugState = 19`
+  * ALWAYS-ON mode:
+    * Heater ON - `heaterDebugState = 21`
+    * Overheating - `heaterDebugState = 29`
+<br><br>
+
+The `heaterDebugState` is a just a simple formula:
+* Tens digit means operation mode:
+  * = 0 -> OFF mode
+  * = 1 -> AUTO mode
+  * = 2 -> Manual mode
+* Units digit means hardware state:
+  * = 0 -> Heater OFF
+  * = 1 -> Heater ON
+  * = 5 -> Forced OFF
+  * = 9 -> Overheated
+
+<br> 
+
+This debug formula, added to the other conditions (`statusNum`) create the previously mentioned `deviceDebugState`.
 
 
 ## Final words
