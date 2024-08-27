@@ -1,12 +1,16 @@
-# Firmware compile guide
+# Firmware compile
 This firmware was written in the Arduino IDE. It is a beginner-friendly IDE with support of tons of different MCUs, made with one of the largest communities that work with embedded coding.<br>
 
-All the steps shown here may look hard and confusing, but doing everything step-by-step should do everything for you. This thing will take 5 minutes.
+All the steps shown here may look hard and confusing, but doing everything step-by-step should do everything for you. This thing will take 5 minutes.<br>
+
+[Adding an STM32 core to the Arduino IDE board manager](adding-an-stm32-core-to-the-arduino-ide-board-manager)<br>
+[Compiler configuration guide](compiler-configuration-guide)<br>
+[Additional libraries](additional-libraries)
 
 ## Adding an STM32 core to the Arduino IDE board manager
 To make things work, the Arduino IDE has to use the STM32 core to provide functionalities for STM32 microcontrollers:
 * Download the new, 2.x version of the Arduino IDE and run it (Arduino IDE had made a big change in its IDE, that's why versions now start with 2.x)
-* Click on **(IDE) - File -> Preferences**
+* Click on **(IDE) File -> Preferences**
 * In the **Additional Boards Manager URLs**, add the new line with this board manager URL: https://github.com/stm32duino/BoardManagerFiles/raw/main/package_stmicroelectronics_index.json
 * Exit the Preferences window. Then open the **Boards Manager** using the toolbar on the right or by entering **(IDE) Tools -> Board -> Boards Manager...**
 * Search for the **STM32 MCU based boards** *by STMicroelectronics* (search in the top field for the *stm32* phrase), check that the newest stable version is selected (*2.8.1* was tested for now, which is the newest by the day of writing this) and click **Install**.
@@ -38,6 +42,19 @@ After you correctly added the official STM32 core to Arduino IDE board manager, 
     * `C:\Users\USERNAME\AppData\Local\Arduino15\packages\STMicroelectronics\hardware\stm32\2.8.1\variants` - example for Windows based machine with the newest STM32 core version
 * Enter the family name folder, for our case it is a `./STM32L4xx`
     * Here, for our new sonde, you want to locate the `L412RB(I-T)xP` folder, delete it and replace it with [this](./arduino-ide_variant-files/variants/STM32L4xx/L412RB(I-T)xP/) folder, from this repo (`fw/arduino-ide_variant-files/variants/STM32L4xx/L412RB(I-T)xP/`).
-* If you swapped the new variant folder in place, go back to the version folder (`[sources folder]./packages/STMicroelectronics/hardware/stm32/[your STM32 core version]/`), from there open `boards.txt` file in a text editor, search for the `Generic L4` line, and in the alphabetical order (not a must, just looks nicer) add an entry from [`boards.txt` file from this repo](./arduino-ide_variant-files/boards.txt) between other variants. Save the file and close.
+* If you swapped the new variant folder in place, make sure that it contains 8 files and that the folder swapped correctly, then go back to the version folder (`[sources folder]./packages/STMicroelectronics/hardware/stm32/[your STM32 core version]/`), from there open `boards.txt` file in a text editor, search for the `Generic L4` line, and in the alphabetical order (not a must, just looks nicer) add an entry from [`boards.txt` file from this repo](./arduino-ide_variant-files/boards.txt) between other variants. Save the file and close.
 * Open Arduino IDE, make sure you already have the **Generic STM32L4 series** selected, then go to **(IDE) Tools -> Board part number:** and select newely installed **Generic L412RBTxP**.
-* **Your IDE should now be good to go!**
+* **Your IDE should now be good to go**
+
+## Additional libraries
+
+Besides the compiler configuration, you also have to add necessary libraries to your environment. <br>
+Currently needed libraries for this project:
+* TinyGPS++
+    * Visit https://github.com/mikalhart/TinyGPSPlus and **download** code as a .zip file (green code button).
+    * In Arduino IDE, go to **(IDE) Sketch -> Include Library... -> Add .ZIP Library** and select the already downloaded .zip file.
+    * After a while, it should be installed, the progress can be seen on the bottom of the IDE.
+
+<br>
+
+**Your compilation environment is now fully set-up!**

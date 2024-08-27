@@ -1,6 +1,16 @@
 # RS41-NFW - Versatile, custom firmware for new revision of Vaisala RS41 radiosondes
 **NOTE:** This firmware currently only works with the new variant of RS41 radiosondes. More below.<br><br>
-Vaisala some time ago began launching new RS41 sondes, with new internal design. They can be recognized by a last digit of 4 of the PCB model (eg. `RSM414`, `RSM424`). This firmware is an approach for reusing them as amateur devices for many different purposes.
+Vaisala some time ago began launching new RS41 sondes, with new internal design. They can be recognized by a last digit of 4 of the PCB model (eg. `RSM414`, `RSM424`). This firmware is an approach for reusing them as amateur devices for many different purposes.<br>
+
+[Radiosondes?](radiosondes)
+[RS41-NFW Firmware features](rs41-nfw-firmware-features)
+[Installation guide](installation-guide)
+[Firmware flashing](firmware-flashing)
+[Firmware compilation](firmware-compilation)
+[Firmware and device operation](firmware-and-device-operation)
+[RSM414 hardware](rsm414-hardware)
+[Authors and contributors to this branch](authors-and-contributors-to-this-branch)
+[References](references)
 
 ## Radiosondes?
 These small electronic devices are used by weather instututes to perform atmospheric sounding and high altitude measurements, up to the stratosphere (HAB - high altitude balooning). After the flight, usually they are *meaningless* for the launch company, so they can be collected by people (verify this according to the certain launch site). This acvitivty is called *radiosonde hunting*<br><br>
@@ -33,16 +43,16 @@ For more details about HAB and sonde hunting, please look on google and social m
 A thorough, detailed project guide is available at the links below to other .MD documents.<br>
 **If you want to fully utilize all capabilities of this firmware**, please, read the documentation in the following header order:
 
-## Firmware flashing description
+## Firmware flashing
 See: [fw/FLASHING.md](./fw/FLASHING.md)
 
-## Firmware compilation description
+## Firmware compilation
 See: [fw/COMPILE.md](./fw/COMPILE.md)
 
-## Firmware and device operation description
+## Firmware and device operation
 See: [fw/OPERATION_MANUAL.md](./fw/OPERATION_MANUAL.md)
 
-## RSM414 hardware description
+## RSM414 hardware
 See: [hw/README.md](./hw/README.md)
 
 ## Authors and contributors to this branch
