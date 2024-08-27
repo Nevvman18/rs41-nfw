@@ -83,6 +83,7 @@ Incoming features:
 
 ## References
 * [*RS41ng* - inspiration for this project](https://github.com/mikaelnousiainen/RS41ng)<br>
+* [**RS41ng - issues discussion about new models and supporting them**](https://github.com/mikaelnousiainen/RS41ng/issues/92)
 * [*RS41HUP* - also inspiration](https://github.com/darksidelemm/RS41HUP)<br>
 * [*radiosonde_hardware* - made reversing the new version easier](https://github.com/bazjo/radiosonde_hardware)<br>
 
