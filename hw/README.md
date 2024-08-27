@@ -1,4 +1,22 @@
-# Hardware description
+# RSM414 hardware
+* [References](#references)
+* [Older vs newer](#older-vs-newer---how-do-i-know-which-one-im-holding-now)
+* [Key components](#key-components)
+  * [Power supply](#power-supply)
+    * [Boost converter](#boost-converter)
+    * [LDOs](#ldos)
+    * [Hard wired logic](#hard-wired-logic)
+  * [Microcontroller](#microcontroller)
+  * [Frontend](#frontend)
+  * [GPS](#gps)
+  * [Radio](#radio)
+  * [Interfaces](#interfaces)
+    * [SPI Flash](#spi-flash)
+    * [XDATA Port](#xdata-port)
+    * [Internal expansion connector](#internal-expansion-connector)
+    * [NFC interface](#nfc-interface)
+* [Final hardware words](#final-hardware-words)
+
 ## References!
 This guide has references to the [radiosonde_hardware repo](https://github.com/bazjo/radiosonde_hardware/tree/master/Vaisala_RS41), and is partially based on it. **Huge thanks** to the author for providing the description.<br>
 This page mainly mentions **differences** between old and new revisions, details can be found on the page above.<br>
@@ -105,3 +123,5 @@ The only thing that it is capable for now (via the hardware side) is that the so
 ## Final hardware words
 If you didn't find an answer for your question about the sonde hardware in this text, please visit the previously mentioned *radiosonde_hardware*, which provides more detailed descriptions of some components.<br>
 Feel free to ask in the issues here about any features :)
+
+[def]: #power-supply

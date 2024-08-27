@@ -1,16 +1,19 @@
 # RS41-NFW - Versatile, custom firmware for new revision of Vaisala RS41 radiosondes
+## **Vaisala RS41 New Firmware** (*RS41 Nevvman's Firmware*) <br>
 **NOTE:** This firmware currently only works with the new variant of RS41 radiosondes. More below.<br><br>
 Vaisala some time ago began launching new RS41 sondes, with new internal design. They can be recognized by a last digit of 4 of the PCB model (eg. `RSM414`, `RSM424`). This firmware is an approach for reusing them as amateur devices for many different purposes.<br>
 
-* [Radiosondes?](#radiosondes)<br>
-* [RS41-NFW Firmware features](#rs41-nfw-firmware-features)<br>
-* [Installation guide](#installation-guide)<br>
-* [Firmware flashing](#firmware-flashing)<br>
-* [Firmware compilation](#firmware-compilation)<br>
-* [Firmware and device operation](#firmware-and-device-operation)<br>
-* [RSM414 hardware](#rsm414-hardware)<br>
-* [Authors and contributors to this branch](#authors-and-contributors-to-this-branch)<br>
+* [Radiosondes?](#radiosondes)
+* [RS41-NFW Firmware features](#rs41-nfw-firmware-features)
+* [Installation guide](#installation-guide)
+* [Firmware flashing](#firmware-flashing)
+* [Firmware compilation](#firmware-compilation)
+* [Firmware and device operation](#firmware-and-device-operation)
+* [RSM414 hardware](#rsm414-hardware)
+* [Firmware changelog](#firmware-changelog)
+* [Authors and contributors to this branch](#authors-and-contributors-to-this-branch)
 * [References](#references)
+* [Final notes](#final-notes)
 
 ## Radiosondes?
 These small electronic devices are used by weather instututes to perform atmospheric sounding and high altitude measurements, up to the stratosphere (HAB - high altitude balooning). After the flight, usually they are *meaningless* for the launch company, so they can be collected by people (verify this according to the certain launch site). This acvitivty is called *radiosonde hunting*<br><br>
@@ -39,26 +42,50 @@ For more details about HAB and sonde hunting, please look on google and social m
 * Support for extending hardware capabilities, including external I2C or UART sensors (coming soon to the fw)
 * User-friendly firmware and IDE allows users to easily customimze the device operation
 
+
 ## Installation guide
-A thorough, detailed project guide is available at the links below to other .MD documents.<br>
+A thorough, detailed project guide is available at the links below.<br>
 **If you want to fully utilize all capabilities of this firmware**, please, read the documentation in the following header order:
+
 
 ## Firmware flashing
 See: [fw/FLASHING.md](./fw/FLASHING.md)
 
+
 ## Firmware compilation
 See: [fw/COMPILE.md](./fw/COMPILE.md)
+
 
 ## Firmware and device operation
 See: [fw/OPERATION_MANUAL.md](./fw/OPERATION_MANUAL.md)
 
+
 ## RSM414 hardware
 See: [hw/README.md](./hw/README.md)
 
+
+## Firmware changelog
+* `v20` - initial public release, releases before this were never published
+
+<br>
+
+Incoming features:
+* External sensor, addData population in RTTY
+* Ozone module (OIF411)
+* More power saving features
+* Fox hunting mode, featuring very low power consumption mode, transmission planning and beacon customization
+* Transmission scheme planning and schedule, according to GNSS time and coordinates
+* Height activated mode 2 heating
+
 ## Authors and contributors to this branch
 * Franek 'nevvman' (no callsign)
+
 
 ## References
 * [*RS41ng* - inspiration for this project](https://github.com/mikaelnousiainen/RS41ng)<br>
 * [*RS41HUP* - also inspiration](https://github.com/darksidelemm/RS41HUP)<br>
 * [*radiosonde_hardware* - made reversing the new version easier](https://github.com/bazjo/radiosonde_hardware)<br>
+
+
+## Final notes
+The creator of this project isn't at all responsible for any kind of harm made by devices operated with these instructions. Follow your local law about radio transmissions and ballon flights. This device isn't a certified airplane. Cheers.

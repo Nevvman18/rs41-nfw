@@ -40,7 +40,7 @@ HardwareSerial gpsSerial(PB7, PB6);
 
 //===== Radio signals config
 #define CALLSIGN "N0CALLN0CALL"  //max 10 chars long, currently used for rtty
-#define CALLSIGN_SHORT "N0CALL1" //max 6 chars long, currently for morse
+//#define CALLSIGN_SHORT "N0CALL1" //max 6 chars long, currently unused
 #define PREAMBLE "AA"            //max 2 long
 int radioPwrSetting = 7; //0 = -1dBm (~0.8mW), 1 = 2dBm (~1.6mW), 2 = 5dBm (~3 mW), 3 = 8dBm (~6 mW), 4 = 11dBm (~12 mW), 5 = 14dBm (25 mW), 6 = 17dBm (50 mW), 7 = 20dBm (100 mW)
 bool enableAddData = false;      //rtty-only mode, when false, the additional-data space is filled with zeros

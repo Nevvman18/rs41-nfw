@@ -1,5 +1,10 @@
-# Firmware flashing guide
+# Firmware flashing
 To install the firmware on the RS41 radiosonde, you should follow these instructions.
+
+* [Requirements](#requirements)
+* [Connecting the programmer to the sonde](#connecting-the-programmer-to-the-sonde)
+* [*Uploading the pre-compiled binary*](#uploading-the-pre-compiled-binary)
+* [Uploading the Arduino Code](#uploading-the-arduino-code)
 
 ## Requirements
 * **Hardware-side**:

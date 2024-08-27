@@ -3,9 +3,9 @@ This firmware was written in the Arduino IDE. It is a beginner-friendly IDE with
 
 All the steps shown here may look hard and confusing, but doing everything step-by-step should do everything for you. This thing will take 5 minutes.<br>
 
-[Adding an STM32 core to the Arduino IDE board manager](adding-an-stm32-core-to-the-arduino-ide-board-manager)<br>
-[Compiler configuration guide](compiler-configuration-guide)<br>
-[Additional libraries](additional-libraries)
+* [Adding an STM32 core](#adding-an-stm32-core-to-the-arduino-ide-board-manager)
+* [Compiler configuration guide](#compiler-configuration-guide)
+* [Additional libraries](#additional-libraries)
 
 ## Adding an STM32 core to the Arduino IDE board manager
 To make things work, the Arduino IDE has to use the STM32 core to provide functionalities for STM32 microcontrollers:
