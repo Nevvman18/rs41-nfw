@@ -3,6 +3,7 @@ To install the firmware on the RS41 radiosonde, you should follow these instruct
 
 * [Requirements](#requirements)
 * [Connecting the programmer to the sonde](#connecting-the-programmer-to-the-sonde)
+* [Unlocking the factory MCU protection](#unlocking-the-factory-mcu-protection)
 * [*Uploading the pre-compiled binary*](#uploading-the-pre-compiled-binary)
 * [Uploading the Arduino Code](#uploading-the-arduino-code)
 
@@ -16,12 +17,14 @@ To install the firmware on the RS41 radiosonde, you should follow these instruct
 <br>**NOTE:** Pre-compiled binaries provide few customization options compared to compiling the firmware itself! The only recommended solution for HAB and other stuff is to compile the binary itself, it isn't hard with the guide.<br>
 The pre-compiled binary should never be used, unless you can't compile the binary or you only want to test some part of the default firmware config.
 
+<br>**Note:** Radiosondes that are factory new, with original firmware, need to be [unlocked](#unlocking-the-factory-mcu-protection).
+
 * **Software-side**:
     * For flasing a **pre-compiled binary**, you will need:
         * A pre-compiled binary (should be in the .bin format) - download a preferred version either from [there](./fw-files/) or from the releases page.
         * [STM32CubeProgrammer](https://www.st.com/en/development-tools/stm32cubeprog.html) or any debuger program (stm32flash on Linux for example) that can utilize the ST-Link and the STM32L412 MCU to upload the binary to it. This tutorial will cover STM32CubeProgrammer running on Windows and in the future there will be a tutorial for stm32flash on Linux.
     * For **compiling** and flashing **your own code**, you will need:
-        * [STM32CubeProgrammer](https://www.st.com/en/development-tools/stm32cubeprog.html), it won't be directly used in the flashing process, but the Arduino IDE may query it to upload the code to the MCU.
+        * [STM32CubeProgrammer](https://www.st.com/en/development-tools/stm32cubeprog.html) - used by Arduino IDE in the flashing process and to unlock the memory.
         * A properly configured Arduino IDE - more on that further in this text, with tutorial
 
 
@@ -62,6 +65,23 @@ Using the jumper cables, connect it as follows:
 <br>
 Now your system should be ready to upload the code. <br>
 If you encounter any problems at this moment, search in Google for the solution, try to ask AI assistant, and if you don't find the answer, raise an issue (though it should work out of the box).
+
+
+## Unlocking the factory MCU protection
+Factory new sondes with original firmware have read and write protections enabled. Disabling them is only needed once in the sonde's life, to allow the sonde to accept new firmware files. These steps are mandatory for both binary upload and Arduino IDE programming. To disable them, preferably, launch the **STM32CubeProgrammer**:
+* In the window, by default you should see something like [this](./photos/main_window.png).
+* Now, turn on the sonde, connect it with programmer to the computer and **Select the ST-LINK** as a programmer, then click **connect** [there](./photos/stlink-connection.png).
+* Go to **Option bytes** page, and set the following bytes as below (or like on [this picture](./photos/mcu-unlock.png)):
+  * In the **Read Out Protection**
+    * `RDP byte` to `AA`
+  * In the **Write Protection**
+    * `WRP1A_STRT` - **value** `0x1`, **address** `0x08000800`
+    * `WRP1A_END` - **value** `0x0`, **address** `0x08000000`
+    * `WRP1B_STRT` - **value** `0x1`, **address** `0x08000800`
+    * `WRP1B_END` - **value** `0x0`, **address** `0x08000000`
+  * And click **Apply**
+* Go to **Erasing & Programming** [page](./photos/erase_and_upload.png), and perform a Full Chip Erase. This will fully clear the MCU memory. If you encoutner any more errors mentioning RDP or any access-protection, please check in the available sources and if you don't know how to resolve it, make an issue there.
+* Now your MCU should be **unlocked and ready** to be reprogrammed!
 
 ## Uploading the pre-compiled binary
 * Start-up the STM32CubeProgrammer. It's not the fastest thing in the world, so wait a second.
