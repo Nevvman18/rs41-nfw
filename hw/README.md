@@ -27,6 +27,10 @@ Open the enclosure and take out the PCB. On the back side of it (the one without
 * PCB model with a **last digit of '4'** - newer **~2023** version (for example `RSM414`, `RSM424`)
 * PCB model with a **last digit other than '4'**, for example '1' or '2' - *older* version (for example `RSM412`, `RSM421` etc.)
 
+<br>
+
+This guide describes hardware used in the `RSM414` newer version of the sonde.
+
 
 # Key components
 **PCB - Front photo**

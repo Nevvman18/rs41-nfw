@@ -1,7 +1,7 @@
 # RS41-NFW - Versatile, custom firmware for new revision of Vaisala RS41 radiosondes
 ## **Vaisala RS41 New Firmware** (*RS41 Nevvman's Firmware*) <br>
-**NOTE:** This firmware currently only works with the new variant of RS41 radiosondes. More below.<br><br>
-Vaisala some time ago began launching new RS41 sondes, with new internal design. They can be recognized by a last digit of 4 of the PCB model (eg. `RSM414`, `RSM424`). This firmware is an approach for reusing them as amateur devices for many different purposes.<br>
+**NOTE:** This firmware works with the all variants of RS41 radiosondes, with the new RSM414 too. More below.<br><br>
+Vaisala some time ago began launching new RS41 sondes, with new internal design. They can be recognized by a last digit of 4 of the PCB model (eg. `RSM414`, `RSM424`). This firmware is an approach for reusing them as amateur devices for many different purposes. It also brings support for older models.<br>
 
 * [Radiosondes?](#radiosondes)
 * [RS41-NFW Firmware features](#rs41-nfw-firmware-features)
@@ -25,6 +25,7 @@ But, currently the best way is to utilize a Software-Defined Radio (SDR, for exa
 For more details about HAB and sonde hunting, please look on google and social media, there is a ton of valuable content.
 
 ## RS41-NFW Firmware features
+* Support for ALL RS41 versions (eg. `RSM421`, `RSM414`, `RSM424`), including the new ones with the '4' at the end of the PCB model.
 * Multiple, customizable transmission modes
     * [Horus Binary 4FSK v2](https://github.com/projecthorus/horusdemodlib/wiki)
         * One of the most efficient radio modes for HAB and other simple telemetry designs, allows for decoding of very weak signals
@@ -65,17 +66,25 @@ See: [hw/README.md](./hw/README.md)
 
 
 ## Firmware changelog
+* `v21` - added support for old RS41 models (`RSM412`)
 * `v20` - initial public release, releases before this were never published
 
 <br>
 
 Incoming features:
-* External sensor, addData population in RTTY
+* External sensors, addData population in RTTY
 * Ozone module (OIF411)
 * More power saving features
 * Fox hunting mode, featuring very low power consumption mode, transmission planning and beacon customization
 * Transmission scheme planning and schedule, according to GNSS time and coordinates
 * Height activated mode 2 heating
+
+
+<br>
+
+Features planned in next (`v22`) release:
+* External sensors - BME280 via I2C
+* Ability to change the XDATA port operation (debug, i2c, xdata uart)
 
 ## Authors and contributors to this branch
 * Franek 'nevvman' (no callsign)

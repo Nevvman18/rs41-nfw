@@ -2,6 +2,7 @@
 
 * [Firmware configuration](#firmware-configuration)
   * [Recommended settings](#recommended-settings)
+  * [Sonde PCB version](#sonde-pcb-version)
   * [IO assignment, dependencies](#io-assignment-dependencies)
   * [Radio signals config](#radio-signals-config)
   * [Other operation config](#other-operation-config)
@@ -25,11 +26,20 @@ Configuration options are located in definitions on the first ~100 of lines.
 
 ### Recommended settings
 The firmware by default is set with initial settings. For a recommended, first-time operation user should change the following: 
+* Sonde version
 * `CALLSIGN`
 * `radioPwrSetting`
 * Battery power settings
 * TX mode and frequency settings - recommended is only the Horus v2 mode at the 70cm amateur band - this provides the best range and speed capabilities.
 These settings are explained below.
+
+### Sonde PCB version
+The crucial part of the initial configuration is to set the appropriate sonde hardware version.
+```cpp
+#define RSM4x4 //new pcb versions
+//#define RSM4x2 //old pcb versions, also rsm4x1
+```
+Uncomment the right definition to set it.
 
 ### IO assignment, dependencies
 For the standard firmware operation, you shouldn't need to change them. <br>
@@ -342,6 +352,8 @@ The sonde also has some power saving capabilities, like radio sleep and LED turn
 
 
 ### Heater algorithm
+**NOTE:** The on-board heater is present on all sonde versions. **However**, it can controlled with the firmware **ONLY** on the newer sonde versions! (`RSM4x4`) <br>
+
 Previously mentioned heater is located on the cut-out part of the board. If you want to know more things about it's technical details and why it may be important for your flight, please check the [hardware - frontend description](../hw/README.md#frontend).<br>
 *[...] Worth mentioning are the reference heating resistors on the cut-out part of the PCB. In my firmware, they are used to slightly heat up the board near it, which contains the 26MHz crystal. The fw contains some wild functions to control it, which is used to limit the radio losing PLL-lock at very low temperatures (this also occured on older boards, like [here](https://github.com/hexameron/RS41HUP?tab=readme-ov-file#warning:~:text=Some%20RS41s%20have,resetting%20the%20chip.) or [here](https://www.areg.org.au/archives/208844#:~:text=Payload%20Testing%20Results,and%209km%20altitude.)). The PLL-lock loss happens mainly on the RTTY modulation using faster than 45 baud rates (lock-loss on Horus TX mode was not observed) when the Si4032 and the crystal cool down below 0°C. The heating logic is described in the operation manual, but worth mentioning is that you could try to improve the heat transfer by mounting to the resistors something heat-conductive (warning - it must not conduct electricity or it will cause a short circuit), like a small thin insulated elastic copper plate.*
 <br>
