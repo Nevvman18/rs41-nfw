@@ -22,7 +22,7 @@ The pre-compiled binary should never be used, unless you can't compile the binar
 * **Software-side**:
     * For flasing a **pre-compiled binary**, you will need:
         * A pre-compiled binary (should be in the .bin format) - download a preferred version either from [there](./fw-files/) or from the releases page.
-        * [STM32CubeProgrammer](https://www.st.com/en/development-tools/stm32cubeprog.html) or any debuger program (stm32flash on Linux for example) that can utilize the ST-Link and the STM32L412 MCU to upload the binary to it. This tutorial will cover STM32CubeProgrammer running on Windows and in the future there will be a tutorial for stm32flash on Linux.
+        * [STM32CubeProgrammer](https://www.st.com/en/development-tools/stm32cubeprog.html) or any debuger program (stm32flash on Linux for example) that can utilize the ST-Link to upload the binary to it. This tutorial will cover STM32CubeProgrammer running on Windows and in the future there will be a tutorial for stm32flash on Linux.
     * For **compiling** and flashing **your own code**, you will need:
         * [STM32CubeProgrammer](https://www.st.com/en/development-tools/stm32cubeprog.html) - used by Arduino IDE in the flashing process and to unlock the memory.
         * A properly configured Arduino IDE - more on that further in this text, with tutorial
