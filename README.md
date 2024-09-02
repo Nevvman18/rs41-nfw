@@ -66,25 +66,18 @@ See: [hw/README.md](./hw/README.md)
 
 
 ## Firmware changelog
+* `v22` - support for OIF411 ozone sounding system (including decoding the ozone info and transmision to ground), XDATA port mode selection (disabled, debug UART, XDATA UART), easy method of changing the payload-ID in Horus v2 mode, height activated oscillator heater
 * `v21` - added support for old RS41 models (`RSM412`)
 * `v20` - initial public release, releases before this were never published
 
 <br>
 
 Incoming features:
-* External sensors, addData population in RTTY
-* Ozone module (OIF411)
+* External sensors - BME280 (developer of the firmware wanted to give this capability in the `v22` version, but due to some develpoment site issues this will probably be added ater on)
 * More power saving features
 * Fox hunting mode, featuring very low power consumption mode, transmission planning and beacon customization
 * Transmission scheme planning and schedule, according to GNSS time and coordinates
-* Height activated mode 2 heating
 
-
-<br>
-
-Features planned in next (`v22`) release:
-* External sensors - BME280 via I2C
-* Ability to change the XDATA port operation (debug, i2c, xdata uart)
 
 ## Authors and contributors to this branch
 * Franek 'nevvman' (no callsign)

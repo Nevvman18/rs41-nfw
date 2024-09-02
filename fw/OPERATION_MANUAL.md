@@ -17,12 +17,14 @@
       * [Short RTTY message format](#short-rtty-message-format)
     * [Horus Binary](#horus-binary)
       * [Default Horus message format](#default-horus-message-format)
+  * [XDATA port operation](#xdata-port-operation)
   * [Power management](#power-management)
   * [Heater algorithm](#heater-algorithm)
 
 ## Firmware configuration
 To configure the firmware, open the .ino project file in the IDE. <br>
 Configuration options are located in definitions on the first ~100 of lines.
+
 
 ### Recommended settings
 The firmware by default is set with initial settings. For a recommended, first-time operation user should change the following: 
@@ -34,7 +36,7 @@ The firmware by default is set with initial settings. For a recommended, first-t
 These settings are explained below.
 
 ### Sonde PCB version
-The crucial part of the initial configuration is to set the appropriate sonde hardware version.
+The crucial part of the initial configuration is to set the appropriate sonde hardware version. Not setting the correct version will either cause compilation errors or result in a non fully-working device.
 ```cpp
 #define RSM4x4 //new pcb versions
 //#define RSM4x2 //old pcb versions, also rsm4x1
@@ -95,9 +97,10 @@ The message format is determined by the `rttyShortenMsg`. This setting is explai
 ```cpp
 bool horusEnable = true; //horus v2 tx mode
 float horusFrequencyMhz = 434.74;
+unsigned int horusPayloadId = 256;
 int horusBdr = 100;
 ```
-This is the best transmission mode to use. Enabled via `horusEnable`, frequency set with `horusFrequencyMhz`, the baud rate is set with `horusBdr`, with 100 bdr recommmended. <br>
+This is the best transmission mode to use. Enabled via `horusEnable`, frequency set with `horusFrequencyMhz`, the baud rate is set with `horusBdr`, with 100 bdr recommmended. The payload-ID setting can be changed with `horusPayloadId`, which is described [in the guide below](#horus-binary-v2).<br>
 
 ```cpp
 bool bufTxEnable = false; //alpha state! mode
@@ -124,9 +127,9 @@ bool ledStatusEnable = true;
 This enables the LED to show device status messages. <br>
 
 ```cpp
-bool xdataDebug = true; //if xdataDebug is enabled, debug messages are sent to the xdata header serial port. WARNING! THIS HAS TO BE FALSE WHEN USING XDATA DEVICES (such as OIF411 ozone sensor)
+const int xdataPortMode = 0; //0 - disabled, 1 - debug uart, 2 - i2c (NO implementation now), 3 - xdata sensors (oif411)
 ```
-This enables device debug messages via serial port located on the XDATA port. **Note:** when XDATA expansion devices are used (currently unsupported due to the lack of stock, anybody got one?), it has to be disabled in order to allow commands to go through. <br>
+This setting changes the XDATA port operation mode. This expansion port is described [here](#xdata-port-operation), with all of it's functions that can be set. This setting replaces the old `xdataDebug` variable, used in previous firmware versions. <br>
 
 ```cpp
 float vBatWarnValue = 2.5; //battery warning voltage
@@ -149,6 +152,7 @@ int gpsSatsWarnValue = 4;
 
 ```cpp
 int refHeatingMode = 1; //0 - off, 1 - auto, 2 - always on
+int refHeaterAutoActivationHeight = 0; //set to 0 to disable auto heater enable above set level, if other than 0 then it means height above which the heater gets auto enabled
 unsigned long heaterWorkingTimeSec = 600; //heater heating time
 unsigned long heaterCooldownTimeSec = 3; //heater cooldown time after heating process
 int autoHeaterThreshold = 6; //auto heater temperature threshold, WARNING! If rtty used baud is faster than 45bdr, the threshold should be at 14*C to prevent the radio from loosing PPL-lock, best would be even to set the heating to always on. If only horus mode is used, it is not mandatory, altough for standard flights that dont require more than 12h of operation the 6*C is advised for defrosting and keeping the internals slightly above ice temperature.
@@ -293,6 +297,14 @@ Each data space is separated with semicolon (;).<br>
 | thermTemp 	| --                	| Format: whole numbers + dot + 1 decimal place  	|
 | addData   	| 10                	| Additional data place                          	|
 
+<br>
+
+The addData (additional data space) sends various data, currently changes it's data according to the `xdataPortMode` (same as the Horus v2 additional 9-byte space):
+
+* When addData is not populated (currently other than ozone data), the space is filled with 10 zeros.
+* When OIF411 is connected and the `xdataPortMode` is set to 3 (XDATA UART), the format is like this:
+  * [Ozone electrode current, max length of 4 characters including dot];[Ozone battery voltage, max length of 2];[Ozone pump temperature, max length of 2] | which gives a total length of 10 characters
+
 ##### Short RTTY message format
 Each data space is separated with semicolon (;).<br>
 
@@ -322,7 +334,7 @@ The easiest way to decode this format is to use an SDR together with Horus-GUI f
 
 
 ##### Default Horus message format
-This project uses Horus v2 binary format, with 32 byte message length. This table shows how the dummy payload data places are populated according to the 4FSKTEST-V2 decoding description:
+This project uses Horus v2 binary format, with 32 byte message length. This table shows how the dummy payload data places are populated according to the 4FSKTEST-V2 decoding description (it's not byte-to-byte compatible with the format used by default in the RS41ng firmware):
 
 | Data             	| Description                                                                                      	|
 |------------------	|--------------------------------------------------------------------------------------------------	|
@@ -338,11 +350,24 @@ This project uses Horus v2 binary format, with 32 byte message length. This tabl
 | vBat             	| Battery voltage, interpreted there as an uint8 value from 0-255 (real 0-5V), mapped in the code. 	|
 | Sats             	| gpsSats                                                                                          	|
 | Temp             	| Thermistor temperature integer                                                                          	|
-| dummy1           	| unused now, will be populated with values such as ext. temperature, ozone etc. in future         	|
-| dummy2           	| unused now, as above                                                                             	|
+| dummy1           	| when OIF411 connected, sends the ozone electrode current                                         	|
+| dummy2           	| when OIF411 connected, sends the ozone battery voltage                                           	|
 | deviceDebugState 	| deviceDebugState uint8 integer                                                                   	|
-| dummy4           	| unused now, as above                                                                             	|
+| dummy4           	| when OIF411 connected, sends the ozone pump temperature                                          	|
 | dummy5           	| not decoded in this encoding scheme (4FSKTEST-V2 doesn't provide decode desc. for dummy5)        	|
+
+
+### XDATA port operation
+The RS41 sondes provide an expansion port on the bottom part of the device, which implement a protocol called XDATA. The capabilities of the device allow users to utilise them like standard GPIO pins. The following modes of it's operation are available via setting the `xdataPortMode`:
+* Disabled (0) - fully disables the XDATA IO pins
+* Debug UART (1) - utilizes the XDATA pins (number 2 and 3) to print out the debug messages as a standard serial port (@115200 baudrate, can be changed).
+* I2C (2) - upcoming releases of the firmware *will* support I2C devices, such as BME280 enviromental sensor, no support for now, because of the raster issues in the development site.
+* XDATA UART (3) - utilizes the XDATA pins as their default use was - to connect XDATA capable devices. Currently the only device supported and decoded is the OIF411 ozone sounding pump with ECC electrodes. (XDATA protocol uses a simple 9600baud UART with properitary message format)
+
+<br>
+
+The UART and I2C capabilities cannot be used at the same time.<br>
+The ozone data is sent via RTTY and Horus, described above.
 
 
 ### Power management
@@ -364,6 +389,8 @@ By default, it is set to AUTO mode (`refHeatingMode = 1`). In this mode, heater 
 User can force the heater to the ALWAYS-ON mode (`refHeatingMode = 2`), of course either by changing the code or setting the variable via button page settings (descibed [above](#button-operation)). In this mode, the heater heats up the area continuously. <br>
 
 However, it would be dumb to turn on a heater without any safety measures, so in both heating modes there is a safety governor working, that maintains the heater temperature between the defined levels. If the heater temperature rises above the `refHeaterCriticalDisableTemp`, it temporarly disables the heaters until they cool down below the `refHeaterCriticalDisableTemp` threshold. After cooling down, they are reenabled and the process goes again, unless the main heating time in AUTO mode has passed. <br>
+
+The heater algorithm also contains a script that can set the heater mode to ALWAYS-ON above the determined altitude, which can be set using the `refHeaterAutoActivationHeight` variable. This function gets disabled when value set to 0. <br>
 
 The heater algorithm also provides it's own debug feature - `heaterDebugState`.<br>
 These are the heater debug conditions:
