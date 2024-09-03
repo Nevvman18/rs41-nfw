@@ -151,6 +151,11 @@ int gpsSatsWarnValue = 4;
 `gpsSatsWarnValue` determines the warning threshold for GPS satellite visibility. <br>
 
 ```cpp
+bool ubloxGpsAirborneMode = true; //sets the uBlox GPS module to the Airborne 1G Dynamic Model, which should prevent from loosing fix above 18km altitude
+```
+`ubloxGpsAirborneMode` - if true, on startup sends raw bytes to the GPS, according to the [RS41HUP soruce code](https://github.com/df8oe/RS41HUP/blob/master/ublox.c). This sets the Dynamic Model setting to the Airborne 1G mode, which should prevent the GPS from losing fix above around 18km of height. <br>
+
+```cpp
 int refHeatingMode = 1; //0 - off, 1 - auto, 2 - always on
 int refHeaterAutoActivationHeight = 0; //set to 0 to disable auto heater enable above set level, if other than 0 then it means height above which the heater gets auto enabled
 unsigned long heaterWorkingTimeSec = 600; //heater heating time
