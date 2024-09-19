@@ -66,6 +66,7 @@ See: [hw/README.md](./hw/README.md)
 
 
 ## Firmware changelog
+* `v231` - fix issues of the previous *release v2.3*, thanks to [(still) this issue #3](https://github.com/Nevvman18/rs41-nfw/issues/3). Changed OIF411 data interpretation according to the operation manual (raw data division).
 * `v23` - added experimental uBlox GPS Airborne 1G Dynamic Model selection via UART of the module, thanks to [this issue #3](https://github.com/Nevvman18/rs41-nfw/issues/3)
 * `v22` - support for OIF411 ozone sounding system (including decoding the ozone info and transmision to ground), XDATA port mode selection (disabled, debug UART, XDATA UART), easy method of changing the payload-ID in Horus v2 mode, height activated oscillator heater
 * `v21` - added support for old RS41 models (`RSM412`)
@@ -81,7 +82,7 @@ Incoming features:
 
 
 ## Authors and contributors to this branch
-* Franek 'nevvman' (no callsign)
+* Franek 'nevvman' (no callsign, *yet*)
 
 
 ## References
