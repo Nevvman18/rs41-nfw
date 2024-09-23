@@ -87,9 +87,10 @@ Incoming features:
 * Authors
   * Franek 'nevvman' (no callsign, *yet*)
 * Contributors
-  * @videobuff
-  * @darksidelemm
-  * @zanco
+  * [videobuff](https://github.com/videobuff)
+  * [darksidelemm](https://github.com/darksidelemm)
+  * [zanco](https://github.com/zanco)
+  * and others
 
 
 ## References

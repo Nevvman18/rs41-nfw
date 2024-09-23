@@ -68,7 +68,7 @@ Currently needed libraries for this project:
     * Visit https://github.com/mikalhart/TinyGPSPlus and **download** code as a .zip file (green code button).
     * In Arduino IDE, go to **(IDE) Sketch -> Include Library... -> Add .ZIP Library** and select the already downloaded .zip file.
     * After a while, it should be installed, the progress can be seen on the bottom of the IDE.
-* Adafruit_BME280 (only for firmware versions `v22` or newer)
+* Adafruit_BME280 (only for future versions, not used currently)
     * Visit https://github.com/adafruit/Adafruit_BME280_Library and **download** code as a .zip file (green code button).
     * In Arduino IDE, go to **(IDE) Sketch -> Include Library... -> Add .ZIP Library** and select the already downloaded .zip file.
     * After a while, it should be installed, the progress can be seen on the bottom of the IDE.
