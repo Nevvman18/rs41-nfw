@@ -66,6 +66,7 @@ See: [hw/README.md](./hw/README.md)
 
 
 ## Firmware changelog
+* `v25` - powerSave mode, featuring automaticaly-adjustable TX power and transmission intervals, based on the altitude. Changed default values of the firmware.
 * `v24` - some improvements in the GPS Dynamic Model setting, support for both old and new sondes, simple VALSET & VALGET validation mechanism for the new sondes. The Airborne 1G mode is still experimental!
 * `v231` - fix issues of the previous *release v2.3*, thanks to [(still) this issue #3](https://github.com/Nevvman18/rs41-nfw/issues/3). Changed OIF411 data interpretation according to the operation manual (raw data division).
 * `v23` - added experimental uBlox GPS Airborne 1G Dynamic Model selection via UART of the module, thanks to [this issue #3](https://github.com/Nevvman18/rs41-nfw/issues/3)
@@ -82,8 +83,13 @@ Incoming features:
 * Transmission scheme planning and schedule, according to GNSS time and coordinates
 
 
-## Authors and contributors to this branch
-* Franek 'nevvman' (no callsign, *yet*)
+## People responsible for this project
+* Authors
+  * Franek 'nevvman' (no callsign, *yet*)
+* Contributors
+  * @videobuff
+  * @darksidelemm
+  * @zanco
 
 
 ## References

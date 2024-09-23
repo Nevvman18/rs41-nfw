@@ -9,6 +9,7 @@
 * [Device operation](#device-operation)
   * [Starting the radiosonde](#starting-the-radiosonde)
   * [Device debug status and LED lights](#device-debug-status-and-led-lights)
+  * [Button operation](#button-operation)
   * [Radio signals operation](#radio-signals-operation)
     * [PIP](#pip)
     * [Morse](#morse)
@@ -19,6 +20,7 @@
       * [Default Horus message format](#default-horus-message-format)
   * [XDATA port operation](#xdata-port-operation)
   * [Power management](#power-management)
+    * [powerSave features](#powersave-features)
   * [Heater algorithm](#heater-algorithm)
 
 ## Firmware configuration
@@ -27,9 +29,9 @@ Configuration options are located in definitions on the first ~100 of lines.
 
 
 ### Recommended settings
-The firmware by default is set with initial settings. For a recommended, first-time operation user should change the following: 
+The firmware by default is set with initial settings. For the first-time operation user should change the following: 
 * Sonde version
-* `CALLSIGN`
+* `CALLSIGN` or `horusPayloadId`
 * `radioPwrSetting`
 * Battery power settings
 * TX mode and frequency settings - recommended is only the Horus v2 mode at the 70cm amateur band - this provides the best range and speed capabilities.
@@ -60,10 +62,15 @@ This is the first interesting part that a user should customize. It is located a
 `PREABMLE` is a 2-byte long part of the text that is used in the RTTY mode. If the TX signal is weaker, some programs may have difficulties detecting the carriers on the first bit, so the preamble is transmitted first. <br>
 
 ```cpp
-int radioPwrSetting = 7; //0 = -1dBm (~0.8mW), 1 = 2dBm (~1.6mW), 2 = 5dBm (~3 mW), 3 = 8dBm (~6 mW), 4 = 11dBm (~12 mW), 5 = 14dBm (25 mW), 6 = 17dBm (50 mW), 7 = 20dBm (100 mW)
+int defaultRadioPwrSetting = 7; //default TX power, also see lines down below; 0 = -1dBm (~0.8mW), 1 = 2dBm (~1.6mW), 2 = 5dBm (~3 mW), 3 = 8dBm (~6 mW), 4 = 11dBm (~12 mW), 5 = 14dBm (25 mW), 6 = 17dBm (50 mW), 7 = 20dBm (100 mW)
+int powerSaveRadioPwrSetting = 5; //radio TX power for power save feature - deterimnes the TX power level at which the sonde will be transmitting when certain altitude (powerSaveAltitude), set to -1 to disable the powerSave features applying to the TX power. If this option is activated, the button logic for changing the radio power won't work
+```
+These are the settings for configuring the radio transmission power (0-7). The default value is `defaultRadioPwrSetting`. There is also a `powerSaveRadioPwrSetting` value, which is used when the [powerSave](#powersave-features) features are enabled, to disable, set it to -1.
+
+
+```cpp
 bool enableAddData = false;      //rtty-only mode, when false, the additional-data space is filled with zeros
 ```
-`radioPwrSetting` is used to set the TX power, from 0 to 7 max.<br>
 `enableAddData` RTTY-only and morse-only modes, has currently no use, in future when additional sensor support will be available, this part will be filled with the additional sensor data. Currently, setting to false fills the space with zeros. <br>
 
 ```cpp
@@ -111,20 +118,22 @@ This mode is currently not supported - it was created during tests to apply a FS
 ```cpp
 bool radioEnablePA = false;  //default tx state
 bool radioSleep = true; //lowers power consumption and recalibrates oscillator (drift compensation)
-int modeChangeDelay = 0; //0 - disable, 0<delay<2000 - standard delay, 2000<delay - delay + radio sleep mode and recalibration (if radioSleep enabled)
+int defaultModeChangeDelay = 0; //in milliseconds, 0 - disable, 0<delay<2000 - standard delay, 2000<delay - delay + radio sleep mode and recalibration (if radioSleep enabled); default delay between radio transmission modes
+int powerSaveModeChangeDelay = 5000; //as above, but activates when the powerSave is ON, set to -1 to disable changing of the transmission delay above powerSaveAltitude
 ```
 These are the radio power management settings.<br>
 `radioEnablePA` enables RF stage power amplifier to start sending signals. If you want the sonde to start transmitting signals immediatly after power ON, set this to true. If set to false, the PA can be enabled with a button, described later.<br>
 `radioSleep` allows radio to go to sleep mode, which lowers the power consumption in-between transmissions, by turning OFF unnecesary IC components. Should be true unless you encounter any problems. <br>
-`modeChangeDelay` sets the delay in ms between transmissions. If set to 0 it means that the sleep is disabled and the transmissions occur as fast as possible, if enabled and the delay is under 2000msmit just waits in-between the modes, and if the delay is over 2s it also puts the radio to sleep in-between transmissions to lower the power consumption. <br>
+`defaultModeChangeDelay` sets the delay in ms between transmissions. If set to 0 it means that the sleep is disabled and the transmissions occur as fast as possible, if enabled and the delay is under 2000msmit just waits in-between the modes, and if the delay is over 2s it also puts the radio to sleep in-between transmissions to lower the power consumption. The additional `powerSaveModeChangeDelay` variable is used when the [powerSave features are enabled](#powersave-features), to disable it, set to -1. <br>
 
 ### Other operation config
 This is the part that sets other operation variables that weren't mentioned earlier. It is located under the `//===== Other operation config` section in the project file.<br>
 
 ```cpp
 bool ledStatusEnable = true;
+int ledAutoDisableHeight = 1000; //height in meters above which the status LEDs get disabled
 ```
-This enables the LED to show device status messages. <br>
+`ledStatusEnable` enables the LED to show device status messages. The LEDs can be automatically turned OFF when the payload starts flying, by setting the altitude threshold with `ledAutoDisableHeight`.<br>
 
 ```cpp
 const int xdataPortMode = 0; //0 - disabled, 1 - debug uart, 2 - i2c (NO implementation now), 3 - xdata sensors (oif411)
@@ -134,10 +143,10 @@ This setting changes the XDATA port operation mode. This expansion port is descr
 ```cpp
 float vBatWarnValue = 2.5; //battery warning voltage
 float vBatErrValue = 2.3; //error voltage
-float batteryCutOffVoltage = 1.9; //good for nimh cell life, below 0.8V per AA cell the damage could occur
+float batteryCutOffVoltage = 0; //good for nimh cell life, below 0.8V per AA cell the damage could occur
 ```
 This sets different battery voltage settings.<br>
-`vBatWarnValue` sets the voltage warning threshold, `vBatErrValue` sets the voltage error threshold and `batteryCutOffVoltage` determines at which voltage the radiosonde should automatically power OFF to protect the batteries (read your battery safety instructions and set this value according to it's safety measures!). <br>
+`vBatWarnValue` sets the voltage warning threshold, `vBatErrValue` sets the voltage error threshold and `batteryCutOffVoltage` determines at which voltage the radiosonde should automatically power OFF to protect the batteries (read your battery safety instructions and set this value according to it's safety measures!). By default, it is set to 0V to ensure that the full capacity of the battery is used. <br>
 
 ```cpp
 int ovhtWarnValue = 45; //overheating warning
@@ -153,10 +162,10 @@ int gpsSatsWarnValue = 4;
 ```cpp
 bool ubloxGpsAirborneMode = true; //sets the uBlox GPS module to the Airborne 1G Dynamic Model, which should prevent from loosing fix above 18km altitude
 ```
-`ubloxGpsAirborneMode` - if true, on startup sends raw bytes to the GPS, according to the [RS41HUP soruce code](https://github.com/df8oe/RS41HUP/blob/master/ublox.c). This sets the Dynamic Model setting to the Airborne 1G mode, which should prevent the GPS from losing fix above around 18km of height. <br>
+`ubloxGpsAirborneMode` - if true, on startup sends raw bytes to the GPS. This sets the Dynamic Model setting to the Airborne 1G mode, which should prevent the GPS from losing fix above around 18km of height. <br>
 
 ```cpp
-int refHeatingMode = 1; //0 - off, 1 - auto, 2 - always on
+int refHeatingMode = 0; //0 - off, 1 - auto, 2 - always on
 int refHeaterAutoActivationHeight = 0; //set to 0 to disable auto heater enable above set level, if other than 0 then it means height above which the heater gets auto enabled
 unsigned long heaterWorkingTimeSec = 600; //heater heating time
 unsigned long heaterCooldownTimeSec = 3; //heater cooldown time after heating process
@@ -170,6 +179,16 @@ These are the heater settings. The heater operation is described below or by cli
 int gpsNmeaMsgWaitTime = 1200; //waiting time for gps message
 ```
 The `gpsNmeaMsgWaitTime` in ms sets the time that the device will wait for the GPS UART message to come. For a standard 1Hz GPS, it should be set somewhere between 1100ms and 1500ms, depending on the GPS internal refresh rate settings.
+
+```cpp
+int oif411MsgWaitTime = 1200; //waiting time for oif411 message
+```
+The `oif411MsgWaitTime` in ms sets the time that the device will wait for the XDATA OIF411 message to come. It usually sends data in 1s intervals, so something around the 1200ms does the trick.
+
+```cpp
+int powerSaveAltitude = 3000; //altitude in meters above which the powerSave features start to occur (currently, TX power is lowered from defaultRadioPwrSetting to powerSaveRadioPwrSetting and the transmision interval is changed from modeChangeDelay to powerSaveModeChangeDelay), set to -1 to completely disable all powerSave features
+```
+`powerSaveAltitude` defines the altitude above which the sonde activates the powerSave mode. [Operation descibed here](#powersave-features).
 
 
 ```cpp
@@ -241,7 +260,7 @@ User can change different opeartion variables by using the on-board button while
 The button contains a page-like setting system, with pages from 1 to 7, whereas each page can be recognized by a 500ms GREEN-RED LED cycle. Entering a page is done by holding the button until the desired page number is selected, and then by releasing the button at this desired page number:
 * Page 1 - `empty`
 * Page 2 - `radioEnablePA`. Green blinks 2 times for true, red 2 times for false.
-* Page 3 - `radioPwrSetting`. Green blinks 3 times for 100mW (7 max), red 3 times for 2mW (0 min).
+* Page 3 - `radioPwrSetting`. Green blinks 3 times for 100mW (7 max), red 3 times for 2mW (0 min). *annotation below*
 * Page 4 - `rttyEnable`. Green blinks 4 times for true, red 4 times for false.
 * Page 5 - `rttyShortenMsg`. Green blinks 5 times for false, red 5 times for true.
 * Page 6 - `refHeatingMode`. Green blinks 6 times for OFF(0), orange 6 times for AUTO(1) and red 6 times for ALWAYS-ON(2).
@@ -256,6 +275,8 @@ RED_____----++++----++++----++++____------------    _______________________
 GREEN___++++----++++----++++----____++--++--++--    _______________________
 ```
 <br>
+
+`radioPwrSetting` annotation - this setting cannot be changed via the button when the powerSave features for the radio TX power are enabled (when the `powerSaveRadioPwrSetting` != -1). Tbe case is indicated with the RED led glowing for 500ms, which means that the operation didn't end successfully (radio power not changed).
 
 ### Radio signals operation
 
@@ -380,6 +401,15 @@ Device measures the battery voltage and according to this sets the warning and e
 If the battery voltage goes below defined `batteryCutOffVoltage`, the sonde transmitts `VBAT-CUTOFF VBAT-CUTOFF VBAT-CUTOFF` via RTTY even if it is disabled and then powers OFF.<br>
 The sonde also has some power saving capabilities, like radio sleep and LED turn OFF at heights. In future, it is planned to implement GPS power saving and MCU sleep.
 
+#### powerSave features
+Currently, power saving features are activated above certain altitude. This behaviour is determined by the `powerSaveAltitude` variable in meters.
+The power saving changes 2 settings - radio TX power and interval between radio modes. <br>
+
+After the power saving mode is entered (gpsAlt > powerSaveAltitude), the radio TX power is changed (usually lowered) from the `defaultRadioPwrSetting` to `powerSaveRadioPwrSetting`. This particular behaviour can be disabled by setting the `powerSaveRadioPwrSetting` to -1. <br>
+The interval between transmission modes is also being changed, from `defaultModeChangeDelay` to `powerSaveModeChangeDelay`. his particular behaviour can be disabled by setting the `powerSaveModeChangeDelay` to -1. <br>
+
+The whole power saving feature can be disabled by setting the `powerSaveAltitude` to -1.
+
 
 ### Heater algorithm
 **NOTE:** The on-board heater is present on all sonde versions. **However**, it can controlled with the firmware **ONLY** on the newer sonde versions! (`RSM4x4`) <br>
@@ -388,8 +418,8 @@ Previously mentioned heater is located on the cut-out part of the board. If you 
 *[...] Worth mentioning are the reference heating resistors on the cut-out part of the PCB. In my firmware, they are used to slightly heat up the board near it, which contains the 26MHz crystal. The fw contains some wild functions to control it, which is used to limit the radio losing PLL-lock at very low temperatures (this also occured on older boards, like [here](https://github.com/hexameron/RS41HUP?tab=readme-ov-file#warning:~:text=Some%20RS41s%20have,resetting%20the%20chip.) or [here](https://www.areg.org.au/archives/208844#:~:text=Payload%20Testing%20Results,and%209km%20altitude.)). The PLL-lock loss happens mainly on the RTTY modulation using faster than 45 baud rates (lock-loss on Horus TX mode was not observed) when the Si4032 and the crystal cool down below 0°C. The heating logic is described in the operation manual, but worth mentioning is that you could try to improve the heat transfer by mounting to the resistors something heat-conductive (warning - it must not conduct electricity or it will cause a short circuit), like a small thin insulated elastic copper plate.*
 <br>
 
-The heater can be disabled by defining the `refHeatingMode` to 0.<br>
-By default, it is set to AUTO mode (`refHeatingMode = 1`). In this mode, heater turns on automatically when the onboard thermistor temperature drops below `autoHeaterThreshold`. If this condition is met, the heater heats up the area for time defined at `heaterWorkingTimeSec`. After this time passes, it enters a cooldown for defined `heaterCooldownTimeSec` time.<br>
+The heater can be disabled by defining the `refHeatingMode` to 0, which is default.<br>
+The second mode is the AUTO mode (`refHeatingMode = 1`). In this mode, heater turns on automatically when the onboard thermistor temperature drops below `autoHeaterThreshold`. If this condition is met, the heater heats up the area for time defined at `heaterWorkingTimeSec`. After this time passes, it enters a cooldown for defined `heaterCooldownTimeSec` time.<br>
 
 User can force the heater to the ALWAYS-ON mode (`refHeatingMode = 2`), of course either by changing the code or setting the variable via button page settings (descibed [above](#button-operation)). In this mode, the heater heats up the area continuously. <br>
 
