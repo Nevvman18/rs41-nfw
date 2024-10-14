@@ -22,6 +22,7 @@
   * [Power management](#power-management)
     * [powerSave features](#powersave-features)
   * [Heater algorithm](#heater-algorithm)
+  * [Sensor boom](#sensor-boom)
 
 ## Firmware configuration
 To configure the firmware, open the .ino project file in the IDE. <br>
@@ -190,10 +191,17 @@ int powerSaveAltitude = 3000; //altitude in meters above which the powerSave fea
 ```
 `powerSaveAltitude` defines the altitude above which the sonde activates the powerSave mode. [Operation descibed here](#powersave-features).
 
+```cpp
+bool sensorBoomEnable = true; //enables sensor boom measurement (currently only temperatures, humidity is being engineered) and diagnostics
+float mainTemperatureCorrectionC = 0;
+float extHeaterTemperatureCorrectionC = 25;
+```
+The sensor boom measruements in the radiosonde can be enabled with `sensorBoomEnable`. Currently, the temperature offsets can be set for both main temperature (characteristic hook; `mainTemperatureCorrectionC`) and the humidity heater temperature sensor (`extHeaterTemperatureCorrectionC`).
+
 
 ```cpp
-#define R25 10400  // 10k Ohms at 25°C thermistor 
-#define B 4295     // Beta parameter calculated thermistor
+#define THERMISTOR_R25 10400  // 10k Ohms at 25°C thermistor 
+#define THERMISTOR_B 4295     // Beta parameter calculated thermistor
 ```
 These settings change the onboard thermistor characteristics, values were calculated for the default hardware and shouldn't be changed, unless the thermistor reading differs significantly from the real temperature. <br>
 
@@ -213,8 +221,8 @@ Immediately after pressing the button, during the setup function, the LEDs light
 
 ```
         Start   |  ......   | Setup complete
-RED     ++--    |  ===      | ----------
-GREEN   --++    |  ===      | +----+----
+RED     ----    |  ===      | ----------
+GREEN   ----    |  ===      | +----+----
 
 Plus (+) is equiv. to LED ON for 50ms, minus (-) means LED OFF for 50ms, (===) means operations in background
 ```
@@ -228,9 +236,11 @@ Device debug states, LED colors and conditions, during normal device operation:
   * `vBatErrValue` < Battery voltage < `vBatWarnValue`
   * `ovhtErrValue` < Thermistor temp. < `ovhtWarnValue`
   * GNSS satellites < `gpsSatsWarnValue`
+  * `sensorBoomMainTempError` OR|| `sensorBoomHumidityModuleError`
 * Error - continuous red light
   * Battery voltage < `vBatErrValue` < `vBatWarnValue`
   * Thermistor temp. < `ovhtErrValue` < `ovhtWarnValue`
+  * `sensorBoomMainTempError` AND&& `sensorBoomHumidityModuleError`
 * Undefined - continuous orange light
   * If 2 error levels happen simoultaneously (for example warn and error), this sets the status to undefined, which should never happen
 
@@ -320,7 +330,7 @@ Each data space is separated with semicolon (;).<br>
 | gpsSpeed  	| 4                 	| In m/s                                         	|
 | gpsSats   	| 2                 	| GNSS satellite visibility count                	|
 | vBat      	| 3                 	| In Volts, 2 decimal places                     	|
-| thermTemp 	| --                	| Format: whole numbers + dot + 1 decimal place  	|
+| extTemp    	| --                	| Format: whole numbers + dot + 1 decimal place  	|
 | addData   	| 10                	| Additional data place                          	|
 
 <br>
@@ -342,7 +352,7 @@ Each data space is separated with semicolon (;).<br>
 | gpsAlt    	| --                	| Format: whole numbers + dot + 1 decimal place  	|
 | gpsSats   	| 2                 	| GNSS satellite visibility count                	|
 | vBat      	| 4                 	| Volts; whole number + dot + 2 decimal places   	|
-| thermTemp 	| 4                 	| *C; whole numbers + dot + 1 decimal place      	|
+| extTemp    	| 4                 	| *C; whole numbers + dot + 1 decimal place      	|
 
 
 
@@ -375,12 +385,23 @@ This project uses Horus v2 binary format, with 32 byte message length. This tabl
 | Speed            	| gpsSpeed                                                                                         	|
 | vBat             	| Battery voltage, interpreted there as an uint8 value from 0-255 (real 0-5V), mapped in the code. 	|
 | Sats             	| gpsSats                                                                                          	|
-| Temp             	| Thermistor temperature integer                                                                          	|
-| dummy1           	| when OIF411 connected, sends the ozone electrode current                                         	|
-| dummy2           	| when OIF411 connected, sends the ozone battery voltage                                           	|
-| deviceDebugState 	| deviceDebugState uint8 integer                                                                   	|
-| dummy4           	| when OIF411 connected, sends the ozone pump temperature                                          	|
+| Temp             	| Thermistor temperature integer                                                 	                  |
+| deviceDebugState 	| deviceDebugState uint8 integer (dummy1)                                                          	|
+| extTemperature   	| External temperature integer (from sensor boom)                                         	        |
+| dummy2           	| empty                                           	                                                |
+| dummy4           	| empty                                          	                                                  |
 | dummy5           	| not decoded in this encoding scheme (4FSKTEST-V2 doesn't provide decode desc. for dummy5)        	|
+
+<br>
+When the OIF411 is connected, the last 5 dummy places change to this unofficial format (good for testing only!):
+
+| Data               | Description                                                                                 |
+|-------------------|--------------------------------------------------------------------------------------------- |
+| dummy1            | When OIF411 connected, sends the ozone electrode current                                     |
+| dummy2            | When OIF411 connected, sends the ozone battery voltage                                       |
+| deviceDebugState  | Device debug state uint8 integer                                                             |
+| dummy4            | When OIF411 connected, sends the ozone pump temperature                                      |
+| dummy5            | Not decoded in this encoding scheme (4FSKTEST-V2 doesn't provide decode desc. for dummy5)    |
 
 
 ### XDATA port operation
@@ -454,6 +475,12 @@ The `heaterDebugState` is a just a simple formula:
 <br> 
 
 This debug formula, added to the other conditions (`statusNum`) create the previously mentioned `deviceDebugState`.
+
+
+### Sensor Boom
+Each RS41 radiosonde has a sensor boom (the shiny elastic part with a characteristic hook). This firmware, being probably the first one, allows to utilize the advanced functions of it to measure external temperature and the temperature of humidity sensor heater. The external temperature is being sent to ground in RTTY and Horus v2 payloads. <br>
+
+The firmware also performs self-tests on the sensor which notify about either external temperature sensor fault, humidity module fault or entire sensor hook problem, both with LED status lights and on the debug UART terminal.
 
 
 ## Final words

@@ -1,6 +1,6 @@
-# RS41-NFW - Versatile, custom firmware for new revision of Vaisala RS41 radiosondes
+# RS41-NFW - Versatile, custom firmware for all revisions of Vaisala RS41 radiosondes
 ## **Vaisala RS41 New Firmware** (*RS41 Nevvman's Firmware*) <br>
-**NOTE:** This firmware works with the all variants of RS41 radiosondes, with the new RSM414 too. More below.<br><br>
+**NOTE:** This firmware works with the all variants of RS41 radiosondes, with the new RSM414 too, bringing full hardware and software support for everyone. More below.<br><br>
 Vaisala some time ago began launching new RS41 sondes, with new internal design. They can be recognized by a last digit of 4 of the PCB model (eg. `RSM414`, `RSM424`). This firmware is an approach for reusing them as amateur devices for many different purposes. It also brings support for older models.<br>
 
 * [Radiosondes?](#radiosondes)
@@ -25,9 +25,9 @@ But, currently the best way is to utilize a Software-Defined Radio (SDR, for exa
 For more details about HAB and sonde hunting, please look on google and social media, there is a ton of valuable content.
 
 ## RS41-NFW Firmware features
-* Support for ALL RS41 versions (eg. `RSM421`, `RSM414`, `RSM424`), including the new ones with the '4' at the end of the PCB model.
+* **Full support for ALL** RS41 versions (eg. `RSM421`, `RSM414`, `RSM424`), including the new ones with the '4' at the end of the PCB model.
 * Multiple, customizable transmission modes
-    * [Horus Binary 4FSK v2](https://github.com/projecthorus/horusdemodlib/wiki)
+    * [**Horus Binary 4FSK v2**](https://github.com/projecthorus/horusdemodlib/wiki)
         * One of the most efficient radio modes for HAB and other simple telemetry designs, allows for decoding of very weak signals
     * RTTY
         * Customizable 45 and 75 baud rates, possibly other available
@@ -36,12 +36,14 @@ For more details about HAB and sonde hunting, please look on google and social m
         * Customizable wpm speed and dot length
     * PIP
         * Beacon operation, transmitting short beep with a specified interval, which could be used as a foxhunting TX device
-* Thorough support of RS41 hardware, including GPS, radio, power circuitry, reference heating etc.
-* Detailed in-built debugging features via LED status and serial messages
-* Onboard button allowing user to change different operation modes and parameters 'in-flight'
-* Safety features, including battery voltage and temperature protection
-* Support for extending hardware capabilities, including external I2C or UART sensors (coming soon to the fw)
-* User-friendly firmware and IDE allows users to easily customimze the device operation
+* Thorough support of RS41 hardware, including GPS, radio, power circuitry, reference heating etc. ...and:
+* Support for **onboard boom sensors**, including temperature sensors (humidity sensor incoming in next releases)
+* Detailed in-built **debugging** features via LED status and serial messages
+* Onboard **button** allowing user to change different operation modes and parameters 'in-flight'
+* **Safety features**, including battery voltage and temperature protection
+* Support for extending hardware capabilities, including external I2C or UART sensors - including **OIF411**
+* **Power saving** features
+* **User-friendly** firmware and IDE allows users to easily customimze the device operation
 
 
 ## Installation guide
@@ -66,6 +68,7 @@ See: [hw/README.md](./hw/README.md)
 
 
 ## Firmware changelog
+* `v27` - support for sensor boom - accurate readings of external temperature and humidity module temperature (humidity measurement not supported **yet**), Horus v2 format corrections (default payload uses the same format as RS41ng).
 * `v26` - added missing feature on older RS41 (`RSM4x1`, `RSM4x2`) sondes - reference heating, which is activated by Si4032 GPIO pin.
 * `v25` - powerSave mode, featuring automaticaly-adjustable TX power and transmission intervals, based on the altitude. Changed default values of the firmware.
 * `v24` - some improvements in the GPS Dynamic Model setting, support for both old and new sondes, simple VALSET & VALGET validation mechanism for the new sondes. The Airborne 1G mode is still experimental!
