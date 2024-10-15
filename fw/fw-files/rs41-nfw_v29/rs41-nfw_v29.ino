@@ -7,8 +7,8 @@ TinyGPSPlus gps;
 
 
 //===== Device revision definitions
-//#define RSM4x4 //new pcb versions
-#define RSM4x2 //old pcb versions, also rsm4x1
+#define RSM4x4 //new pcb versions
+//#define RSM4x2 //old pcb versions, also rsm4x1
 
 #ifdef RSM4x4
   bool rsm4x2 = false;
