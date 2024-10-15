@@ -386,11 +386,11 @@ This project uses Horus v2 binary format, with 32 byte message length. This tabl
 | vBat             	| Battery voltage, interpreted there as an uint8 value from 0-255 (real 0-5V), mapped in the code. 	|
 | Sats             	| gpsSats                                                                                          	|
 | Temp             	| Thermistor temperature integer                                                 	                  |
-| deviceDebugState 	| deviceDebugState uint8 integer (dummy1)                                                          	|
+| dummy1 	          | empty                                                          	                                  |
 | extTemperature   	| External temperature integer (from sensor boom)                                         	        |
 | dummy2           	| empty                                           	                                                |
 | dummy4           	| empty                                          	                                                  |
-| dummy5           	| not decoded in this encoding scheme (4FSKTEST-V2 doesn't provide decode desc. for dummy5)        	|
+| deviceDebugState  | deviceDebugState       	                                                                          |
 
 <br>
 When the OIF411 is connected, the last 5 dummy places change to this unofficial format (good for testing only!):
