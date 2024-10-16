@@ -386,7 +386,7 @@ This project uses Horus v2 binary format, with 32 byte message length. This tabl
 | vBat             	| Battery voltage, interpreted there as an uint8 value from 0-255 (real 0-5V), mapped in the code. 	|
 | Sats             	| gpsSats                                                                                          	|
 | Temp             	| Thermistor temperature integer                                                 	                  |
-| dummy1 	          | empty                                                          	                                  |
+| vertical V.       | vVCalc - vertical velocity calculated                          	                                  |
 | extTemperature   	| External temperature integer (from sensor boom)                                         	        |
 | dummy2           	| empty                                           	                                                |
 | dummy4           	| empty                                          	                                                  |
