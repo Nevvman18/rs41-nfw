@@ -393,7 +393,7 @@ This project uses Horus v2 binary format, with 32 byte message length. This tabl
 | deviceDebugState  | deviceDebugState       	                                                                          |
 
 <br>
-When the OIF411 is connected, the last 5 dummy places change to this unofficial format (good for testing only!):
+When the OIF411 is connected, the last 5 dummy places change to this unofficial format (good only for testing only):
 
 | Data               | Description                                                                                 |
 |-------------------|--------------------------------------------------------------------------------------------- |
