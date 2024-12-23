@@ -31,21 +31,27 @@ For more details about HAB and sonde hunting, please look on google and social m
         * One of the most efficient radio modes for HAB and other simple telemetry designs, allows for decoding of very weak signals
     * APRS
       * 1200 baud, with 1200Hz and 2200Hz tones achieved by FSK switching in a loop
+      * Standard balloon and WX reporting format
     * RTTY
         * Customizable 45 and 75 baud rates, possibly other available
         * Customizable tone spacing as a multiplication of 270Hz (minimum Si4032 offset)
+        * Compliant with UKHAS format
     * Morse code (CW)
         * Customizable wpm speed and dot length
+        * Compliant with UKHAS format
     * PIP
         * Beacon operation, transmitting short beep with a specified interval, which could be used as a foxhunting TX device
 * Thorough support of RS41 hardware, including GPS, radio, power circuitry, reference heating etc. ...and:
 * Support for **onboard boom sensors**, including temperature sensors (humidity sensor incoming in next releases)
 * Detailed in-built **debugging** features via LED status and serial messages
 * Onboard **button** allowing user to change different operation modes and parameters 'in-flight'
-* **Safety features**, including GPS watchdog and position improvement, battery voltage and temperature protection
+* **Safety features**, including GPS watchdog and position improvement (these two improve flights in environments with interference/noise), battery voltage and temperature protection
 * Support for extending hardware capabilities, including external I2C or UART sensors - including **OIF411**
-* **Power saving** features
+* **Power saving** features, including GPS power management (together with powersaving modes and complete disable for stationary use cases) and automatic radio adjusting
 * **User-friendly** firmware and IDE allows users to easily customimze the device operation
+* Weather station mode, supporting APRS WX reporting
+* Flight controling algorithms. Ability to rapidly send packets when below set altitude.
+* And many more - mentioned in [changelog](#firmware-changelog) and [manual](./fw/OPERATION_MANUAL.md)
 
 
 ## Installation guide
@@ -71,6 +77,7 @@ See: [hw/README.md](./hw/README.md)
 
 
 ## Firmware changelog
+* `v32` - added APRS 2 report types - normal HAB tracking format and WX report format for weather station use. GPS operation modes - disabled, max performance, power saving; utilizing automatic powersaving switching to ensure best power consumption with reliable tracking. New feature, which transmits Horus packets as fast as possible (6s) at low altitudes (< 1km) for specified time when descending, to ensure that the lowest frame is captured. RTTY and Morse TX format now compliant with UKHAS formatting.
 * `v31` - added APRS support (not copied), GPS no-fix timeout watchdog (resets the chip if it can't get a fix for long enough), GPS performance improvement in position gathering, 2nd Horus TX frequency (with alternating mode and repeating packest), code clean-up, other small fixes and preparations for next releases
 * `v30` - added vertical velocity calculation and reporting via Horus v2. New and more accurate synchronization of delays between TX modes, fixnig issue were the delay was doubled in certain conditions.
 * `v29` - final fix for GPS dynamic model setting - both old and new boards tested (new tested in-flight, old checked through u-center and will be tested in-flight soon). GPS tracking should be now trustworthy (still no verification mechanism, but shouldn't be for now a big concern).
@@ -110,11 +117,11 @@ Incoming features:
   * whallman DF7PN - much help in discussions
   * Damian SQ2DEF and his team - SQ6KXY, Paweł, Lechu, McXander, wprzyb, Michał, Hubert...
   * obi7zik
-  * People from *Radiosondy Polska* group - Jarosław, Wojtek...
+  * People from *Radiosondy Polska* group - Jarosław, Wojtek... - kind words in a local group argument
 
 
 ## References
-* [*RS41ng* - inspiration for this project (NFW is not a fork of any kind)](https://github.com/mikaelnousiainen/RS41ng)<br>
+* [*RS41ng* - inspiration for this project (NFW is not a fork of any kind (too much differing to be called so), just a few pieces of it's code structure is used here)](https://github.com/mikaelnousiainen/RS41ng)<br>
 * [**RS41ng - issues discussion about new models and supporting them**](https://github.com/mikaelnousiainen/RS41ng/issues/92)
 * [*RS41HUP* - also inspiration](https://github.com/darksidelemm/RS41HUP)<br>
 * [*radiosonde_hardware* - made reversing the new version easier](https://github.com/bazjo/radiosonde_hardware)<br>

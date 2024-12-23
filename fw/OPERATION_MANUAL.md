@@ -23,11 +23,16 @@
     * [powerSave features](#powersave-features)
   * [Heater algorithm](#heater-algorithm)
   * [Sensor boom](#sensor-boom)
+  * [GPS operation modes](#gps-operation-modes)
+  * [Low Altitude Fast TX mode](#low-altitude-fast-tx-mode)
+
+
 
 ## Firmware configuration
 To configure the firmware, open the .ino project file in the IDE. <br>
 Configuration options are located in definitions on the first ~200 of lines.
 **READ ME:** the options in the firmware should be self explanatory (alongside with the comments near them). This manual should be up-to-date, but there may be some issues with it (it's hard to manage that long markdown file, sorry :) ). If you have **any** problems, questions and suggestions, feel free to open issues here!
+
 
 
 ### Recommended settings
@@ -39,6 +44,9 @@ The firmware by default is set with initial settings. For the first-time operati
 * TX mode and frequency settings - recommended is only the Horus v2 mode at the 70cm amateur band - this provides the best range and speed capabilities.
 All settings are explained below.
 
+
+
+
 ### Sonde PCB version
 The crucial part of the initial configuration is to set the appropriate sonde hardware version. Not setting the correct version will either cause compilation errors or result in a non fully-working device.
 ```cpp
@@ -47,20 +55,30 @@ The crucial part of the initial configuration is to set the appropriate sonde ha
 ```
 Uncomment the right definition to set it.
 
+
+
+
 ### IO assignment, dependencies
 For the standard firmware operation, you shouldn't need to change them. <br>
 Project dependencies are defined on the first lines in the `//===== Libraries and lib-dependant definitions` section. <br>
 The system IO assignment is available in the `//===== Pin definitions` section - from there you can define the pin assignemnts and names to refer in the later code. <br>
 In the `//===== Interfaces` part, the communication interfaces are set-up, like SPI class for radio IC and USART interfaces.
 
+
+
+
 ### Radio signals config
 This is the first interesting part that a user should customize. It is located at the section `//===== Radio signals config`.  [More about radio here](#radio-signals-operation)<br><br>
+
+
+
 
 ```cpp
 int defaultRadioPwrSetting = 0; //default TX power, also see lines down below; 0 = -1dBm (~0.8mW), 1 = 2dBm (~1.6mW), 2 = 5dBm (~3 mW), 3 = 8dBm (~6 mW), 4 = 11dBm (~12 mW), 5 = 14dBm (25 mW), 6 = 17dBm (50 mW), 7 = 20dBm (100 mW)
 int powerSaveRadioPwrSetting = -1; //radio TX power for power save feature - deterimnes the TX power level at which the sonde will be transmitting when certain altitude (powerSaveAltitude), set to -1 to disable the powerSave features applying to the TX power. If this option is activated, the button logic for changing the radio power won't work
 ```
 These are the settings for configuring the radio transmission power (0-7). The default value is `defaultRadioPwrSetting`. There is also a `powerSaveRadioPwrSetting` value, which is used when the [powerSave](#powersave-features) features are enabled, to disable, set it to -1.
+
 
 
 ```cpp
@@ -71,6 +89,9 @@ int pipRepeat = 3; //pip signal repeat count in 1 transmit group
 ```
 `pipEnable` - this enables the PIP mode. It's frequency can be set using `pipFrequencyMhz`, the `pipLength` in ms determines the pip carrier length and `pipRepeat` says how many times to repeat the signal in one TX cycle. <br>
 
+
+
+
 ```cpp
 bool horusEnable = true; //horus v2 tx mode
 float horusFrequencyMhz = 437.6;
@@ -79,6 +100,9 @@ int horusBdr = 100;
 ```
 This is the best transmission mode to use. Enabled via `horusEnable`, frequency set with `horusFrequencyMhz`, the baud rate is set with `horusBdr`, with 100 bdr recommmended. The payload-ID setting can be changed with `horusPayloadId`, which is described [in the guide below](#horus-binary-v2).<br>
 
+
+
+
 ```cpp
 bool horusEnableSecondTransmission = false; //enable second horus transmission, may be used for example to transmit on different frequencies or at different intervals
 float horusSecondTransmissionFrequencyMhz = 434.714;
@@ -86,6 +110,9 @@ unsigned int horusSecondTransmissionRepeatCount = 1;
 unsigned long horusSecondTransmissionInterval = 0; //set to 0 for default delay (defined in defaultModeChangeDelay), otherwise will deterimne delay between first and second Horus transmission
 ```
 `horusEnableSecondTransmission` enables second transmission mode of Horus, on a different frequency at `horusSecondTransmissionFrequencyMhz` (can be used to transmit on different frequencies used in other regions). The transmission can also be repeated a few times by `horusSecondTransmissionRepeatCount` (can be used to transmit faster telemetry on a different frequency not monitored by for example SondeHub servers, to not bloat the infrastructure/radio band). The interval for this transmission can be set with `horusSecondTransmissionInterval`.<br>
+
+
+
 
 ```cpp
 bool aprsEnable = true;
@@ -99,8 +126,13 @@ char aprsDigi[] = "WIDE2";     // Digipeater callsign
 char aprsDigiSsid = 1;                // Digipeater SSID
 char aprsSymbolOverlay = 'O';     // Symbol overlay
 char aprsSymTable = 'a';       // Symbol table (e.g., 'a' for standard symbol)
+int aprsOperationMode = 1; //1 - standard telemetry format (similiar to RS41HUP), 2 - WX format (weather station)
 ```
 APRS transmission can be enabled via `aprsEnable`, on `aprsFrequencyMhz` frequency (note - APRS could sometimes transmit on a bit lower frequency, about 0.002MHz lower, so please check it twice), packets can be repeated in a transmit window with the `aprsTxRepeatCount`. Callsign is specified with `aprsCall`, comment (up to 50 symbols long) in `aprsComment`, callsign SSID with `aprsSsid`. Well, I think that most of them are self-explanatory :). The `aprsSymbolOverlay` sets the symbol (for example on the map) and tells the receiver what the payload is ('O' means a ham balloon and should be used for HAB flights).
+The APRS operation mode can be selected here. 1 being normal telemetry reporting, which could be used for balloon payload tracking, and the 2 being WX weather station format, which sends traditional weather reports based on the onboard sensors.
+Described later.
+
+
 
 ```cpp
 bool radioEnablePA = false;  //default tx state
@@ -113,34 +145,26 @@ These are the radio power management settings.<br>
 `radioSleep` allows radio to go to sleep mode, which lowers the power consumption in-between transmissions, by turning OFF unnecesary IC components. Should be true unless you encounter any problems. <br>
 `defaultModeChangeDelay` sets the delay in ms between transmissions. If set to 0 it means that the sleep is disabled and the transmissions occur as fast as possible, if enabled and the delay is under 2000msmit just waits in-between the modes, and if the delay is over 2s it also puts the radio to sleep in-between transmissions to lower the power consumption. The additional `powerSaveModeChangeDelay` variable is used when the [powerSave features are enabled](#powersave-features), to disable it, set to -1. <br>
 
-**WARNING** For now, don't use the RTTY and Morse, because they are very badly implemented, will be corrected in next release <br>
+
 
 ```cpp
-bool morseEnable = false; //morse tx mode
-float morseFrequencyMhz = 434.65; //morse tx frequency
-int morseUnitTime = 40;  //ms
-```
-Morse can be enabled by `morseEnable` boolean. The frequency is set by `morseFrequencyMhz` and dot length in ms is set by `morseUnitTime`. <br>
-
-```cpp
-#define CALLSIGN "N0CALLN0CALL"  //max 10 chars long, currently used for rtty
-#define PREAMBLE "AA"            //max 2 long
-```
-`CALLSIGN` should be changed to the user-specific one. Maximum recommended length is 10 characters, if your desired callsign is shorter, then pad them with spaces before the callsign.<br>
-`PREABMLE` is a 2-byte long part of the text that is used in the RTTY mode. If the TX signal is weaker, some programs may have difficulties detecting the carriers on the first bit, so the preamble is transmitted first. <br>
-
-```cpp
-bool rttyEnable = false; //rtty tx mode
-bool rttyShortenMsg = false; //false- all data, true - without preamble, time, speed and adddata
+#define CALLSIGN "N0CALL"  //used for morse and rtty
+bool rttyEnable = false; //rtty tx mode, compliant with UKHAS format
 float rttyFrequencyMhz = 434.78; //rtty tx frequency
 int rttyBitDelay = 22000;  //22000 ~= 45bdrate, 13333 ~= 75bdr
 #define RTTY_RADIO_MARK_OFFSET 0x02 //for space offset set to 0x01, the rtty tone spacing will be: 0x02 - 270Hz spacing, 0x03 - 540Hz spacing | SPACING OTHER THAN 270HZ DOES NOT WORK (at lesast on my tests, will check later)
 #define RTTY_RADIO_SPACE_OFFSET 0x01 //usually set to 0x01
+bool morseEnable = false; //morse tx mode
+float morseFrequencyMhz = 434.65; //morse tx frequency
+int morseUnitTime = 40;  //ms
 ```
-This is a more advanced TX mode - radioteletype. It can be enabled with `rttyEnable`, it's frequency is set with `rttyFrequencyMhz`.<br>
+
+`CALLSIGN` should be changed to the user-specific one. It is used in both RTTY and Morse modes.<br>
+RTTY can be enabled with `rttyEnable`, it's frequency is set with `rttyFrequencyMhz`.<br>
 Transmission baud rate is determined by the `rttyBitDelay` value and indicates the delay in microseconds used after each bit begins. For baud rate 45 set the delay to 22000 and for the 75 baud - 13333.<br>
 The message format is determined by the `rttyShortenMsg`. This setting is explained further down in the [radio operation](#radio-signals-operation).<br>
 `RTTY_RADIO_MARK_OFFSET` and `RTTY_RADIO_SPACE_OFFSET` can determine offset values written to frequency offset registers of the radio chip. If you don't want to customize the RTTY shift, leave this at default. In some tests, there was an issue where offsets larger than 1 (0x02 - 0x01 = 1[base10] -> 270Hz) made errors in RTTY transmissions. <br>
+Morse transmission can be enabled with `morseEnable`, transmitted on `morseFrequencyMhz` and with `morseUnitTime` as a symbol time in milliseconds. Both modes utilize the UKHAS telemetry format. Described later.
 
 
 ### Other operation config
@@ -152,10 +176,14 @@ int ledAutoDisableHeight = 1000; //height in meters above which the status LEDs 
 ```
 `ledStatusEnable` enables the LED to show device status messages. The LEDs can be automatically turned OFF when the payload starts flying, by setting the altitude threshold with `ledAutoDisableHeight`.<br>
 
+
+
 ```cpp
 const int xdataPortMode = 0; //0 - disabled, 1 - debug uart, 2 - i2c (NO implementation now), 3 - xdata sensors (oif411)
 ```
 This setting changes the XDATA port operation mode. This expansion port is described [here](#xdata-port-operation), with all of it's functions that can be set. <br>
+
+
 
 ```cpp
 float vBatWarnValue = 2.5; //battery warning voltage
@@ -165,21 +193,31 @@ float batteryCutOffVoltage = 0; //good for nimh cell life, below 0.8V per AA cel
 This sets different battery voltage settings.<br>
 `vBatWarnValue` sets the voltage warning threshold, `vBatErrValue` sets the voltage error threshold and `batteryCutOffVoltage` determines at which voltage the radiosonde should automatically power OFF to protect the batteries (read your battery safety instructions and set this value according to it's safety measures!). By default, it is set to 0V to ensure that the full capacity of the battery is used. <br>
 
+
+
+
 ```cpp
 int ovhtWarnValue = 45; //overheating warning
 int ovhtErrValue = 55; //overheating error
 ```
 These settings set the warning and error thresholds for overheating messages. This protects the batteries when the device is exposed to heat, for example by laying on the sun for too long. **Note:** this safety feature gets disabled if the built-in heater is enabled and the heater uses it's own safety rules. <br>
 
+
+
+
 ```cpp
 int gpsSatsWarnValue = 4; 
 ```
 `gpsSatsWarnValue` determines the warning threshold for GPS satellite visibility. <br>
 
+
+
 ```cpp
 bool ubloxGpsAirborneMode = true; //sets the uBlox GPS module to the Airborne 1G Dynamic Model, which should prevent from loosing fix above 18km altitude
 ```
-`ubloxGpsAirborneMode` - if true, on startup sends raw bytes to the GPS. This sets the Dynamic Model setting to the Airborne 1G mode, which should prevent the GPS from losing fix above around 18km of height. <br>
+`ubloxGpsAirborneMode` - if true, on startup sends raw bytes to the GPS chips. This sets the Dynamic Model setting to the Airborne 1G mode, which should prevent the GPS from losing fix above around 18km of height. <br>
+
+
 
 ```cpp
 int refHeatingMode = 0; //0 - off, 1 - auto, 2 - always on
@@ -192,33 +230,72 @@ int refHeaterCriticalReenableTemp = 65; //heater temperature at which heating ge
 ```
 These are the heater settings. The heater operation is described below or by clicking [here](#heater-algorithm). The settings should be self-explanatory, like all the previous ones. <br>
 
+
+
 ```cpp
 int gpsNmeaMsgWaitTime = 1200; //waiting time for gps message
 ```
-The `gpsNmeaMsgWaitTime` in ms sets the time that the device will wait for the GPS UART message to come. For a standard 1Hz GPS, it should be set somewhere between 1100ms and 1500ms, depending on the GPS internal refresh rate settings.
+The `gpsNmeaMsgWaitTime` in ms sets the time that the device will wait for the GPS UART message to come. For a standard 1Hz GPS, it should be set somewhere between 1100ms and 1500ms, depending on the GPS internal refresh rate settings.<br>
+
+
 
 ```cpp
 int oif411MsgWaitTime = 1200; //waiting time for oif411 message
 ```
-The `oif411MsgWaitTime` in ms sets the time that the device will wait for the XDATA OIF411 message to come. It usually sends data in 1s intervals, so something around the 1200ms does the trick.
+The `oif411MsgWaitTime` in ms sets the time that the device will wait for the XDATA OIF411 message to come. It usually sends data in 1s intervals, so something around the 1200ms does the trick.<br>
+
+
+
 
 ```cpp
 int powerSaveAltitude = 3000; //altitude in meters above which the powerSave features start to occur (currently, TX power is lowered from defaultRadioPwrSetting to powerSaveRadioPwrSetting and the transmision interval is changed from modeChangeDelay to powerSaveModeChangeDelay), set to -1 to completely disable all powerSave features
 ```
-`powerSaveAltitude` defines the altitude above which the sonde activates the powerSave mode. [Operation descibed here](#powersave-features).
+`powerSaveAltitude` defines the altitude above which the sonde activates the powerSave mode. [Operation descibed here](#powersave-features).<br>
+
+
 
 ```cpp
 bool sensorBoomEnable = true; //enables sensor boom measurement (currently only temperatures, humidity is being engineered) and diagnostics
 float mainTemperatureCorrectionC = 0;
 float extHeaterTemperatureCorrectionC = 25;
 ```
-The sensor boom measruements in the radiosonde can be enabled with `sensorBoomEnable`. Currently, the temperature offsets can be set for both main temperature (characteristic hook; `mainTemperatureCorrectionC`) and the humidity heater temperature sensor (`extHeaterTemperatureCorrectionC`).
+The sensor boom measruements in the radiosonde can be enabled with `sensorBoomEnable`. Currently, the temperature offsets can be set for both main temperature (characteristic hook; `mainTemperatureCorrectionC`) and the humidity heater temperature sensor (`extHeaterTemperatureCorrectionC`).<br>
+
+
 
 ```cpp
 unsigned long gpsTimeoutWatchdog = 1800000; //in milliseconds, the time after which the GPS chip resets if the position is not valid (no fix), kind of a watchdog, helps to retain the fix quicker, default 30 minutes (1800000 ms), set to 0 to disable
 bool improvedGpsPerformance = true; //if true, the device improves the gps fix achieving performance. The issue is that the radio chip (Si4032) makes noise (so-called spurious emmissions), which affects the GPS L-band too, causing the receiver to have an overall lower sensitivity. This option changes the TX interval to 120s if the GPS didn't catch a fix; after GPS sees >3 satelites, the TX interval goes back to default set.
+bool disableGpsImprovementInFlight = true; //this settings disables the improvedGpsPerformance features when the sonde is in-flight, because it can cause a loss of data for up to 2 minutes. If you fly under interference conditions, set this to false. Else - true;
 ```
-Also seems self-explanatory, should be leaved as-is. Note, that if the sonde doesn't have a fix, it transmits every 2 minutes.
+Also seems self-explanatory, should be leaved as-is. Note, that if the sonde doesn't have a fix on ground, it transmits every 2 minutes.<br>
+
+
+```cpp
+float gpsLat = 0; //change this to set the default coordinates (updated with GPS position if enabled)
+float gpsLong = 0; //change this to set the default coordinates (updated with GPS position if enabled)
+```
+If sonde is used as a stationary device, like a weather station, these variables can be changed to set the coordinates.<br>
+
+
+
+```cpp
+int gpsOperationMode = 1; //0 - fully OFF (stationary use, like WX station, the stationary coordinates can be specified in gpsLat-gpsLong); 1 - default, always ON; 2 - powersaving when fix OK (only on old sondes, lowers power consumption by +-30mA. Not implemented on newer sondes, because their GPS already draws very little current, comparable with the old one in power-saving, also they don't have an obvious power saving mode, only some interval-like ones).
+unsigned long gpsPowerSaveDebounce = 300000; //debounce to limit setting the GPS back and forth into the power saving mode
+```
+The GPS has a few operation modes, selected by `gpsOperationMode`. If set to 0, the GPS is fully turned OFF, which could be utilized in stationary devices like weather stations, which do not need tracking and the power consumption matters. 1 - means an always on setting, which should be selected by default. 2 - means a power saving mode, only utilized on the old sondes (new revisions don't need it), which lowers the power consumption by 30mA. Note, that when the sonde doesn't have a stable satellite reading, it will automatically go back to default, max performance mode. The switching between modes can be delayed with `gpsPowerSaveDebounce`. <br>
+
+
+
+```cpp
+int lowAltitudeFastTxThreshold = 1000; //set to 0 to disable. When sonde is descending after a burst, when it goes below this threshold, it goes into a 'lowAltitudeFastTx' mode, in which it only transmits horus packets as fast as it can, to possibly catch the lowest frame, works only with horus (APRS would overload the infrastructure)
+unsigned long lowAltitudeFastTxDuration = 120000; //duration of how long this mode will work, in milliseconds
+int lowAltitudeFastTxInterval = 1; //delay between transmissions in this mode, should be left at 1 to catch the lowest frame possible
+unsigned int flightDetectionAltitude = 1000; //default flight detection altitude in meters (if exceeded, the sonde knows that the flight began)
+unsigned int burstDetectionThreshold = 2000; //describes threshold value, which if exceeded (below maxAlt) deterimnes if the balloon has burst (2000m seems reasonable, due to some being floaters or getting 'unsealed')
+```
+Explained later, but comments should explain everything.
+
 
 
 ```cpp
@@ -239,36 +316,30 @@ The radiosonde can be turned ON either by:
 * Sending 13.56MHz carrier to the NFC coil - you can simply bring the back of your NFC-enabled smartphone closely to the bottom part of the sonde, near the button and LEDs
 
 ### Device debug status and LED lights
-Immediately after pressing the button, during the setup function, the LEDs light up in the following debug order:
-
-```
-        Start   |  ......   | Setup complete
-RED     ----    |  ===      | ----------
-GREEN   ----    |  ===      | +----+----
-
-Plus (+) is equiv. to LED ON for 50ms, minus (-) means LED OFF for 50ms, (===) means operations in background
-```
+Immediately after pressing the button, during the setup function, the LEDs can blink a few times indicating different things done.
 
 <br>
 
 Device debug states, LED colors and conditions, during normal device operation:
 * OK - continuous green light
   * If no valid warning or error, ok is true
+* Flight-ready, but wait a while
+  * Sonde is waiting to discover more GPS signals to lock on before launch.
 * Warning - continuous orange light (both red and green make orange-like color)
   * `vBatErrValue` < Battery voltage < `vBatWarnValue`
   * `ovhtErrValue` < Thermistor temp. < `ovhtWarnValue`
   * GNSS satellites < `gpsSatsWarnValue`
-  * `sensorBoomMainTempError` OR|| `sensorBoomHumidityModuleError`
 * Error - continuous red light
   * Battery voltage < `vBatErrValue` < `vBatWarnValue`
   * Thermistor temp. < `ovhtErrValue` < `ovhtWarnValue`
-  * `sensorBoomMainTempError` AND&& `sensorBoomHumidityModuleError`
+  * `sensorBoomMainTempError` OR|| `sensorBoomHumidityModuleError`
+  
 * Undefined - continuous orange light
   * If 2 error levels happen simoultaneously (for example warn and error), this sets the status to undefined, which should never happen
 
 <br>
 
-LED status lights can be permamently turned OFF by defining `ledStatusEnable = false`. LED status lights turn OFF itself above 3000m to save the power.
+LED status lights can be permamently turned OFF by defining `ledStatusEnable = false`. LED status lights turn OFF itself above 1000m to save the power.
 
 The LEDs also change their status when the button modes are being selected, which is described in [Button operation](#button-operation).
 
@@ -289,14 +360,11 @@ The `heaterDebugState` calculation is described in the [Heater algorithm](#heate
 ### Button operation
 User can change different opeartion variables by using the on-board button while the device is ON.<br>
 
-The button contains a page-like setting system, with pages from 1 to 7, whereas each page can be recognized by a 500ms GREEN-RED LED cycle. Entering a page is done by holding the button until the desired page number is selected, and then by releasing the button at this desired page number:
+The button contains a page-like setting system, with pages from 1 to 4, whereas each page can be recognized by a 500ms GREEN-RED LED cycle. Entering a page is done by holding the button until the desired page number is selected, and then by releasing the button at this desired page number (previous RTTY configuration pages were deleted - who uses the RTTY today in HAB flights ? :) ):
 * Page 1 - `empty`
 * Page 2 - `radioEnablePA`. Green blinks 2 times for true, red 2 times for false.
 * Page 3 - `radioPwrSetting`. Green blinks 3 times for 100mW (7 max), red 3 times for 2mW (0 min). *annotation below*
-* Page 4 - `rttyEnable`. Green blinks 4 times for true, red 4 times for false.
-* Page 5 - `rttyShortenMsg`. Green blinks 5 times for false, red 5 times for true.
-* Page 6 - `refHeatingMode`. Green blinks 6 times for OFF(0), orange 6 times for AUTO(1) and red 6 times for ALWAYS-ON(2).
-* Page 7 - `SHUTDOWN`. If button is held to this page the red LED comes ON for 3 seconds and then the sonde is turned OFF.
+* Page 4 - `SHUTDOWN`. If button is held to this page the red LED comes ON for 3 seconds and then the sonde is turned OFF.
 
 For example, changing the page 3, with default configured value of 100mW, changing the radio power to 2mW would look like this in a sequence:
 
@@ -327,7 +395,7 @@ This is an unmodulated carrier signal with no information carried. It can be use
 <img src="./photos/morse-waterfall.png" alt="morse-waterfall" style="height:20%"/><br>
 </p><br>
 
-This is a single carrier signal that sends data using short RTTY payload message format (descrpition below).
+This is a single carrier signal that sends data using the same format as RTTY (descrpition below).
 
 
 #### RTTY
@@ -335,47 +403,7 @@ This is a single carrier signal that sends data using short RTTY payload message
 <img src="./photos/rtty-waterfall.png" alt="rtty-waterfall" style="height:20%"/><br>
 </p><br>
 
-This is a 2-FSK signal that sends data using either standard or short RTTY message format.
-
-
-##### Standard RTTY message format
-Each data space is separated with semicolon (;).<br>
-
-| Data      	| Max chars. length 	| Description                                    	|
-|-----------	|-------------------	|------------------------------------------------	|
-| PREAMBLE  	| 2                 	| Radio preamble                                 	|
-| CALLSIGN  	| 10                	| Callsign                                       	|
-| gpsTime   	| 6                 	| Format: HHMMSS                                 	|
-| gpsLat    	| --                	| Format: whole numbers + dot + 5 decimal places 	|
-| gpsLong   	| --                	| Format: whole numbers + dot + 5 decimal places 	|
-| gpsAlt    	| --                	| Format: whole numbers + dot + 1 decimal place  	|
-| gpsSpeed  	| 4                 	| In m/s                                         	|
-| gpsSats   	| 2                 	| GNSS satellite visibility count                	|
-| vBat      	| 3                 	| In Volts, 2 decimal places                     	|
-| extTemp    	| --                	| Format: whole numbers + dot + 1 decimal place  	|
-| addData   	| 10                	| Additional data place                          	|
-
-<br>
-
-The addData (additional data space) sends various data, currently changes it's data according to the `xdataPortMode` (same as the Horus v2 additional 9-byte space):
-
-* When addData is not populated (currently other than ozone data), the space is filled with 10 zeros.
-* When OIF411 is connected and the `xdataPortMode` is set to 3 (XDATA UART), the format is like this:
-  * [Ozone electrode current, max length of 4 characters including dot];[Ozone battery voltage, max length of 2];[Ozone pump temperature, max length of 2] | which gives a total length of 10 characters
-
-##### Short RTTY message format
-Each data space is separated with semicolon (;).<br>
-
-| Data      	| Max chars. length 	| Description                                    	|
-|-----------	|-------------------	|------------------------------------------------	|
-| CALLSIGN  	| 10                	| Callsign                                       	|
-| gpsLat    	| --                	| Format: whole numbers + dot + 5 decimal places 	|
-| gpsLong   	| --                	| Format: whole numbers + dot + 5 decimal places 	|
-| gpsAlt    	| --                	| Format: whole numbers + dot + 1 decimal place  	|
-| gpsSats   	| 2                 	| GNSS satellite visibility count                	|
-| vBat      	| 4                 	| Volts; whole number + dot + 2 decimal places   	|
-| extTemp    	| 4                 	| *C; whole numbers + dot + 1 decimal place      	|
-
+This is a 2-FSK signal. The data format is compliant with UKHAS format, additionally sending a GPS satellites count, battery voltage and temperature.
 
 
 #### Horus Binary v2
@@ -426,6 +454,15 @@ When the OIF411 is connected, the last 5 dummy places change to this unofficial 
 | dummy5            | Not decoded in this encoding scheme (4FSKTEST-V2 doesn't provide decode desc. for dummy5)    |
 
 
+#### APRS
+<p align="center">
+<img src="./photos/aprs-waterfall.png" alt="aprs-waterfall" style="height:20%"/><br>
+</p><br>
+
+This implementation is a standard APRS 1200bd modem with tones at 1200Hz and 2200Hz. It supports 2 message formats - standard for HAB tracking and WX format for weather station reports, which currently only send temperature external in their reports, and internal temperature and battery voltage in APRS comment.
+
+
+
 ### XDATA port operation
 The RS41 sondes provide an expansion port on the bottom part of the device, which implement a protocol called XDATA. The capabilities of the device allow users to utilise them like standard GPIO pins. The following modes of it's operation are available via setting the `xdataPortMode`:
 * Disabled (0) - fully disables the XDATA IO pins
@@ -445,7 +482,9 @@ If the battery voltage goes below defined `batteryCutOffVoltage`, the sonde tran
 The sonde also has some power saving capabilities, like radio sleep and LED turn OFF at heights. In future, it is planned to implement GPS power saving and MCU sleep.
 
 #### powerSave features
-Currently, power saving features are activated above certain altitude. This behaviour is determined by the `powerSaveAltitude` variable in meters.
+The sonde has GPS power saving features, described later in GPS opeartion modes.
+
+Besides that, some power saving features are activated above certain altitude. This behaviour is determined by the `powerSaveAltitude` variable in meters.
 The power saving changes 2 settings - radio TX power and interval between radio modes. <br>
 
 After the power saving mode is entered (gpsAlt > powerSaveAltitude), the radio TX power is changed (usually lowered) from the `defaultRadioPwrSetting` to `powerSaveRadioPwrSetting`. This particular behaviour can be disabled by setting the `powerSaveRadioPwrSetting` to -1. <br>
@@ -504,6 +543,16 @@ Each RS41 radiosonde has a sensor boom (the shiny elastic part with a characteri
 
 The firmware also performs self-tests on the sensor which notify about either external temperature sensor fault, humidity module fault or entire sensor hook problem, both with LED status lights and on the debug UART terminal.
 
+### GPS operation modes
+In mode 0, the GPS is completely disabled, which could be used for example in a weather station. In both versions of sondes, this gives a power consumption of 50-60mA when idle (no radio TX)<br>
+In mode 1, the GPS works with maximum performance, and consumes about 120mA on older sondes and 85mA on newer (no TX)<br>
+In mode 2, the GPS is set to power saving mode (only on older ones, newer don't require this). If the sonde has a stable fix (> 6 satellites), the GPS is set to power saving, which lowers the consumption to about 85mA, similarly to the new ones. When the sonde loses on the GPS satellites under 6, the max performance mode is temporairly set. The debounce between the changing can also be set.<br>
+
+The GPS logic also has an algorithm for improving it's performance and sensitivity. The Si4032 when transmitting generates some noise, which seem to affect the GPS performance. By default (every setting is described in the firmware file/on the begining of this manual), when the sonde doesnt have a fix, it transmits the telemetry every 2 minutes. When the fix is gathered, the default interval is set back. This algorithm can be used also in flight, but is only suggested for flights were it could really help (where there is lots of interference). Otherwise, please leave the setting to disable it in-flight to true, because it could lead to a data loss for up to 2 minutes if GPS makes a mistake. When the sonde waits for enough satellites, the green LED is blinking every second or so.
+
+
+### Low Altitude Fast TX mode
+NFW has a feature, that sends the Horus packets as fast as it can for a specified period of time. This can be used to track the last meters of the flight. With the delay set to 0, the sonde can transmit Horus v2 every 6s, maintaining the GPS and sensor readings.
 
 ## Final words
 
