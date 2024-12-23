@@ -29,6 +29,8 @@ For more details about HAB and sonde hunting, please look on google and social m
 * Multiple, customizable transmission modes
     * [**Horus Binary 4FSK v2**](https://github.com/projecthorus/horusdemodlib/wiki)
         * One of the most efficient radio modes for HAB and other simple telemetry designs, allows for decoding of very weak signals
+    * APRS
+      * 1200 baud, with 1200Hz and 2200Hz tones achieved by FSK switching in a loop
     * RTTY
         * Customizable 45 and 75 baud rates, possibly other available
         * Customizable tone spacing as a multiplication of 270Hz (minimum Si4032 offset)
@@ -40,7 +42,7 @@ For more details about HAB and sonde hunting, please look on google and social m
 * Support for **onboard boom sensors**, including temperature sensors (humidity sensor incoming in next releases)
 * Detailed in-built **debugging** features via LED status and serial messages
 * Onboard **button** allowing user to change different operation modes and parameters 'in-flight'
-* **Safety features**, including battery voltage and temperature protection
+* **Safety features**, including GPS watchdog and position improvement, battery voltage and temperature protection
 * Support for extending hardware capabilities, including external I2C or UART sensors - including **OIF411**
 * **Power saving** features
 * **User-friendly** firmware and IDE allows users to easily customimze the device operation
@@ -61,6 +63,7 @@ See: [fw/COMPILE.md](./fw/COMPILE.md)
 
 ## Firmware and device operation
 See: [fw/OPERATION_MANUAL.md](./fw/OPERATION_MANUAL.md)
+The options in the firmware file should be self explanatory (alongside with the comments near them). This manual should be up-to-date, but there may be some issues with it (it's hard to manage that long markdown file, sorry :) ). If you have **any** problems, questions and suggestions, feel free to open issues here!
 
 
 ## RSM414 hardware
@@ -68,6 +71,7 @@ See: [hw/README.md](./hw/README.md)
 
 
 ## Firmware changelog
+* `v31` - added APRS support (not copied), GPS no-fix timeout watchdog (resets the chip if it can't get a fix for long enough), GPS performance improvement in position gathering, 2nd Horus TX frequency (with alternating mode and repeating packest), code clean-up, other small fixes and preparations for next releases
 * `v30` - added vertical velocity calculation and reporting via Horus v2. New and more accurate synchronization of delays between TX modes, fixnig issue were the delay was doubled in certain conditions.
 * `v29` - final fix for GPS dynamic model setting - both old and new boards tested (new tested in-flight, old checked through u-center and will be tested in-flight soon). GPS tracking should be now trustworthy (still no verification mechanism, but shouldn't be for now a big concern).
 * `v28` - full compatibility of default Horus v2 payload format with RS41ng default format. Detection of external power supply (for example via programmer) disabling button functionality to prevent unpredictable device operation.
@@ -93,19 +97,29 @@ Incoming features:
 ## People responsible for this project
 * Authors
   * Franek 'nevvman' (no callsign, *yet*)
-* Contributors
-  * [videobuff](https://github.com/videobuff)
-  * [darksidelemm](https://github.com/darksidelemm)
-  * [zanco](https://github.com/zanco)
-  * and others
+* Contributors - speical thanks to:
+  * My dad, for his help in catching the radiosondes and suggestions
+  * videobuff - helped with lots of issues
+  * darksidelemm - for help with GPS settings, Horus and sensors
+  * zanco PE2BZ - for a test flight and other notes
+  * Ludwik SP6MPL - for a few flights and big help in development
+  * Mateusz SP3WRO - for test flights, kind words and help in development, and also his team
+  * [radioszynka blog](https://radioszynka.pl/) team - for article about this project
+  * PC9DB - TX formats etc.
+  * KB8RCO - big thread about APRS, WX use and others
+  * whallman DF7PN - much help in discussions
+  * Damian SQ2DEF and his team - SQ6KXY, Paweł, Lechu, McXander, wprzyb, Michał, Hubert...
+  * obi7zik
+  * People from *Radiosondy Polska* group - Jarosław, Wojtek...
 
 
 ## References
-* [*RS41ng* - inspiration for this project](https://github.com/mikaelnousiainen/RS41ng)<br>
+* [*RS41ng* - inspiration for this project (NFW is not a fork of any kind)](https://github.com/mikaelnousiainen/RS41ng)<br>
 * [**RS41ng - issues discussion about new models and supporting them**](https://github.com/mikaelnousiainen/RS41ng/issues/92)
 * [*RS41HUP* - also inspiration](https://github.com/darksidelemm/RS41HUP)<br>
 * [*radiosonde_hardware* - made reversing the new version easier](https://github.com/bazjo/radiosonde_hardware)<br>
-
+* [*Horus Binary* - awesome HAB radio protocol](https://github.com/projecthorus/horusdemodlib)<br>
+* [*Arduino APRS*](https://handiko.github.io/Arduino-APRS/) library, partially utilized here to create APRS messages
 
 ## Final notes
 The creator of this project isn't at all responsible for any kind of harm made by devices operated with these instructions. Follow your local law about radio transmissions and ballon flights. This device isn't a certified airplane. This firmware wasn't tested in HAB scenarios, yet. Cheers.

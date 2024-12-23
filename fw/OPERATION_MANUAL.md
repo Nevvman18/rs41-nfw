@@ -26,17 +26,18 @@
 
 ## Firmware configuration
 To configure the firmware, open the .ino project file in the IDE. <br>
-Configuration options are located in definitions on the first ~100 of lines.
+Configuration options are located in definitions on the first ~200 of lines.
+**READ ME:** the options in the firmware should be self explanatory (alongside with the comments near them). This manual should be up-to-date, but there may be some issues with it (it's hard to manage that long markdown file, sorry :) ). If you have **any** problems, questions and suggestions, feel free to open issues here!
 
 
 ### Recommended settings
 The firmware by default is set with initial settings. For the first-time operation user should change the following: 
 * Sonde version
-* `CALLSIGN` or `horusPayloadId`
+* Callsign
 * `radioPwrSetting`
 * Battery power settings
 * TX mode and frequency settings - recommended is only the Horus v2 mode at the 70cm amateur band - this provides the best range and speed capabilities.
-These settings are explained below.
+All settings are explained below.
 
 ### Sonde PCB version
 The crucial part of the initial configuration is to set the appropriate sonde hardware version. Not setting the correct version will either cause compilation errors or result in a non fully-working device.
@@ -56,23 +57,11 @@ In the `//===== Interfaces` part, the communication interfaces are set-up, like 
 This is the first interesting part that a user should customize. It is located at the section `//===== Radio signals config`.  [More about radio here](#radio-signals-operation)<br><br>
 
 ```cpp
-#define CALLSIGN "N0CALLN0CALL"  //max 10 chars long, currently used for rtty
-#define PREAMBLE "AA"            //max 2 long
-```
-`CALLSIGN` should be changed to the user-specific one. Maximum recommended length is 10 characters, if your desired callsign is shorter, then pad them with spaces before the callsign.<br>
-`PREABMLE` is a 2-byte long part of the text that is used in the RTTY mode. If the TX signal is weaker, some programs may have difficulties detecting the carriers on the first bit, so the preamble is transmitted first. <br>
-
-```cpp
-int defaultRadioPwrSetting = 7; //default TX power, also see lines down below; 0 = -1dBm (~0.8mW), 1 = 2dBm (~1.6mW), 2 = 5dBm (~3 mW), 3 = 8dBm (~6 mW), 4 = 11dBm (~12 mW), 5 = 14dBm (25 mW), 6 = 17dBm (50 mW), 7 = 20dBm (100 mW)
-int powerSaveRadioPwrSetting = 5; //radio TX power for power save feature - deterimnes the TX power level at which the sonde will be transmitting when certain altitude (powerSaveAltitude), set to -1 to disable the powerSave features applying to the TX power. If this option is activated, the button logic for changing the radio power won't work
+int defaultRadioPwrSetting = 0; //default TX power, also see lines down below; 0 = -1dBm (~0.8mW), 1 = 2dBm (~1.6mW), 2 = 5dBm (~3 mW), 3 = 8dBm (~6 mW), 4 = 11dBm (~12 mW), 5 = 14dBm (25 mW), 6 = 17dBm (50 mW), 7 = 20dBm (100 mW)
+int powerSaveRadioPwrSetting = -1; //radio TX power for power save feature - deterimnes the TX power level at which the sonde will be transmitting when certain altitude (powerSaveAltitude), set to -1 to disable the powerSave features applying to the TX power. If this option is activated, the button logic for changing the radio power won't work
 ```
 These are the settings for configuring the radio transmission power (0-7). The default value is `defaultRadioPwrSetting`. There is also a `powerSaveRadioPwrSetting` value, which is used when the [powerSave](#powersave-features) features are enabled, to disable, set it to -1.
 
-
-```cpp
-bool enableAddData = false;      //rtty-only mode, when false, the additional-data space is filled with zeros
-```
-`enableAddData` RTTY-only and morse-only modes, has currently no use, in future when additional sensor support will be available, this part will be filled with the additional sensor data. Currently, setting to false fills the space with zeros. <br>
 
 ```cpp
 bool pipEnable = false; //pip tx mode
@@ -83,11 +72,62 @@ int pipRepeat = 3; //pip signal repeat count in 1 transmit group
 `pipEnable` - this enables the PIP mode. It's frequency can be set using `pipFrequencyMhz`, the `pipLength` in ms determines the pip carrier length and `pipRepeat` says how many times to repeat the signal in one TX cycle. <br>
 
 ```cpp
+bool horusEnable = true; //horus v2 tx mode
+float horusFrequencyMhz = 437.6;
+unsigned int horusPayloadId = 256;
+int horusBdr = 100;
+```
+This is the best transmission mode to use. Enabled via `horusEnable`, frequency set with `horusFrequencyMhz`, the baud rate is set with `horusBdr`, with 100 bdr recommmended. The payload-ID setting can be changed with `horusPayloadId`, which is described [in the guide below](#horus-binary-v2).<br>
+
+```cpp
+bool horusEnableSecondTransmission = false; //enable second horus transmission, may be used for example to transmit on different frequencies or at different intervals
+float horusSecondTransmissionFrequencyMhz = 434.714;
+unsigned int horusSecondTransmissionRepeatCount = 1;
+unsigned long horusSecondTransmissionInterval = 0; //set to 0 for default delay (defined in defaultModeChangeDelay), otherwise will deterimne delay between first and second Horus transmission
+```
+`horusEnableSecondTransmission` enables second transmission mode of Horus, on a different frequency at `horusSecondTransmissionFrequencyMhz` (can be used to transmit on different frequencies used in other regions). The transmission can also be repeated a few times by `horusSecondTransmissionRepeatCount` (can be used to transmit faster telemetry on a different frequency not monitored by for example SondeHub servers, to not bloat the infrastructure/radio band). The interval for this transmission can be set with `horusSecondTransmissionInterval`.<br>
+
+```cpp
+bool aprsEnable = true;
+float aprsFrequencyMhz = 432.5;
+int aprsTxRepeatCount = 1;
+char aprsCall[] = "N0CALL";  // Callsign
+String aprsComment = " @RS41-NFW";
+char aprsSsid = 11;                  // SSID for the call sign
+char aprsDest[] = "APZNFW";       // Destination address for APRS
+char aprsDigi[] = "WIDE2";     // Digipeater callsign
+char aprsDigiSsid = 1;                // Digipeater SSID
+char aprsSymbolOverlay = 'O';     // Symbol overlay
+char aprsSymTable = 'a';       // Symbol table (e.g., 'a' for standard symbol)
+```
+APRS transmission can be enabled via `aprsEnable`, on `aprsFrequencyMhz` frequency (note - APRS could sometimes transmit on a bit lower frequency, about 0.002MHz lower, so please check it twice), packets can be repeated in a transmit window with the `aprsTxRepeatCount`. Callsign is specified with `aprsCall`, comment (up to 50 symbols long) in `aprsComment`, callsign SSID with `aprsSsid`. Well, I think that most of them are self-explanatory :). The `aprsSymbolOverlay` sets the symbol (for example on the map) and tells the receiver what the payload is ('O' means a ham balloon and should be used for HAB flights).
+
+```cpp
+bool radioEnablePA = false;  //default tx state
+bool radioSleep = true; //lowers power consumption and recalibrates oscillator (drift compensation)
+int defaultModeChangeDelay = 0; //in milliseconds, 0 - disable, 0<delay<2000 - standard delay, 2000<delay - delay + radio sleep mode and recalibration (if radioSleep enabled); default delay between radio transmission modes
+int powerSaveModeChangeDelay = 5000; //as above, but activates when the powerSave is ON, set to -1 to disable changing of the transmission delay above powerSaveAltitude
+```
+These are the radio power management settings.<br>
+`radioEnablePA` enables RF stage power amplifier to start sending signals. If you want the sonde to start transmitting signals immediatly after power ON, set this to true. If set to false, the PA can be enabled with a button, described later.<br>
+`radioSleep` allows radio to go to sleep mode, which lowers the power consumption in-between transmissions, by turning OFF unnecesary IC components. Should be true unless you encounter any problems. <br>
+`defaultModeChangeDelay` sets the delay in ms between transmissions. If set to 0 it means that the sleep is disabled and the transmissions occur as fast as possible, if enabled and the delay is under 2000msmit just waits in-between the modes, and if the delay is over 2s it also puts the radio to sleep in-between transmissions to lower the power consumption. The additional `powerSaveModeChangeDelay` variable is used when the [powerSave features are enabled](#powersave-features), to disable it, set to -1. <br>
+
+**WARNING** For now, don't use the RTTY and Morse, because they are very badly implemented, will be corrected in next release <br>
+
+```cpp
 bool morseEnable = false; //morse tx mode
 float morseFrequencyMhz = 434.65; //morse tx frequency
 int morseUnitTime = 40;  //ms
 ```
 Morse can be enabled by `morseEnable` boolean. The frequency is set by `morseFrequencyMhz` and dot length in ms is set by `morseUnitTime`. <br>
+
+```cpp
+#define CALLSIGN "N0CALLN0CALL"  //max 10 chars long, currently used for rtty
+#define PREAMBLE "AA"            //max 2 long
+```
+`CALLSIGN` should be changed to the user-specific one. Maximum recommended length is 10 characters, if your desired callsign is shorter, then pad them with spaces before the callsign.<br>
+`PREABMLE` is a 2-byte long part of the text that is used in the RTTY mode. If the TX signal is weaker, some programs may have difficulties detecting the carriers on the first bit, so the preamble is transmitted first. <br>
 
 ```cpp
 bool rttyEnable = false; //rtty tx mode
@@ -102,30 +142,6 @@ Transmission baud rate is determined by the `rttyBitDelay` value and indicates t
 The message format is determined by the `rttyShortenMsg`. This setting is explained further down in the [radio operation](#radio-signals-operation).<br>
 `RTTY_RADIO_MARK_OFFSET` and `RTTY_RADIO_SPACE_OFFSET` can determine offset values written to frequency offset registers of the radio chip. If you don't want to customize the RTTY shift, leave this at default. In some tests, there was an issue where offsets larger than 1 (0x02 - 0x01 = 1[base10] -> 270Hz) made errors in RTTY transmissions. <br>
 
-```cpp
-bool horusEnable = true; //horus v2 tx mode
-float horusFrequencyMhz = 434.74;
-unsigned int horusPayloadId = 256;
-int horusBdr = 100;
-```
-This is the best transmission mode to use. Enabled via `horusEnable`, frequency set with `horusFrequencyMhz`, the baud rate is set with `horusBdr`, with 100 bdr recommmended. The payload-ID setting can be changed with `horusPayloadId`, which is described [in the guide below](#horus-binary-v2).<br>
-
-```cpp
-bool bufTxEnable = false; //alpha state! mode
-float fskFrequencyMhz = 436; //txBuf tx frequency
-```
-This mode is currently not supported - it was created during tests to apply a FSK/GFSK modulation with data transmitted at higher rates. Should remain false unless under development. <br>
-
-```cpp
-bool radioEnablePA = false;  //default tx state
-bool radioSleep = true; //lowers power consumption and recalibrates oscillator (drift compensation)
-int defaultModeChangeDelay = 0; //in milliseconds, 0 - disable, 0<delay<2000 - standard delay, 2000<delay - delay + radio sleep mode and recalibration (if radioSleep enabled); default delay between radio transmission modes
-int powerSaveModeChangeDelay = 5000; //as above, but activates when the powerSave is ON, set to -1 to disable changing of the transmission delay above powerSaveAltitude
-```
-These are the radio power management settings.<br>
-`radioEnablePA` enables RF stage power amplifier to start sending signals. If you want the sonde to start transmitting signals immediatly after power ON, set this to true. If set to false, the PA can be enabled with a button, described later.<br>
-`radioSleep` allows radio to go to sleep mode, which lowers the power consumption in-between transmissions, by turning OFF unnecesary IC components. Should be true unless you encounter any problems. <br>
-`defaultModeChangeDelay` sets the delay in ms between transmissions. If set to 0 it means that the sleep is disabled and the transmissions occur as fast as possible, if enabled and the delay is under 2000msmit just waits in-between the modes, and if the delay is over 2s it also puts the radio to sleep in-between transmissions to lower the power consumption. The additional `powerSaveModeChangeDelay` variable is used when the [powerSave features are enabled](#powersave-features), to disable it, set to -1. <br>
 
 ### Other operation config
 This is the part that sets other operation variables that weren't mentioned earlier. It is located under the `//===== Other operation config` section in the project file.<br>
@@ -139,7 +155,7 @@ int ledAutoDisableHeight = 1000; //height in meters above which the status LEDs 
 ```cpp
 const int xdataPortMode = 0; //0 - disabled, 1 - debug uart, 2 - i2c (NO implementation now), 3 - xdata sensors (oif411)
 ```
-This setting changes the XDATA port operation mode. This expansion port is described [here](#xdata-port-operation), with all of it's functions that can be set. This setting replaces the old `xdataDebug` variable, used in previous firmware versions. <br>
+This setting changes the XDATA port operation mode. This expansion port is described [here](#xdata-port-operation), with all of it's functions that can be set. <br>
 
 ```cpp
 float vBatWarnValue = 2.5; //battery warning voltage
@@ -197,6 +213,12 @@ float mainTemperatureCorrectionC = 0;
 float extHeaterTemperatureCorrectionC = 25;
 ```
 The sensor boom measruements in the radiosonde can be enabled with `sensorBoomEnable`. Currently, the temperature offsets can be set for both main temperature (characteristic hook; `mainTemperatureCorrectionC`) and the humidity heater temperature sensor (`extHeaterTemperatureCorrectionC`).
+
+```cpp
+unsigned long gpsTimeoutWatchdog = 1800000; //in milliseconds, the time after which the GPS chip resets if the position is not valid (no fix), kind of a watchdog, helps to retain the fix quicker, default 30 minutes (1800000 ms), set to 0 to disable
+bool improvedGpsPerformance = true; //if true, the device improves the gps fix achieving performance. The issue is that the radio chip (Si4032) makes noise (so-called spurious emmissions), which affects the GPS L-band too, causing the receiver to have an overall lower sensitivity. This option changes the TX interval to 120s if the GPS didn't catch a fix; after GPS sees >3 satelites, the TX interval goes back to default set.
+```
+Also seems self-explanatory, should be leaved as-is. Note, that if the sonde doesn't have a fix, it transmits every 2 minutes.
 
 
 ```cpp
