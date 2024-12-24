@@ -7,8 +7,8 @@ TinyGPSPlus gps;
 
 
 //===== Device revision definitions
-//#define RSM4x4 //new pcb versions
-#define RSM4x2 //old pcb versions, also rsm4x1
+#define RSM4x4 //new pcb versions
+//#define RSM4x2 //old pcb versions, also rsm4x1
 
 #ifdef RSM4x4
   bool rsm4x2 = false;
@@ -100,7 +100,7 @@ TinyGPSPlus gps;
 HardwareSerial xdataSerial(PB11, PB10);
 
 //===== Radio signals config
-int defaultRadioPwrSetting = 0; //default TX power, also see lines down below; 0 = -1dBm (~0.8mW), 1 = 2dBm (~1.6mW), 2 = 5dBm (~3 mW), 3 = 8dBm (~6 mW), 4 = 11dBm (~12 mW), 5 = 14dBm (25 mW), 6 = 17dBm (50 mW), 7 = 20dBm (100 mW)
+int defaultRadioPwrSetting = 7; //default TX power, also see lines down below; 0 = -1dBm (~0.8mW), 1 = 2dBm (~1.6mW), 2 = 5dBm (~3 mW), 3 = 8dBm (~6 mW), 4 = 11dBm (~12 mW), 5 = 14dBm (25 mW), 6 = 17dBm (50 mW), 7 = 20dBm (100 mW)
 int powerSaveRadioPwrSetting = -1; //radio TX power for power save feature - deterimnes the TX power level at which the sonde will be transmitting when certain altitude (powerSaveAltitude), set to -1 to disable the powerSave features applying to the TX power. If this option is activated, the button logic for changing the radio power won't work
 
 bool pipEnable = false; //pip tx mode
@@ -182,7 +182,7 @@ int gpsOperationMode = 1; //0 - fully OFF (stationary use, like WX station, the 
 unsigned long gpsPowerSaveDebounce = 300000; //debounce to limit setting the GPS back and forth into the power saving mode
 int lowAltitudeFastTxThreshold = 1000; //set to 0 to disable. When sonde is descending after a burst, when it goes below this threshold, it goes into a 'lowAltitudeFastTx' mode, in which it only transmits horus packets as fast as it can, to possibly catch the lowest frame, works only with horus (APRS would overload the infrastructure)
 unsigned long lowAltitudeFastTxDuration = 120000; //duration of how long this mode will work, in milliseconds
-int lowAltitudeFastTxInterval = 1; //delay between transmissions in this mode, should be left at 1 to catch the lowest frame possible
+int lowAltitudeFastTxInterval = 1; //delay in ms between transmissions in this mode, should be left at 1 to catch the lowest frame possible
 unsigned int flightDetectionAltitude = 1000; //default flight detection altitude in meters (if exceeded, the sonde knows that the flight began)
 unsigned int burstDetectionThreshold = 2000; //describes threshold value, which if exceeded (below maxAlt) deterimnes if the balloon has burst (2000m seems reasonable, due to some being floaters or getting 'unsealed')
 
@@ -900,7 +900,7 @@ void buttonHandler() {
       xdataSerial.println("Button pressed");
     }
     btnCounter = 0;
-    while (btnCounter < 7 && analogRead(VBTN_PIN) + 50 > analogRead(VBAT_PIN)) {
+    while (btnCounter < 4 && analogRead(VBTN_PIN) + 50 > analogRead(VBAT_PIN)) {
       greenLed();
       delay(250);
       redLed();
@@ -985,7 +985,7 @@ void buttonHandler() {
       delay(100);
     }    
   }
-  else if (btnCounter == 3) {
+  else if (btnCounter == 4) {
     digitalWrite(RED_LED_PIN, LOW);
     radioDisableTx();
     if(xdataPortMode == 1) {
