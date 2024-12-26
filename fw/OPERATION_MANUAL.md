@@ -25,13 +25,15 @@
   * [Sensor boom](#sensor-boom)
   * [GPS operation modes](#gps-operation-modes)
   * [Low Altitude Fast TX mode](#low-altitude-fast-tx-mode)
+  * [dataRecorder feature](#datarecorder-feature)
 
 
 
 ## Firmware configuration
 To configure the firmware, open the .ino project file in the IDE. <br>
 Configuration options are located in definitions on the first ~200 of lines.
-**READ ME:** the options in the firmware should be self explanatory (alongside with the comments near them). This manual should be up-to-date, but there may be some issues with it (it's hard to manage that long markdown file, sorry :) ). If you have **any** problems, questions and suggestions, feel free to open issues here!
+**READ ME:** the options in the firmware should be self explanatory (alongside with the comments near them). This manual should be up-to-date, but there may be some issues with it (it's hard to manage that long markdown file, sorry :) ). If you have **any** problems, questions and suggestions, feel free to open issues here! <br>
+Temporairly, sorry for lack of versioning in the firmware files, this will be soon corrected.
 
 
 
@@ -294,7 +296,40 @@ int lowAltitudeFastTxInterval = 1; //delay between transmissions in this mode, s
 unsigned int flightDetectionAltitude = 1000; //default flight detection altitude in meters (if exceeded, the sonde knows that the flight began)
 unsigned int burstDetectionThreshold = 2000; //describes threshold value, which if exceeded (below maxAlt) deterimnes if the balloon has burst (2000m seems reasonable, due to some being floaters or getting 'unsealed')
 ```
-Explained later, but comments should explain everything.
+Explained later, but comments should explain everything.<br>
+
+
+
+```cpp
+bool buttonEnable = true; //enables all button functions, like changing various settings and turning the sonde OFF. If you want to fly a sonde with PV or on 1xAA hardware, consider disabling the button and shorting its pins for always closed state
+```
+Button features can be disabled here. <br>
+
+
+```cpp
+//dataRecoder config
+bool dataRecorderEnable = true; //enables mode, in which the sonde transmits some recorded and debug data to the ground via additional APRS comments (described in repo). Format: ...NFW;[maxAlt];[maxSpeed];[maxAscentRate];[maxDescentRate];[maxMainTemperature];[minMainTemperature];[maxInternalTemp];[minInternalTemp];[ledsEnable];[healthStatus];[gpsResetCounter];[beganFlying];[burstDetected];[isHeaterOn];[radioPwrSetting];[currentGPSPowerMode];[radioTemp];...
+unsigned int dataRecorderInterval = 600000; //10 minutes by default (600000 milliseconds)
+```
+Data recorder features can be configured here, operation also described later. <br>
+
+
+```cpp
+bool autoResetEnable = true; //automatically reset the CPU after specified time below, useful in stationary continuous use, to prevent from overflowing some variables
+#define SYSTEM_RESET_PERIOD (14UL * 24 * 60 * 60 * 1000) // 14 days in milliseconds
+```
+The sonde can reset the CPU automatically to prevent from overflow. By default the interval is 2 weeks. <br>
+
+```cpp
+unsigned int flightDetectionAltitude = 1000; //default flight detection altitude in meters (if exceeded, the sonde knows that the flight began)
+unsigned int burstDetectionThreshold = 2000; //describes threshold value, which if exceeded (below maxAlt) deterimnes if the balloon has burst (2000m seems reasonable, due to some being floaters or getting 'unsealed')
+```
+These options configure how flightComputing function works (default should work properly, unless, for example, the sonde is being launched high in the mountains.) <br>
+
+```cpp
+bool ultraPowerSaveAfterLanding = false; //20 minutes after landing the sonde will turn OFF the GPS completely, turn OFF all sensors and change the transmit interval to 10 minutes and switch to Horus and APRS, transmitting the last coordinates
+```
+Extra power saving features can be enabled after landing with this function, described in the power management part of this manual. <br>
 
 
 
@@ -376,7 +411,8 @@ GREEN___++++----++++----++++----____++--++--++--    _______________________
 ```
 <br>
 
-`radioPwrSetting` annotation - this setting cannot be changed via the button when the powerSave features for the radio TX power are enabled (when the `powerSaveRadioPwrSetting` != -1). Tbe case is indicated with the RED led glowing for 500ms, which means that the operation didn't end successfully (radio power not changed).
+`radioPwrSetting` annotation - this setting cannot be changed via the button when the powerSave features for the radio TX power are enabled (when the `powerSaveRadioPwrSetting` != -1). Tbe case is indicated with the RED led glowing for 500ms, which means that the operation didn't end successfully (radio power not changed). <br>
+The button operation can be entirely disabled.
 
 ### Radio signals operation
 
@@ -490,7 +526,9 @@ The power saving changes 2 settings - radio TX power and interval between radio 
 After the power saving mode is entered (gpsAlt > powerSaveAltitude), the radio TX power is changed (usually lowered) from the `defaultRadioPwrSetting` to `powerSaveRadioPwrSetting`. This particular behaviour can be disabled by setting the `powerSaveRadioPwrSetting` to -1. <br>
 The interval between transmission modes is also being changed, from `defaultModeChangeDelay` to `powerSaveModeChangeDelay`. his particular behaviour can be disabled by setting the `powerSaveModeChangeDelay` to -1. <br>
 
-The whole power saving feature can be disabled by setting the `powerSaveAltitude` to -1.
+The whole power saving feature can be disabled by setting the `powerSaveAltitude` to -1. <br>
+
+The sonde also has an ability to lower the consumption after landing. If enabled via `ultraPowerSaveAfterLanding`, 20 minutes after landing the sonde fully turns of the GPS, sensors and some peripherals, only leaving the CPU working, together with radio, which transmits Horus, APRS and dataRecorder values every 10 minutes, consuming around 55mA. In future we want to investigate the STM power saving capabilities.
 
 
 ### Heater algorithm
@@ -553,6 +591,11 @@ The GPS logic also has an algorithm for improving it's performance and sensitivi
 
 ### Low Altitude Fast TX mode
 NFW has a feature, that sends the Horus packets as fast as it can for a specified period of time. This can be used to track the last meters of the flight. With the delay set to 0, the sonde can transmit Horus v2 every 6s, maintaining the GPS and sensor readings.
+
+### dataRecorder feature
+After one of the flights, which had a siginificant GPS interference, we wanted to somehow store some important statistics during the flight. If this feature is enabled, gathered data is sent once every 10 minutes via APRS as an additional data to the comment section.<br>
+Received data can be then decoded into a human-readable format by either pasting it into a very simple Python script ([here](https://github.com/Nevvman18/rs41-nfw/tree/main/fw/nfw-dataRecorder-decoder/decoder.py)), or by looking at this structure:
+`NFW;[maxAlt];[maxSpeed];[maxAscentRate];[maxDescentRate];[maxMainTemperature];[minMainTemperature];[maxInternalTemp];[minInternalTemp];[ledsEnable];[healthStatus];[gpsResetCounter];[beganFlying];[burstDetected];[isHeaterOn];[radioPwrSetting];[currentGPSPowerMode];[radioTemp];`.
 
 ## Final words
 

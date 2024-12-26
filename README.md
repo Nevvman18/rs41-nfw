@@ -77,6 +77,7 @@ See: [hw/README.md](./hw/README.md)
 
 
 ## Firmware changelog
+* `v33` - added option to disable the button operation. New dataRecorder feature, that saves most important statistics from flight and transmits them in APRS comments once for a specified time (by default every 10 minutes). Flight computing abilities, that measure flight parameters (min/max values; flight, burst and landing phase detection, etc.). New ultraPowerSaveAfterLanding feature, that lowers the power consumption as much as possible 30 minutes after landing (GPS is fully OFF, sensors and peripherals get disabled) and transmits the last coordinates every 10 minutes via Horus and APRS (+ dataRecorder statistics). Added a watchdog that resets the CPU after specified time (2 weeks by default) to protect from overflowing.
 * `v32` - added APRS 2 reporting modes - normal HAB tracking format and WX report format for weather station use. GPS operation modes - disabled, max performance, power saving; utilizing automatic powersaving switching to ensure best power consumption with reliable tracking. New feature, which transmits Horus packets as fast as possible (6s) at low altitudes (< 1km) for specified time when descending, to ensure that the lowest frame is captured. RTTY and Morse TX format now compliant with UKHAS formatting.
 * `v31` - added APRS support (not copied), GPS no-fix timeout watchdog (resets the chip if it can't get a fix for long enough), GPS performance improvement in position gathering, 2nd Horus TX frequency (with alternating mode and repeating packest), code clean-up, other small fixes and preparations for next releases
 * `v30` - added vertical velocity calculation and reporting via Horus v2. New and more accurate synchronization of delays between TX modes, fixnig issue were the delay was doubled in certain conditions.
@@ -129,4 +130,4 @@ Incoming features:
 * [*Arduino APRS*](https://handiko.github.io/Arduino-APRS/) library, partially utilized here to create APRS messages
 
 ## Final notes
-The creator of this project isn't at all responsible for any kind of harm made by devices operated with these instructions. Follow your local law about radio transmissions and ballon flights. This device isn't a certified airplane. This firmware wasn't tested in HAB scenarios, yet. Cheers.
+The creator of this project isn't at all responsible for any kind of harm made by devices operated with these instructions. Follow your local law about radio transmissions and ballon flights. This device isn't a certified airplane. Altough the firmware tested successfully on a dozen of flights, it still is a 'hobbyst' project. Have a nice day!
