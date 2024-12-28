@@ -554,7 +554,7 @@ The sonde also has an ability to lower the consumption after landing. If enabled
 
 
 ### Sensor Boom
-Each RS41 radiosonde has a sensor boom (the shiny elastic part with a characteristic hook). This firmware, being probably the first one, allows to utilize all advanced functions of it. The external temperature is being sent to ground in Horus v2, APRS, APRS WX, morse and RTTY payloads. The firmware also performs self-tests on the sensor which notify about either external temperature sensor fault, humidity module fault or entire sensor hook problem, both with LED status lights and on the debug UART terminal. <br>
+Each RS41 radiosonde has a sensor boom (the shiny elastic part with a characteristic hook). This firmware, being probably the first one, allows to utilize all advanced functions of it. The external temperature is being sent to ground in Horus v2, APRS, APRS WX, morse and RTTY payloads, and the humidity is sent by Horus v2 and APRS WX (by default; APRS can also send it down, just needs a little bit of code mod). The firmware also performs self-tests on the sensor which notify about either external temperature sensor fault, humidity module fault or entire sensor hook problem, both with LED status lights and on the debug UART terminal. <br>
 
 #### Temperature compensation
 Linearity of these sensors is very similiar in each. However, each one has a different temperature offset, which should be corrected by user. <br>
