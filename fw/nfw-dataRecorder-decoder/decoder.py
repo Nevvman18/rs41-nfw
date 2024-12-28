@@ -1,5 +1,3 @@
-# Basic and example script for decoding NFW dataRecorder APRS packets
-
 import sys
 
 # ANSI escape codes for coloring text
@@ -9,7 +7,7 @@ YELLOW = '\033[33m'
 RESET = '\033[0m'
 
 def decode_nfw_packet(packet):
-    # Define the expected structure and number of fields
+    # Define the expected structure and number of fields, removing the heater operation time
     expected_fields = [
         "maxAlt (m)",
         "maxSpeed (m/s)",
@@ -28,8 +26,14 @@ def decode_nfw_packet(packet):
         "radioPwrSetting (0 to 7, power levels of SI4032 in dBm and mW)",
         "currentGPSPowerMode (0 - disabled, 1 - max performance, 2 - powersaving)",
         "radioTemp (°C)",
-        "sensorBoomErr (0 - Clear, 1 - ERR)"  # Added sensorBoomErr at the end
+        "sensorBoomErr (0 - Clear, 1 - ERR)",
+        "zeroHumidityFrequency (Hz)",  # New field
+        "humidityRangeDelta (Hz)"      # New field
     ]
+
+    # Remove the last semicolon if present
+    if packet.endswith(';'):
+        packet = packet[:-1]
 
     # Split the packet into parts
     parts = packet.split("NFW;")
@@ -42,8 +46,8 @@ def decode_nfw_packet(packet):
     fields = nfw_part.split(";")
 
     # Check for the exact number of fields
-    if len(fields) - 1 != len(expected_fields):
-        print(f"Error: Expected {len(expected_fields)} values in NFW packet but got {len(fields) - 1}.")
+    if len(fields) != len(expected_fields):
+        print(f"Error: Expected {len(expected_fields)} values in NFW packet but got {len(fields)}.")
         return
 
     # Decode the fields into a dictionary
@@ -123,14 +127,20 @@ def decode_nfw_packet(packet):
                 value_color = GREEN
                 value_text = "Clear"
             print(f"  {field.split(' ')[0]}: {value_color}{value_text} ({value}){RESET}")
+        elif "zeroHumidityFrequency" in field:
+            # Handle the zeroHumidityFrequency field (red if 0)
+            value_color = RED if value == "0" else RESET
+            print(f"  {field.split(' ')[0]}: {value_color}{value} Hz{RESET}")
+        elif "humidityRangeDelta" in field:
+            # Handle the humidityRangeDelta field (in Hz)
+            print(f"  {field.split(' ')[0]}: {value} Hz")
         else:
             print(f"  {field.split(' ')[0]}: {value}")
 
 if __name__ == "__main__":
     # Read input from the terminal
-    print("Enter the dataRecorder packet (example: 'NFW;3472;20;15;-15;0;0;30;2;0;0;4;1;0;0;7;2;0;0;' ): ")
+    print("Enter the dataRecorder packet (example: 'NFW;3472;20;15;-15;0;0;30;2;0;0;4;1;0;0;7;2;0;0;35123;1000;' ): ")
     packet = input().strip()
 
     # Call the decoder
     decode_nfw_packet(packet)
-

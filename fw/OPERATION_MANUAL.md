@@ -21,8 +21,11 @@
   * [XDATA port operation](#xdata-port-operation)
   * [Power management](#power-management)
     * [powerSave features](#powersave-features)
-  * [Heater algorithm](#heater-algorithm)
   * [Sensor boom](#sensor-boom)
+    * [Temperature compensation](#temperature-compensation)
+    * [Humidity calibration](#humidity-calibration)
+    * [Reference heating](#reference-heating)
+    * [Automatic sensor defrosting](#automatic-sensor-defrosting)
   * [GPS operation modes](#gps-operation-modes)
   * [Low Altitude Fast TX mode](#low-altitude-fast-tx-mode)
   * [dataRecorder feature](#datarecorder-feature)
@@ -43,7 +46,8 @@ The firmware by default is set with initial settings. For the first-time operati
 * Callsign
 * `radioPwrSetting`
 * Battery power settings
-* TX mode and frequency settings - recommended is only the Horus v2 mode at the 70cm amateur band - this provides the best range and speed capabilities.
+* TX mode and frequency settings - recommended is Horus v2 mode at the 70cm amateur band - this provides the best range and speed capabilities. APRS is also ok.
+* Sensor boom settings, together with temperature, humidity and calibrations
 All settings are explained below.
 
 
@@ -260,8 +264,26 @@ int powerSaveAltitude = 3000; //altitude in meters above which the powerSave fea
 bool sensorBoomEnable = true; //enables sensor boom measurement (currently only temperatures, humidity is being engineered) and diagnostics
 float mainTemperatureCorrectionC = 0;
 float extHeaterTemperatureCorrectionC = 25;
+bool autoHumidityModuleTemperatureCorrection = true; //should be left at true. The firmware corrects the humidity module temperature readings (which have worse accuracy than the main hook) by comparing the readings with the main temperature hook sensor. Both sensors should be in the same temperature.
 ```
-The sensor boom measruements in the radiosonde can be enabled with `sensorBoomEnable`. Currently, the temperature offsets can be set for both main temperature (characteristic hook; `mainTemperatureCorrectionC`) and the humidity heater temperature sensor (`extHeaterTemperatureCorrectionC`).<br>
+The sensor boom measruements in the radiosonde can be enabled with `sensorBoomEnable`. Currently, the temperature offsets can be set for both main temperature (characteristic hook; `mainTemperatureCorrectionC`) and the humidity heater temperature sensor (`extHeaterTemperatureCorrectionC`). The humidity heater sensor can automatically calibrate by reading values from the hook sensor, but the hook sensor should be corrected by user.<br>
+
+
+```cpp
+bool humidityCalibrationDebug = false; //after calibration the sonde enters special mode that prints out on serial port the frequencies and a suggested humidityRangeDelta value. After it enters this mode, place the sensor in a 100%RH environment (for example close over a boiling water) and read the rangeDelta. This will give you a higher  accuracy of the readings.
+bool humidityModuleEnable = true; //Setting that enables the support of humidity module
+bool zeroHumidityCalibration = true; //if you don't know how to calibrate the values, leave true. The sonde will heat up the humidity module up to about 100*C and make some measurements
+unsigned long humidityCalibrationTimeout = 300000; //calibration timeouts if it can't finish in (by default) 5 minutes (300000 milliseconds)
+int humidityCalibrationMeasurementTemperature = 95; //minimum sensor temperature, at which the calibration function takes measurements
+int humidityCalibrationHeatingTemperature = 115; //maximum temperature of heating element during calibration (should be higher than 100 + some margin)
+bool referenceHeating = false; //This option enables slight warming up the reference heating resistors. When enabled, this should give just a slight improvement in temperature readings accuracy, increasing the power consumption a bit (suggested with 2xAA batteries)
+int referenceHeatingThreshold = -3; //The reference heaters will start working below this threshold.
+bool humidityModuleDefrosting = true; //This option enables the defrosting of humidity module
+int defrostingTemperatureThreshold = 0; //Below this temperature the defrosting occurs
+int defrostingHumidityThreshold = 80; //High humidity environment to activate the defrosting
+int defrostingTime = 3500; //How long the defrosting works in ms
+```
+The humidity measurement using an onboard sensor can be enabled here. Whole process of usage and calibration is described in [sensor boom tab](#sensor-boom). The comments of the variables describe each.<br>
 
 
 
@@ -531,61 +553,38 @@ The whole power saving feature can be disabled by setting the `powerSaveAltitude
 The sonde also has an ability to lower the consumption after landing. If enabled via `ultraPowerSaveAfterLanding`, 20 minutes after landing the sonde fully turns of the GPS, sensors and some peripherals, only leaving the CPU working, together with radio, which transmits Horus, APRS and dataRecorder values every 10 minutes, consuming around 55mA. In future we want to investigate the STM power saving capabilities.
 
 
-### Heater algorithm
-**NOTE:** The on-board heater is present on all sonde versions. Since `v26` firmware, both newer (heater activated by MCU pin) and older (activated by Si4032 GPIO pin) boards work with this feature. <br>
-
-Previously mentioned heater is located on the cut-out part of the board. If you want to know more things about it's technical details and why it may be important for your flight, please check the [hardware - frontend description](../hw/README.md#frontend).<br>
-*[...] Worth mentioning are the reference heating resistors on the cut-out part of the PCB. In my firmware, they are used to slightly heat up the board near it, which contains the 26MHz crystal. The fw contains some wild functions to control it, which is used to limit the radio losing PLL-lock at very low temperatures (this also occured on older boards, like [here](https://github.com/hexameron/RS41HUP?tab=readme-ov-file#warning:~:text=Some%20RS41s%20have,resetting%20the%20chip.) or [here](https://www.areg.org.au/archives/208844#:~:text=Payload%20Testing%20Results,and%209km%20altitude.)). The PLL-lock loss happens mainly on the RTTY modulation using faster than 45 baud rates (lock-loss on Horus TX mode was not observed) when the Si4032 and the crystal cool down below 0°C. The heating logic is described in the operation manual, but worth mentioning is that you could try to improve the heat transfer by mounting to the resistors something heat-conductive (warning - it must not conduct electricity or it will cause a short circuit), like a small thin insulated elastic copper plate.*
-<br>
-
-The heater can be disabled by defining the `refHeatingMode` to 0, which is default.<br>
-The second mode is the AUTO mode (`refHeatingMode = 1`). In this mode, heater turns on automatically when the onboard thermistor temperature drops below `autoHeaterThreshold`. If this condition is met, the heater heats up the area for time defined at `heaterWorkingTimeSec`. After this time passes, it enters a cooldown for defined `heaterCooldownTimeSec` time.<br>
-
-User can force the heater to the ALWAYS-ON mode (`refHeatingMode = 2`), of course either by changing the code or setting the variable via button page settings (descibed [above](#button-operation)). In this mode, the heater heats up the area continuously. <br>
-
-However, it would be dumb to turn on a heater without any safety measures, so in both heating modes there is a safety governor working, that maintains the heater temperature between the defined levels. If the heater temperature rises above the `refHeaterCriticalDisableTemp`, it temporarly disables the heaters until they cool down below the `refHeaterCriticalDisableTemp` threshold. After cooling down, they are reenabled and the process goes again, unless the main heating time in AUTO mode has passed. <br>
-
-The heater algorithm also contains a script that can set the heater mode to ALWAYS-ON above the determined altitude, which can be set using the `refHeaterAutoActivationHeight` variable. This function gets disabled when value set to 0. <br>
-
-The heater algorithm also provides it's own debug feature - `heaterDebugState`.<br>
-These are the heater debug conditions:
-* Heater OFF - `heaterDebugState = 5`
-* Operation:
-  * AUTO mode:
-    * Heater OFF - `heaterDebugState = 10`
-    * Heater ON - `heaterDebugState = 11`
-    * Overheating - `heaterDebugState = 19`
-  * ALWAYS-ON mode:
-    * Heater ON - `heaterDebugState = 21`
-    * Overheating - `heaterDebugState = 29`
-<br><br>
-
-The `heaterDebugState` is a just a simple formula:
-* Tens digit means operation mode:
-  * = 0 -> OFF mode
-  * = 1 -> AUTO mode
-  * = 2 -> Manual mode
-* Units digit means hardware state:
-  * = 0 -> Heater OFF
-  * = 1 -> Heater ON
-  * = 5 -> Forced OFF
-  * = 9 -> Overheated
-
-<br> 
-
-This debug formula, added to the other conditions (`statusNum`) create the previously mentioned `deviceDebugState`.
-
-
 ### Sensor Boom
-Each RS41 radiosonde has a sensor boom (the shiny elastic part with a characteristic hook). This firmware, being probably the first one, allows to utilize the advanced functions of it to measure external temperature and the temperature of humidity sensor heater. The external temperature is being sent to ground in RTTY and Horus v2 payloads. <br>
+Each RS41 radiosonde has a sensor boom (the shiny elastic part with a characteristic hook). This firmware, being probably the first one, allows to utilize all advanced functions of it. The external temperature is being sent to ground in Horus v2, APRS, APRS WX, morse and RTTY payloads. The firmware also performs self-tests on the sensor which notify about either external temperature sensor fault, humidity module fault or entire sensor hook problem, both with LED status lights and on the debug UART terminal. <br>
 
-The firmware also performs self-tests on the sensor which notify about either external temperature sensor fault, humidity module fault or entire sensor hook problem, both with LED status lights and on the debug UART terminal.
+#### Temperature compensation
+Linearity of these sensors is very similiar in each. However, each one has a different temperature offset, which should be corrected by user. <br>
+To compensate for the offset, upload the firmware with sensor hook enabled and, preferebly, with Horus or APRS telemetry. Place the sonde in a stable environemnt and wait for it to boot (you main need to disable `improvedGpsPerformance` and `zeroHumidityCalibration` for now, because they aren't needed now and slow down the startup). Now, when the sonde is transmistting, take another independant temperature sensor, place it near the sonde and wait for it's reading to stabilize. If you have your real temperature measured, observe the sonde readings. Write down the average readings of the temperature (they might fluctuate a 1C or so) and calculate: `(real measurement) - (sonde measurement) = mainTemperatureCorrectionC`. This will be your temperature compensation offset. The calibration is done and you can enter this value into the firmware config. Note - this value is only for this sensor boom, if you want to use another one, you have to correct it another time. If your correction factor is higher than 25, consider changing the sensor hook to another one, because this could indicate a faulty unit. <br>
+If you have enabled the `1`autoHumidityModuleTemperatureCorrection` you won't have to do this again for the second temperature sensor, which is located in the humidity module (white glass/ceramic plate). The sonde will simply correct it for you.
+
+#### Humidity calibration
+NFW reads the humidity in a simpler way than originally. This approach was chosen because of 2 reasons - more accurate readings would require from user to read Vaisala calibration values using a script from for example SondeHub (which gathers that telemetry data) and write into configuration of NFW **a lot** of values and data arrays (probably around 70 lines of raw factors), and also because I simply couldn't get it to work :). So instead, the sonde will make a zero humidity check (like originally before launch), calculate some values and using them and the compensation by air temperature will calculate the RH. <br>
+
+To calibrate the humidity sensor, the firmware config needs to have enabled options `humidityModuleEnable` and `zeroHumidityCalibration`.<br>
+Place the sonde in a place with very little to no airflow, your room will be probably best. The calibration can also be done outside, but may last a little longer. The environment should have as small wind as possible, with temperatures ideally ranging from 0 to 30C, and humidity from 0 to 60%. <br>
+After powering ON the sonde, the orange LED light will light up. This means that the calibration has started and the sonde is preparing for calibration. The light should turn OFF and start to blink. **Warning** - the sensor boom, especially the hudmidity module (white glass/ceramic plate) will become very hot (around 120C), because it has built in 2 heaters used exactly for the calibration. Longer blink indicates that the heater is operating, shorter orange blink means that the measurements were taken. Whole calibration should last around a minute, and if there is some problem, it timeouts automatically or after 3 minutes max. Any issues during calibration are indicated with red LED (5 blinks for hardware error, 3 blinks for environment/first measurement problem). If the calibration succseeds, the sonde begins to operate as normal. The humidity module has to cool down now, so don't touch the sensor boom for the next minute. The readings will stabilise also after a minute. <br>
+If you find that the readings are off (more than 15%, that is the accuracy here), or you simply want the best accuracy possible, you may need to either replace the sensor boom for another one, or perform an extended calibration. This mode can be activated by `humidityCalibrationDebug`. To use it correctly, run everything as described before, but with the sonde UART connected to your interface (by default it is 115200 baud, the `xdataPortMode` has to be 1). Now, after the calibration has ended, the sonde will run the extended calibration instructions. Now, prepare an environment with 100% relative humidity. The easiest method is to boil some water. After the sensor has cooled down, place the sensor boom near the surface of the boling water, to cover it in fog. Make sure that it is NOT touching the water surface and the water (if you do it while wamring up the water) doesn't splash on the sensor. Now, by looking at the serial terminal, observe what is the value of `humidityRangeDelta` with the sensor in the fog. Wait a while and write down an average, but by concentraiting on the highest values captured during the test. The sonde can be gracefully turned OFF by holding the button, and according to the serial port output, you can now flash the firmware with this mode disabled. During programming, change the value of `humidityRangeDelta` in your config. The default value set here (1000) is based on a bit of empirical tests and averaging the results of good sensors. If your delta value is lower than 750 or higher than 1600, consider performing the calibration once again, and if the result is the same, change the sensor boom. Now your humidity sensor should be calibrated and working.<br>
+The sensor has about 5 seconds of reaction time, especially under lower temperatures. Also, the firmware compensates the humidity value according to the air temperature (adapted from algorithm used in radiosonde_auto_rx, based on empirical data from flights), to ensure that readings are as accurate as possible with this method.<br>
+Other methods of reading humidity probably aren't worth a while, and this method seems quite simple and accurate for what can be achieved with this device. I wouldn't predict weather with it knowing that it could be off a bit, but for amateur usage it is more than enough.
+
+#### Reference heating
+The firmware uses reference resistors (like in factory) placed on the cut-out part of the PCB to calilbrate the temperature measurements. Their parameters change slightly under very low temperatures, so to compensate for that, Vaisala implemented mechanisms for heating them.<br>
+If you want to achieve a very slightly better accuracy of the temperature readings (only use this with 2xAA batteries due to higher consumption), you can activate this by the setting `referenceHeating` (OFF by default). The heating of the resistors will be enabled under the `referenceHeatingThreshold`, and the default one should work just fine. The heating algorithm uses different power levels for different temperatures to save some power during its operation.
+
+#### Automatic sensor defrosting
+Vaisala implemented heaters in the humimdity module. Their use is to prevent from condensation and frost on the humidity sensor. The NFW firmware takes advantage of it by regularly heating up the sensor for (by default) 3.5 seconds at high power, to take off any frost/water/ice/anything that gets on it. It can be enabled with `humidityModuleDefrosting` (OFF by default!), and activates both above the `defrostingHumidityThreshold` and below `defrostingTemperatureThreshold`. These values should activate the defrosting only in high-humidity environments with low temperatures that could lead to ice on the sensor (for example clouds). The duration of defrosting (which occurs once in a while, usually between 1 and 3 times in a TX cycle depending on the interval and some TX modes) can be set with `defrostingTime`.
+
+
 
 ### GPS operation modes
 In mode 0, the GPS is completely disabled, which could be used for example in a weather station. In both versions of sondes, this gives a power consumption of 50-60mA when idle (no radio TX)<br>
 In mode 1, the GPS works with maximum performance, and consumes about 120mA on older sondes and 85mA on newer (no TX)<br>
 In mode 2, the GPS is set to power saving mode (only on older ones, newer don't require this). If the sonde has a stable fix (> 6 satellites), the GPS is set to power saving, which lowers the consumption to about 85mA, similarly to the new ones. When the sonde loses on the GPS satellites under 6, the max performance mode is temporairly set. The debounce between the changing can also be set.<br>
-
+The firmware also performs self-tests on the sensor which notify about either external temperature sensor fault, humidity module fault or entire sensor hook problem, both with LED status lights and on the debug UART terminal.
 The GPS logic also has an algorithm for improving it's performance and sensitivity. The Si4032 when transmitting generates some noise, which seem to affect the GPS performance. By default (every setting is described in the firmware file/on the begining of this manual), when the sonde doesnt have a fix, it transmits the telemetry every 2 minutes. When the fix is gathered, the default interval is set back. This algorithm can be used also in flight, but is only suggested for flights were it could really help (where there is lots of interference). Otherwise, please leave the setting to disable it in-flight to true, because it could lead to a data loss for up to 2 minutes if GPS makes a mistake. When the sonde waits for enough satellites, the green LED is blinking every second or so.
 
 
@@ -595,7 +594,7 @@ NFW has a feature, that sends the Horus packets as fast as it can for a specifie
 ### dataRecorder feature
 After one of the flights, which had a siginificant GPS interference, we wanted to somehow store some important statistics during the flight. If this feature is enabled, gathered data is sent once every 10 minutes via APRS as an additional data to the comment section.<br>
 Received data can be then decoded into a human-readable format by either pasting it into a very simple Python script ([here](https://github.com/Nevvman18/rs41-nfw/tree/main/fw/nfw-dataRecorder-decoder/decoder.py)), or by looking at this structure:
-`NFW;[maxAlt];[maxSpeed];[maxAscentRate];[maxDescentRate];[maxMainTemperature];[minMainTemperature];[maxInternalTemp];[minInternalTemp];[ledsEnable];[healthStatus];[gpsResetCounter];[beganFlying];[burstDetected];[isHeaterOn];[radioPwrSetting];[currentGPSPowerMode];[radioTemp];`.
+`NFW;[maxAlt];[maxSpeed];[maxAscentRate];[maxDescentRate];[maxMainTemperature];[minMainTemperature];[maxInternalTemp];[minInternalTemp];[ledsEnable];[healthStatus];[gpsResetCounter];[beganFlying];[burstDetected];[isHeaterOn];[radioPwrSetting];[currentGPSPowerMode];[radioTemp];[zeroHumidityFrequency];[humidityRangeDelta];`.
 
 ## Final words
 

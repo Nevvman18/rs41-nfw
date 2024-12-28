@@ -42,15 +42,16 @@ For more details about HAB and sonde hunting, please look on google and social m
     * PIP
         * Beacon operation, transmitting short beep with a specified interval, which could be used as a foxhunting TX device
 * Thorough support of RS41 hardware, including GPS, radio, power circuitry, reference heating etc. ...and:
-* Support for **onboard boom sensors**, including temperature sensors (humidity sensor incoming in next releases)
+* Support for **onboard boom sensors**, including **temperature and humidity** sensors
 * Detailed in-built **debugging** features via LED status and serial messages
 * Onboard **button** allowing user to change different operation modes and parameters 'in-flight'
-* **Safety features**, including GPS watchdog and position improvement (these two improve flights in environments with interference/noise), battery voltage and temperature protection
+* **Safety features**, including GPS watchdog and position improvement (these two improve flights in environments with interference/noise), battery voltage and temperature protection, sensors defrosting
 * Support for extending hardware capabilities, including external I2C or UART sensors - including **OIF411**
 * **Power saving** features, including GPS power management (together with powersaving modes and complete disable for stationary use cases) and automatic radio adjusting
 * **User-friendly** firmware and IDE allows users to easily customimze the device operation
 * Weather station mode, supporting APRS WX reporting
 * Flight controling algorithms. Ability to rapidly send packets when below set altitude.
+* Calibration modes for temperature and humidity sensor on the silver boom
 * And many more - mentioned in [changelog](#firmware-changelog) and [manual](./fw/OPERATION_MANUAL.md)
 
 
@@ -77,6 +78,7 @@ See: [hw/README.md](./hw/README.md)
 
 
 ## Firmware changelog
+* `v34` - support for onboard humidity sensor reading (not the most accurate method, but gives reasonable readings with easy use). Humidity module calibration modes and auto-compensation (some parts of it known as zero-humidity check). Defrosting features. Reference resistors warming to maintain their temperature. Automatic temperature compensation for humidity module sensor readings. Depreciated oscillator heating capabilities - RTTY isn't widely used, especiallu at 75-baud and the option was very power hungry - now the resistors are used like from factory, to slightly warm up the reference resistors and capacitor.
 * `v33` - added option to disable the button operation. New dataRecorder feature, that saves most important statistics from flight and transmits them in APRS comments once for a specified time (by default every 10 minutes). Flight computing abilities, that measure flight parameters (min/max values; flight, burst and landing phase detection, etc.). New ultraPowerSaveAfterLanding feature, that lowers the power consumption as much as possible 30 minutes after landing (GPS is fully OFF, sensors and peripherals get disabled) and transmits the last coordinates every 10 minutes via Horus and APRS (+ dataRecorder statistics). Added a watchdog that resets the CPU after specified time (2 weeks by default) to protect from overflowing.
 * `v32` - added APRS 2 reporting modes - normal HAB tracking format and WX report format for weather station use. GPS operation modes - disabled, max performance, power saving; utilizing automatic powersaving switching to ensure best power consumption with reliable tracking. New feature, which transmits Horus packets as fast as possible (6s) at low altitudes (< 1km) for specified time when descending, to ensure that the lowest frame is captured. RTTY and Morse TX format now compliant with UKHAS formatting.
 * `v31` - added APRS support (not copied), GPS no-fix timeout watchdog (resets the chip if it can't get a fix for long enough), GPS performance improvement in position gathering, 2nd Horus TX frequency (with alternating mode and repeating packest), code clean-up, other small fixes and preparations for next releases
