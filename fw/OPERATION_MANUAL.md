@@ -323,9 +323,9 @@ Explained later, but comments should explain everything.<br>
 
 
 ```cpp
-bool buttonEnable = true; //enables all button functions, like changing various settings and turning the sonde OFF. If you want to fly a sonde with PV or on 1xAA hardware, consider disabling the button and shorting its pins for always closed state
+int buttonMode = 1;                                 //0 - button operation disabled, 1 - the button can turn the sonde OFF, 2 - extended mode, allowing to control radio power and if the transmission should be enabled and shutdown. If you want to fly a sonde with PV or on 1xAA hardware, consider disabling the button and shorting its pins for always closed state. NOTE: the button will only operate when the sonde has fully started (after calibration, compensation, hardware configuration etc.)
 ```
-Button features can be disabled here. <br>
+Button operation mode can be selected here. 0 - disabled, 1 - pressing the button (actually holding a second or so) will power the sonde OFF, 2 - extended mode, which, besides turning the sonde OFF, allows to turn radio transmission ON/OFF and select radio power. <br>
 
 
 ```cpp
@@ -415,10 +415,14 @@ The `heaterDebugState` calculation is described in the [Heater algorithm](#heate
 
 
 ### Button operation
-User can change different opeartion variables by using the on-board button while the device is ON.<br>
+The button operation mode can be selected with `buttonMode`.<br>
 
-The button contains a page-like setting system, with pages from 1 to 4, whereas each page can be recognized by a 500ms GREEN-RED LED cycle. Entering a page is done by holding the button until the desired page number is selected, and then by releasing the button at this desired page number (previous RTTY configuration pages were deleted - who uses the RTTY today in HAB flights ? :) ):
-* Page 1 - `empty`
+If set to 0, the button gets completely disabled, the only way to turn the sonde OFF is by cutting the power (for example remove the batteries). <br>
+
+If set to 1, the button can turn the sonde OFF on it's press (press - due to tasks management, the actual press length may vary between 0 and 5 seconds).<br>
+
+When the mode is set to 2 (extended button operation mode), there button operation algorithm contains a page-like setting system, with pages from 1 to 4, whereas each page can be recognized by a 500ms GREEN-RED LED cycle. Entering a page is done by holding the button until the desired page number is selected, and then by releasing the button at this desired page number (previous RTTY configuration pages were deleted - who uses the RTTY today in HAB flights ? :) ):
+* Page 1 - `empty` - unless there is a function ongoing (currently this can cancel the improveGpsPerformance setting when active).
 * Page 2 - `radioEnablePA`. Green blinks 2 times for true, red 2 times for false.
 * Page 3 - `radioPwrSetting`. Green blinks 3 times for 100mW (7 max), red 3 times for 2mW (0 min). *annotation below*
 * Page 4 - `SHUTDOWN`. If button is held to this page the red LED comes ON for 3 seconds and then the sonde is turned OFF.
@@ -433,8 +437,7 @@ GREEN___++++----++++----++++----____++--++--++--    _______________________
 ```
 <br>
 
-`radioPwrSetting` annotation - this setting cannot be changed via the button when the powerSave features for the radio TX power are enabled (when the `powerSaveRadioPwrSetting` != -1). Tbe case is indicated with the RED led glowing for 500ms, which means that the operation didn't end successfully (radio power not changed). <br>
-The button operation can be entirely disabled.
+`radioPwrSetting` annotation - this setting cannot be changed via the button when the powerSave features for the radio TX power are enabled (when the `powerSaveRadioPwrSetting` != -1). This case is indicated with the RED led glowing for 500ms, which means that the operation didn't end successfully (radio power not changed). <br>
 
 ### Radio signals operation
 
@@ -588,8 +591,8 @@ Vaisala implemented heaters in the humidity module. Their use (apart from the gr
 In mode 0, the GPS is completely disabled, which could be used for example in a weather station. In both versions of sondes, this gives a power consumption of 50-60mA when idle (no radio TX)<br>
 In mode 1, the GPS works with maximum performance, and consumes about 120mA on older sondes and 85mA on newer (no TX)<br>
 In mode 2, the GPS is set to power saving mode (only on older ones, newer don't require this). If the sonde has a stable fix (> 6 satellites), the GPS is set to power saving, which lowers the consumption to about 85mA, similarly to the new ones. When the sonde loses on the GPS satellites under 6, the max performance mode is temporairly set. The debounce between the changing can also be set.<br>
-The firmware also performs self-tests on the sensor which notify about either external temperature sensor fault, humidity module fault or entire sensor hook problem, both with LED status lights and on the debug UART terminal.
-The GPS logic also has an algorithm for improving it's performance and sensitivity. The Si4032 when transmitting generates some noise, which seem to affect the GPS performance. By default (every setting is described in the firmware file/on the begining of this manual), when the sonde doesnt have a fix, it transmits the telemetry every 2 minutes. When the fix is gathered, the default interval is set back. This algorithm can be used also in flight, but is only suggested for flights were it could really help (where there is lots of interference). Otherwise, please leave the setting to disable it in-flight to true, because it could lead to a data loss for up to 2 minutes if GPS makes a mistake. When the sonde waits for enough satellites, the green LED is blinking every second or so.
+
+The GPS logic also has an algorithm for improving it's performance and sensitivity. The Si4032 when transmitting generates some noise, which seem to affect the GPS performance. By default (every setting is described in the firmware file/on the begining of this manual), when the sonde doesnt have a fix, it transmits the telemetry every 2 minutes. When the fix is gathered, the default interval is set back. This algorithm can be used also in flight, but is only suggested for flights were it could really help (where there is lots of interference). Otherwise, please leave the setting to disable it in-flight to true, because it could lead to a data loss for up to 2 minutes if GPS makes a mistake. When the sonde waits for enough satellites, the green LED is blinking every second or so. This mode can be disabled, as always, in the firmware settings, or when the `buttonMode` is set to 2, with a button on page 1 (mentioned in the button operation manual).
 
 
 ### Low Altitude Fast TX mode
