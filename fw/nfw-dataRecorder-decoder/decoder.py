@@ -10,7 +10,7 @@ def decode_nfw_packet(packet):
     # Define the expected structure and number of fields, removing the heater operation time
     expected_fields = [
         "maxAlt (m)",
-        "maxSpeed (m/s)",
+        "maxSpeed (km/h)",
         "maxAscentRate (m/s)",
         "maxDescentRate (m/s)",
         "maxMainTemperature (°C)",
@@ -112,7 +112,10 @@ def decode_nfw_packet(packet):
         elif "Temperature" in field or "radioTemp" in field:
             # For temperature fields, append °C
             print(f"  {field.split(' ')[0]}: {value}°C")
-        elif "maxSpeed" in field or "maxAscentRate" in field or "maxDescentRate" in field:
+        elif "maxSpeed" in field  in field:
+            # For speed append kph
+            print(f"  {field.split(' ')[0]}: {value} km/h")
+        elif "maxAscentRate" in field or "maxDescentRate" in field:
             # For speed and rates, append m/s
             print(f"  {field.split(' ')[0]}: {value} m/s")
         elif "maxAlt" in field:

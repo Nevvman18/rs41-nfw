@@ -78,6 +78,7 @@ See: [hw/README.md](./hw/README.md)
 
 
 ## Firmware changelog
+* `v37` - fox hunting mode, which can transmit a melody over NFM, CW pip, CW morse with additional message contents of location below voltage warning and battery voltage reporting, this mode operates in as low power consumption as possible (measurement circuits disabled, heaters disabled, GPS disabled, radio sleeping between transmissions). The gpsSpeed value in Horus v2 payload is now reported in km/h (instead of m/s as before). Small changes in startup and calibration procedure.
 * `v36` - changes in button operation algorithm - user can select between completely disabled button functions, sonde shutdown on button press or extended mode, which allows to change some parameters of the sonde. The button operation is available now throughout the whole operation of the sonde, in some limited areas (like calibrartion) the button can shutdown the sonde now.
 * `v35` - fixed boom calibration issue, which could lead to worse humidity compensation. Enhanced defrosting algorithm, that doesn't impact the readings.
 * `v34` - support for onboard humidity sensor reading (not the most accurate method, but gives reasonable readings with easy use). Humidity module calibration modes and auto-compensation (some parts of it known as zero-humidity check). Defrosting features. Reference resistors warming to maintain their temperature. Automatic temperature compensation for humidity module sensor readings. Depreciated oscillator heating capabilities - RTTY isn't widely used, especiallu at 75-baud and the option was very power hungry - now the resistors are used like from factory, to slightly warm up the reference resistors and capacitor.
@@ -100,10 +101,7 @@ See: [hw/README.md](./hw/README.md)
 <br>
 
 Incoming features:
-* External sensors - BME280 (developer of the firmware wanted to give this capability in the `v22` version, but due to some develpoment site issues this will probably be added ater on)
-* More power saving features
-* Fox hunting mode, featuring very low power consumption mode, transmission planning and beacon customization
-* Transmission scheme planning and schedule, according to GNSS time and coordinates
+* Somehow get the RPM411 to work
 
 
 ## People responsible for this project

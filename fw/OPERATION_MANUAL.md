@@ -29,6 +29,7 @@
   * [GPS operation modes](#gps-operation-modes)
   * [Low Altitude Fast TX mode](#low-altitude-fast-tx-mode)
   * [dataRecorder feature](#datarecorder-feature)
+  * [Fox hunting mode](#fox-hunting-mode)
 
 
 
@@ -354,6 +355,21 @@ bool ultraPowerSaveAfterLanding = false; //20 minutes after landing the sonde wi
 Extra power saving features can be enabled after landing with this function, described in the power management part of this manual. <br>
 
 
+```cpp
+//Fox hunting mode
+bool foxHuntMode = false; //enables the fox hunting mode. This mode is separate from standard HAB operation mode. It can only transmit morse and FM melody sounds on a specified frequency. The firmware minimises the current consumption. In this mode, only the simplified button operation mode is used (1 only power OFF) and the status lights are simplified - green LED blinking when OK, orange LED when something is wrong (for example low battery).
+bool foxHuntFmMelody = true; //in fox hunting mode, enables a melody transmitted with the onboard radio
+bool foxHuntCwTone = false; //if you prefer a CW tone instead of a FM melody, the tone length is 10s
+bool foxHuntMorseMarker = true; //in fox hunting mode, enables a morse marker transmitted after the melody with the text specified below. Warning - the marker is transmitted in CW, not in FM! Use a side-band capable receiver to receive it.
+String foxMorseMsg = "N0CALL N0CALL FOX";
+bool foxHuntLowVoltageAdditionalMarker = true; //when the low voltage threshold is met (specified with vBatWarnValue), the additional marker is activated, to send for example transmitter location
+String foxMorseMsgVbat = "N0CALL N0CALL FOX 11.123456 12.456789";
+float foxHuntFrequency = 434.5;
+unsigned int foxHuntTransmissionDelay = 0; //delay in fox hunting mode between transmission cycles in ms
+```
+The firmware also contains fox hunting mode. More about it later.
+
+
 
 ```cpp
 #define THERMISTOR_R25 10400  // 10k Ohms at 25°C thermistor 
@@ -493,7 +509,7 @@ This project uses Horus v2 binary format, with 32 byte message length. This tabl
 | Latitude         	| gpsLat                                                                                           	|
 | Longitude        	| gpsLong                                                                                          	|
 | Altitude         	| gpsAlt                                                                                           	|
-| Speed            	| gpsSpeed                                                                                         	|
+| Speed            	| gpsSpeedKph                                                                                      	|
 | vBat             	| Battery voltage, interpreted there as an uint8 value from 0-255 (real 0-5V), mapped in the code. 	|
 | Sats             	| gpsSats                                                                                          	|
 | Temp             	| Thermistor temperature integer                                                 	                  |
@@ -583,9 +599,7 @@ The firmware uses reference resistors (like in factory) placed on the cut-out pa
 If you want to achieve a very slightly better accuracy of the temperature readings (only use this with 2xAA batteries due to higher consumption), you can activate this by the setting `referenceHeating` (OFF by default). The heating of the resistors will be enabled under the `referenceHeatingThreshold`, and the default one should work just fine. The heating algorithm uses different power levels for different temperatures to save some power during its operation.
 
 #### Automatic sensor defrosting
-Vaisala implemented heaters in the humidity module. Their use (apart from the ground-check) is to prevent from condensation and frost on the humidity sensor. The NFW firmware takes advantage of it by regularly heating up the sensor for (by default) 3.5 seconds at high power, to take off any frost/water/ice/anything that gets on it. It can be enabled with `humidityModuleDefrosting` (OFF by default!), and activates both above the `defrostingHumidityThreshold` and below `defrostingTemperatureThreshold`. These values should activate the defrosting only in high-humidity environments with low temperatures that could lead to ice on the sensor (for example clouds). The duration of defrosting (which occurs once in a while, usually between 1 and 3 times in a TX cycle depending on the interval and some TX modes) can be set with `defrostingTime`.
-
-
+Vaisala implemented heaters in the humidity module. Their use (apart from the ground-check) is to prevent from condensation and frost on the humidity sensor. The NFW firmware takes advantage of it by regularly heating up the sensor for (by default) 3.5 seconds at high power, to take off any frost/water/ice/anything that gets on it. It can be enabled with `humidityModuleDefrosting` (OFF by default!), and activates both above the `defrostingHumidityThreshold` and below `defrostingTemperatureThreshold`. These values should activate the defrosting only in high-humidity environments with low temperatures that could lead to ice on the sensor (for example clouds). The duration of defrosting (which occurs, when the delay is longer than 15 seconds, to prevent the humidity module from heating abnormally) can be set with `defrostingTime`. It shouldn't be long, because high temperature may affect the humidity readings.
 
 ### GPS operation modes
 In mode 0, the GPS is completely disabled, which could be used for example in a weather station. In both versions of sondes, this gives a power consumption of 50-60mA when idle (no radio TX)<br>
@@ -602,6 +616,11 @@ NFW has a feature, that sends the Horus packets as fast as it can for a specifie
 After one of the flights, which had a siginificant GPS interference, we wanted to somehow store some important statistics during the flight. If this feature is enabled, gathered data is sent once every 10 minutes via APRS as an additional data to the comment section.<br>
 Received data can be then decoded into a human-readable format by either pasting it into a very simple Python script ([here](https://github.com/Nevvman18/rs41-nfw/tree/main/fw/nfw-dataRecorder-decoder/decoder.py)), or by looking at this structure:
 `NFW;[maxAlt];[maxSpeed];[maxAscentRate];[maxDescentRate];[maxMainTemperature];[minMainTemperature];[maxInternalTemp];[minInternalTemp];[ledsEnable];[healthStatus];[gpsResetCounter];[beganFlying];[burstDetected];[isHeaterOn];[radioPwrSetting];[currentGPSPowerMode];[radioTemp];[zeroHumidityFrequency];[humidityRangeDelta];`.
+
+### Fox hunting mode
+NFW contains a fox hunting mode. It minimises the power consumption and transmits using 4 different modes. <br>
+`foxHuntFmMelody` transmits a short melody a couple of times in NFM modulation, which can be received by many radios. `foxHuntCwTone` is a continuous wave tone, like a pip, lasting 10s. `foxHuntMorseMarker` transmits a morse sentence also using CW, the text can be changed in `foxMorseMsg`. The last one is also a morse sentence (`foxMorseMsgVbat`), but occurs only when the battery is below the `vBatWarnValue`, where can for example specify additional coordinates of the transmitter. Power handler is working in this mode, meaning that the sonde can turn OFF when the battery voltage is below a specified threshold. The battery voltage is also sent on the end of the morse message.
+
 
 ## Final words
 
