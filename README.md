@@ -78,6 +78,7 @@ See: [hw/README.md](./hw/README.md)
 
 
 ## Firmware changelog
+* `v40` - now the `referenceHeating` option works like in the Vaisala firmware, maintaing temperature around 18*C.
 * `v39` - performance improvements, minor changes
 * `v38` - bugfix for delay variable initialization, which could lead to overflow if set at 65 seconds or higher
 * `v37` - fox hunting mode, which can transmit a melody over NFM, CW pip, CW morse with additional message contents of location below voltage warning and battery voltage reporting, this mode operates in as low power consumption as possible (measurement circuits disabled, heaters disabled, GPS disabled, radio sleeping between transmissions). The gpsSpeed value in Horus v2 payload is now reported in km/h (instead of m/s as before). Small changes in startup and calibration procedure.

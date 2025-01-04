@@ -227,19 +227,6 @@ bool ubloxGpsAirborneMode = true; //sets the uBlox GPS module to the Airborne 1G
 
 
 ```cpp
-int refHeatingMode = 0; //0 - off, 1 - auto, 2 - always on
-int refHeaterAutoActivationHeight = 0; //set to 0 to disable auto heater enable above set level, if other than 0 then it means height above which the heater gets auto enabled
-unsigned long heaterWorkingTimeSec = 600; //heater heating time
-unsigned long heaterCooldownTimeSec = 3; //heater cooldown time after heating process
-int autoHeaterThreshold = 6; //auto heater temperature threshold, WARNING! If rtty used baud is faster than 45bdr, the threshold should be at 14*C to prevent the radio from loosing PPL-lock, best would be even to set the heating to always on. If only horus mode is used, it is not mandatory, altough for standard flights that dont require more than 12h of operation the 6*C is advised for defrosting and keeping the internals slightly above ice temperature.
-int refHeaterCriticalDisableTemp = 70; //heater critical temp which disables the heating if exceeded
-int refHeaterCriticalReenableTemp = 65; //heater temperature at which heating gets re-enabled after being cut down due to too high temperature
-```
-These are the heater settings. The heater operation is described below or by clicking [here](#heater-algorithm). The settings should be self-explanatory, like all the previous ones. <br>
-
-
-
-```cpp
 int gpsNmeaMsgWaitTime = 1200; //waiting time for gps message
 ```
 The `gpsNmeaMsgWaitTime` in ms sets the time that the device will wait for the GPS UART message to come. For a standard 1Hz GPS, it should be set somewhere between 1100ms and 1500ms, depending on the GPS internal refresh rate settings.<br>
@@ -278,7 +265,6 @@ unsigned long humidityCalibrationTimeout = 300000; //calibration timeouts if it 
 int humidityCalibrationMeasurementTemperature = 95; //minimum sensor temperature, at which the calibration function takes measurements
 int humidityCalibrationHeatingTemperature = 115; //maximum temperature of heating element during calibration (should be higher than 100 + some margin)
 bool referenceHeating = false; //This option enables slight warming up the reference heating resistors. When enabled, this should give just a slight improvement in temperature readings accuracy, increasing the power consumption a bit (suggested with 2xAA batteries)
-int referenceHeatingThreshold = -3; //The reference heaters will start working below this threshold.
 bool humidityModuleDefrosting = true; //This option enables the defrosting of humidity module
 int defrostingTemperatureThreshold = 0; //Below this temperature the defrosting occurs
 int defrostingHumidityThreshold = 80; //High humidity environment to activate the defrosting
@@ -596,7 +582,7 @@ Other methods of reading humidity probably aren't worth a while, and this method
 
 #### Reference heating
 The firmware uses reference resistors (like in factory) placed on the cut-out part of the PCB to calilbrate the temperature measurements. Their parameters change slightly under very low temperatures, so to compensate for that, Vaisala implemented mechanisms for heating them.<br>
-If you want to achieve a very slightly better accuracy of the temperature readings (only use this with 2xAA batteries due to higher consumption), you can activate this by the setting `referenceHeating` (OFF by default). The heating of the resistors will be enabled under the `referenceHeatingThreshold`, and the default one should work just fine. The heating algorithm uses different power levels for different temperatures to save some power during its operation.
+If you want to achieve a very slightly better accuracy of the temperature readings (only use this with 2xAA batteries due to higher consumption), you can activate this by the setting `referenceHeating` (OFF by default). The function will maintain a stable temperature of the cut-out part of the PCB, at around 18*C. The heating algorithm uses different power levels for different temperatures to save some power during its operation.
 
 #### Automatic sensor defrosting
 Vaisala implemented heaters in the humidity module. Their use (apart from the ground-check) is to prevent from condensation and frost on the humidity sensor. The NFW firmware takes advantage of it by regularly heating up the sensor for (by default) 3.5 seconds at high power, to take off any frost/water/ice/anything that gets on it. It can be enabled with `humidityModuleDefrosting` (OFF by default!), and activates both above the `defrostingHumidityThreshold` and below `defrostingTemperatureThreshold`. These values should activate the defrosting only in high-humidity environments with low temperatures that could lead to ice on the sensor (for example clouds). The duration of defrosting (which occurs, when the delay is longer than 15 seconds, to prevent the humidity module from heating abnormally) can be set with `defrostingTime`. It shouldn't be long, because high temperature may affect the humidity readings.
