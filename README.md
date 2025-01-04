@@ -42,10 +42,10 @@ For more details about HAB and sonde hunting, please look on google and social m
     * PIP
         * Beacon operation, transmitting short beep with a specified interval, which could be used as a foxhunting TX device
 * Thorough support of RS41 hardware, including GPS, radio, power circuitry, reference heating etc. ...and:
-* Support for **onboard boom sensors**, including **temperature and humidity** sensors
+* Support for **onboard boom sensors**, including **temperature and humidity** sensors. Pressure *estimation* (like SG models).
 * Detailed in-built **debugging** features via LED status and serial messages
 * Onboard **button** allowing user to change different operation modes and parameters 'in-flight'
-* **Safety features**, including GPS watchdog and position improvement (these two improve flights in environments with interference/noise), battery voltage and temperature protection, sensors defrosting
+* **Safety features**, including GPS watchdog and position improvement (these two improve flights in environments with interference/noise), battery voltage and temperature protection, sensors defrosting and condensation prevention
 * Support for extending hardware capabilities, including external I2C or UART sensors - including **OIF411**
 * **Power saving** features, including GPS power management (together with powersaving modes and complete disable for stationary use cases) and automatic radio adjusting
 * **User-friendly** firmware and IDE allows users to easily customimze the device operation
@@ -78,6 +78,7 @@ See: [hw/README.md](./hw/README.md)
 
 
 ## Firmware changelog
+* `v41` - PWM humidity sensor heating, just like in the Vaisala firmware, which maintains the humidity module temperature ~5K above air temperature (by default). References heating improvement, which maintains the temperature more stabily and using 3 different power levels for power saving and efficiency. Improved calibration function based on variable heating power, speeding up the process. Pressure estimation (like in RS41-SG models?, here based on altitude, temperature and RH) sent via Horus and APRS WX packets. APRS coordinates conversion script adjustment based on RS41ng function. 
 * `v40` - now the `referenceHeating` option works like in the Vaisala firmware, maintaing temperature around 18*C.
 * `v39` - performance improvements, minor changes
 * `v38` - bugfix for delay variable initialization, which could lead to overflow if set at 65 seconds or higher

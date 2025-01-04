@@ -264,11 +264,8 @@ bool zeroHumidityCalibration = true; //if you don't know how to calibrate the va
 unsigned long humidityCalibrationTimeout = 300000; //calibration timeouts if it can't finish in (by default) 5 minutes (300000 milliseconds)
 int humidityCalibrationMeasurementTemperature = 95; //minimum sensor temperature, at which the calibration function takes measurements
 int humidityCalibrationHeatingTemperature = 115; //maximum temperature of heating element during calibration (should be higher than 100 + some margin)
-bool referenceHeating = false; //This option enables slight warming up the reference heating resistors. When enabled, this should give just a slight improvement in temperature readings accuracy, increasing the power consumption a bit (suggested with 2xAA batteries)
-bool humidityModuleDefrosting = true; //This option enables the defrosting of humidity module
-int defrostingTemperatureThreshold = 0; //Below this temperature the defrosting occurs
-int defrostingHumidityThreshold = 80; //High humidity environment to activate the defrosting
-int defrostingTime = 3500; //How long the defrosting works in ms
+bool referenceHeating = true; //This option enables slight warming up the reference heating resistors. This function works with the same method as the Vaisala firmware - maintaing temperature > 20*C of the cut out. When enabled, this should give just a slight improvement in temperature readings accuracy, increasing the power consumption a bit (suggested with 2xAA batteries
+bool humidityModuleHeating = false; //This option enables the defrosting of humidity module and 'prevents condensation'. This function works the same as in Vaisala firmware, keeping the module slightly warmer than air, 5K above air temperature.
 ```
 The humidity measurement using an onboard sensor can be enabled here. Whole process of usage and calibration is described in [sensor boom tab](#sensor-boom). The comments of the variables describe each.<br>
 
@@ -501,8 +498,8 @@ This project uses Horus v2 binary format, with 32 byte message length. This tabl
 | Temp             	| Thermistor temperature integer                                                 	                  |
 | vertical V.       | vVCalc - vertical velocity calculated                          	                                  |
 | extTemperature   	| External temperature integer (from sensor boom)                                         	        |
-| dummy2           	| empty                                           	                                                |
-| dummy4           	| empty                                          	                                                  |
+| humidity        	| humidity                                         	                                                |
+| pressure        	| Pressure (estimated - no sensor support now)   	                                                  |
 | deviceDebugState  | deviceDebugState       	                                                                          |
 
 <br>
@@ -585,7 +582,10 @@ The firmware uses reference resistors (like in factory) placed on the cut-out pa
 If you want to achieve a very slightly better accuracy of the temperature readings (only use this with 2xAA batteries due to higher consumption), you can activate this by the setting `referenceHeating` (OFF by default). The function will maintain a stable temperature of the cut-out part of the PCB, at around 18*C. The heating algorithm uses different power levels for different temperatures to save some power during its operation.
 
 #### Automatic sensor defrosting
-Vaisala implemented heaters in the humidity module. Their use (apart from the ground-check) is to prevent from condensation and frost on the humidity sensor. The NFW firmware takes advantage of it by regularly heating up the sensor for (by default) 3.5 seconds at high power, to take off any frost/water/ice/anything that gets on it. It can be enabled with `humidityModuleDefrosting` (OFF by default!), and activates both above the `defrostingHumidityThreshold` and below `defrostingTemperatureThreshold`. These values should activate the defrosting only in high-humidity environments with low temperatures that could lead to ice on the sensor (for example clouds). The duration of defrosting (which occurs, when the delay is longer than 15 seconds, to prevent the humidity module from heating abnormally) can be set with `defrostingTime`. It shouldn't be long, because high temperature may affect the humidity readings.
+Vaisala implemented heaters in the humidity module. Their use (apart from the ground-check) is to prevent from condensation and frost on the humidity sensor. The NFW firmware takes advantage of it by regularly heating up the sensor for (by default) 3.5 seconds at high power, to take off any frost/water/ice/anything that gets on it. It can be enabled with `humidityModuleDefrosting` (OFF by default!), and activates both above the `defrostingHumidityThreshold` and below `defrostingTemperatureThreshold`. These values should activate the defrosting only in high-humidity environments with low temperatures that could lead to water or ice on the sensor (for example clouds). Now, the sonde continuously maintains its temperature 5K (5*C) above air temperature. The algorithm ensures the temperature is stable and power consumption adjusts accordingly, using PWM.
+
+#### Pressure reading
+Currently, the pressure sensor board (RPM411) isn't supported, so can be detached. However, the NFW calculates dry air pressure from various factors, including temperature, altitude and relative humidity. This allows it to estimate the pressure, just like in RS41-SG models. It isn't the most accurate formula, but should be just enough for amateur use.
 
 ### GPS operation modes
 In mode 0, the GPS is completely disabled, which could be used for example in a weather station. In both versions of sondes, this gives a power consumption of 50-60mA when idle (no radio TX)<br>
