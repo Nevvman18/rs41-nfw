@@ -231,7 +231,7 @@ int humidityCalibrationMeasurementTemperature = 95; //minimum sensor temperature
 int humidityCalibrationHeatingTemperature = 115; //maximum temperature of heating element during calibration (should be higher than 100 + some margin)
 bool referenceHeating = true; //This option enables slight warming up the reference heating resistors. This function works with the same method as the Vaisala firmware - maintaing temperature > 18*C of the cut out. When enabled, this should give just a slight improvement in temperature readings accuracy, increasing the power consumption a bit (suggested with 2xAA batteries)
 bool humidityModuleDefrosting = false; //This option enables the defrosting of humidity module
-int defrostingTemperatureThreshold = 15; //Below this temperature the defrosting occurs
+int defrostingTemperatureThreshold = -5; //Below this temperature the defrosting occurs
 int defrostingHumidityThreshold = 80; //High humidity environment to activate the defrosting
 int defrostingTime = 3500; //How long the defrosting works in ms
 
