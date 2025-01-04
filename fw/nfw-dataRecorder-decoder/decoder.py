@@ -4,6 +4,7 @@ import sys
 GREEN = '\033[32m'
 RED = '\033[31m'
 YELLOW = '\033[33m'
+ORANGE = '\033[38;5;214m'  # ANSI escape code for orange
 RESET = '\033[0m'
 
 def decode_nfw_packet(packet):
@@ -22,13 +23,16 @@ def decode_nfw_packet(packet):
         "gpsResetCounter",
         "beganFlying (1 - yes, 0 - no)",
         "burstDetected (1 - yes, 0 - no)",
-        "isHeaterOn (0 - no, 1 - yes)",
         "radioPwrSetting (0 to 7, power levels of SI4032 in dBm and mW)",
         "currentGPSPowerMode (0 - disabled, 1 - max performance, 2 - powersaving)",
         "radioTemp (°C)",
         "sensorBoomErr (0 - Clear, 1 - ERR)",
         "zeroHumidityFrequency (Hz)",  # New field
-        "humidityRangeDelta (Hz)"      # New field
+        "humidityRangeDelta (Hz)",     # New field
+        "heatingPwmStatus",            # New field
+        "referenceHeaterStatus",       # New field
+        "mvBatU (mV)",                 # New field
+        "referenceAreaTemperature (°C)"  # New field
     ]
 
     # Remove the last semicolon if present
@@ -79,10 +83,6 @@ def decode_nfw_packet(packet):
             value_color = GREEN if value == "1" else RED
             value_text = "YES" if value == "1" else "NO"
             print(f"  {field.split(' ')[0]}: {value_color}{value_text} ({value}){RESET}")
-        elif "isHeaterOn" in field:
-            value_color = GREEN if value == "1" else RED
-            value_text = "YES" if value == "1" else "NO"
-            print(f"  {field.split(' ')[0]}: {value_color}{value_text} ({value}){RESET}")
         elif "currentGPSPowerMode" in field:
             if value == "0":
                 value_text = "Disabled"
@@ -112,7 +112,7 @@ def decode_nfw_packet(packet):
         elif "Temperature" in field or "radioTemp" in field:
             # For temperature fields, append °C
             print(f"  {field.split(' ')[0]}: {value}°C")
-        elif "maxSpeed" in field  in field:
+        elif "maxSpeed" in field:
             # For speed append kph
             print(f"  {field.split(' ')[0]}: {value} km/h")
         elif "maxAscentRate" in field or "maxDescentRate" in field:
@@ -137,13 +137,42 @@ def decode_nfw_packet(packet):
         elif "humidityRangeDelta" in field:
             # Handle the humidityRangeDelta field (in Hz)
             print(f"  {field.split(' ')[0]}: {value} Hz")
+        elif "heatingPwmStatus" in field:
+            # Decode heating PWM status with color
+            pwm_value = int(value)
+            if pwm_value == 0:
+                print(f"  Humidity heating: {GREEN}L: OFF | H: OFF{RESET}")
+            elif pwm_value <= 100:
+                print(f"  Humidity heating: {ORANGE}L: ON {pwm_value}%{RESET} | {GREEN}H: OFF{RESET}")
+            elif pwm_value <= 200:
+                high_power = pwm_value - 100
+                print(f"  Humidity heating: {ORANGE}L: ON 100%{RESET} | {RED}H: ON {high_power}%{RESET}")
+            else:
+                print(f"  Humidity heating: {GREEN}L: OFF | H: OFF{RESET}")
+        elif "referenceHeaterStatus" in field:
+            # Decode reference heater status with color
+            heater_status_map = {
+                "0": (GREEN, "OFF"),
+                "1": (YELLOW, "Low Power"),
+                "2": (ORANGE, "Medium Power"),
+                "3": (RED, "High Power")
+            }
+            color, status = heater_status_map.get(value, (RESET, "Unknown"))
+            print(f"  {field.split(' ')[0]}: {color}{status} ({value}){RESET}")
+        elif "mvBatU" in field:
+            # Display battery voltage in mV
+            print(f"  {field.split(' ')[0]}: {value} mV")
+        elif "referenceAreaTemperature" in field:
+            # Handle the reference area temperature
+            print(f"  {field.split(' ')[0]}: {value}°C")
         else:
             print(f"  {field.split(' ')[0]}: {value}")
 
 if __name__ == "__main__":
     # Read input from the terminal
-    print("Enter the dataRecorder packet (example: 'NFW;3472;20;15;-15;0;0;30;2;0;0;4;1;0;0;7;2;0;0;35123;1000;' ): ")
+    print("Enter the dataRecorder packet (example: 'NFW;3472;20;15;-15;0;0;30;2;0;0;4;1;0;7;2;0;0;35123;1000;98;2;2986;25;'): ")
     packet = input().strip()
 
     # Call the decoder
     decode_nfw_packet(packet)
+

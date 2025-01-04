@@ -601,7 +601,7 @@ NFW has a feature, that sends the Horus packets as fast as it can for a specifie
 ### dataRecorder feature
 After one of the flights, which had a siginificant GPS interference, we wanted to somehow store some important statistics during the flight. If this feature is enabled, gathered data is sent once every 10 minutes via APRS as an additional data to the comment section.<br>
 Received data can be then decoded into a human-readable format by either pasting it into a very simple Python script ([here](https://github.com/Nevvman18/rs41-nfw/tree/main/fw/nfw-dataRecorder-decoder/decoder.py)), or by looking at this structure:
-`NFW;[maxAlt];[maxSpeed];[maxAscentRate];[maxDescentRate];[maxMainTemperature];[minMainTemperature];[maxInternalTemp];[minInternalTemp];[ledsEnable];[healthStatus];[gpsResetCounter];[beganFlying];[burstDetected];[isHeaterOn];[radioPwrSetting];[currentGPSPowerMode];[radioTemp];[zeroHumidityFrequency];[humidityRangeDelta];`.
+`NFW;[maxAlt];[maxSpeed];[maxAscentRate];[maxDescentRate];[maxMainTemperature];[minMainTemperature];[maxInternalTemp];[minInternalTemp];[ledsEnable];[healthStatus];[gpsResetCounter];[beganFlying];[burstDetected];[radioPwrSetting];[currentGPSPowerMode];[radioTemp];[zeroHumidityFrequency];[humidityRangeDelta];[heatingPwmStatus];[referenceHeaterStatus];[mVBatU];[readThermistorTemp]`.
 
 ### Fox hunting mode
 NFW contains a fox hunting mode. It minimises the power consumption and transmits using 4 different modes. <br>
