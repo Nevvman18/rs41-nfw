@@ -228,9 +228,9 @@ int humidityCalibrationHeatingTemperature = 125; //maximum temperature of heatin
 bool referenceHeating = false; //This option enables slight warming up the reference heating resistors. This function works with the same method as the Vaisala firmware - maintaing temperature > 18*C of the cut out. When enabled, this should give just a slight improvement in temperature readings accuracy, increasing the power consumption a bit (suggested with 2xAA batteries)
 bool humidityModuleHeating = false; //This option enables the defrosting of humidity module and 'prevents condensation'. This function works the same as in Vaisala firmware, keeping the module slightly warmer than air, 5K above air temperature.
 int humidityModuleHeatingAmount = 5; //algorithms will keep the temperature by this number more than air temperature
-int heatingPwmUpperLimit = 255; //These three values shouldn't be changed, unless you know what they mean
-int heatingPwmCurrentValue = 15; //default from start value
-int heatingPwmLowerLimit = 10;
+double heatingPwmUpperLimit = 255; //These three values shouldn't be changed, unless you know what they mean
+double heatingPwmCurrentValue = 15; //default from start value
+double heatingPwmLowerLimit = 10;
 
 
 //Radio transmission
@@ -3417,11 +3417,11 @@ void heatingHandler(bool referenceHeatingEnabledNow, bool humidityModuleHeatingE
     else if (temperatureDifference > 2.8) {
       heatingPwmCurrentValue = min(heatingPwmCurrentValue + 3, heatingPwmUpperLimit);
     }
-    else if (temperatureDifference > 2.2) {
-      heatingPwmCurrentValue = min(heatingPwmCurrentValue + 2, heatingPwmUpperLimit);
+    else if (temperatureDifference > 2) {
+      heatingPwmCurrentValue = min(heatingPwmCurrentValue + 2.2, heatingPwmUpperLimit);
     }
-    else if (temperatureDifference > 1.5) {
-      heatingPwmCurrentValue = min(heatingPwmCurrentValue + 1, heatingPwmUpperLimit);
+    else if (temperatureDifference > 1) {
+      heatingPwmCurrentValue = min(heatingPwmCurrentValue + 1.5, heatingPwmUpperLimit);
     }
     else if (temperatureDifference < -8) {
       heatingPwmCurrentValue = max(heatingPwmCurrentValue - 8, heatingPwmLowerLimit);
@@ -3429,11 +3429,11 @@ void heatingHandler(bool referenceHeatingEnabledNow, bool humidityModuleHeatingE
     else if (temperatureDifference < -4) {
       heatingPwmCurrentValue = max(heatingPwmCurrentValue - 4, heatingPwmLowerLimit);
     }
-    else if (temperatureDifference < -2.2) {
-      heatingPwmCurrentValue = max(heatingPwmCurrentValue - 2, heatingPwmLowerLimit);
+    else if (temperatureDifference < -2) {
+      heatingPwmCurrentValue = max(heatingPwmCurrentValue - 2.2, heatingPwmLowerLimit);
     }
-    else if (temperatureDifference < -1.5) {
-      heatingPwmCurrentValue = max(heatingPwmCurrentValue - 1, heatingPwmLowerLimit);
+    else if (temperatureDifference < -1) {
+      heatingPwmCurrentValue = max(heatingPwmCurrentValue - 1.5, heatingPwmLowerLimit);
     }
     else {
         // Small deviations, stabilize PWM or leave unchanged
