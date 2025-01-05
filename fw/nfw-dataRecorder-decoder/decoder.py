@@ -140,7 +140,7 @@ def decode_nfw_packet(packet):
         elif "heatingPwmStatus" in field:
             # Decode heating PWM status with color
             pwm_value = int(value)
-            if 0 <= pwm_value <= 255:
+            if 0 < pwm_value <= 255:
                 print(f"  Humidity heating power: {ORANGE}L: ON {pwm_value}/255{RESET} | {GREEN}H: OFF{RESET}")
             elif 256 <= pwm_value <= 500:
                 high_power = pwm_value - 255
