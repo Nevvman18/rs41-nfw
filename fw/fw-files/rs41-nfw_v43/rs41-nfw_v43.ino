@@ -3417,10 +3417,10 @@ void heatingHandler(bool referenceHeatingEnabledNow, bool humidityModuleHeatingE
     else if (temperatureDifference > 2.8) {
       heatingPwmCurrentValue = min(heatingPwmCurrentValue + 3, heatingPwmUpperLimit);
     }
-    else if (temperatureDifference > 2) {
+    else if (temperatureDifference > 2.2) {
       heatingPwmCurrentValue = min(heatingPwmCurrentValue + 2, heatingPwmUpperLimit);
     }
-    else if (temperatureDifference > 1) {
+    else if (temperatureDifference > 1.5) {
       heatingPwmCurrentValue = min(heatingPwmCurrentValue + 1, heatingPwmUpperLimit);
     }
     else if (temperatureDifference < -8) {
@@ -3429,10 +3429,10 @@ void heatingHandler(bool referenceHeatingEnabledNow, bool humidityModuleHeatingE
     else if (temperatureDifference < -4) {
       heatingPwmCurrentValue = max(heatingPwmCurrentValue - 4, heatingPwmLowerLimit);
     }
-    else if (temperatureDifference < -2) {
+    else if (temperatureDifference < -2.2) {
       heatingPwmCurrentValue = max(heatingPwmCurrentValue - 2, heatingPwmLowerLimit);
     }
-    else if (temperatureDifference < -1) {
+    else if (temperatureDifference < -1.5) {
       heatingPwmCurrentValue = max(heatingPwmCurrentValue - 1, heatingPwmLowerLimit);
     }
     else {
