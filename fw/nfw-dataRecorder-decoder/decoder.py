@@ -14,10 +14,10 @@ def decode_nfw_packet(packet):
         "maxSpeed (km/h)",
         "maxAscentRate (m/s)",
         "maxDescentRate (m/s)",
-        "maxMainTemperature (°C)",
-        "minMainTemperature (°C)",
-        "maxInternalTemperature (°C)",
-        "minInternalTemperature (°C)",
+        "maxMainTemperature (\u00b0C)",
+        "minMainTemperature (\u00b0C)",
+        "maxInternalTemperature (\u00b0C)",
+        "minInternalTemperature (\u00b0C)",
         "ledsEnable (1 - yes, 0 - no)",
         "status (0 - ok, 1 - warn, 2 - err)",
         "gpsResetCounter",
@@ -25,14 +25,14 @@ def decode_nfw_packet(packet):
         "burstDetected (1 - yes, 0 - no)",
         "radioPwrSetting (0 to 7, power levels of SI4032 in dBm and mW)",
         "currentGPSPowerMode (0 - disabled, 1 - max performance, 2 - powersaving)",
-        "radioTemp (°C)",
+        "radioTemp (\u00b0C)",
         "sensorBoomErr (0 - Clear, 1 - ERR)",
         "zeroHumidityFrequency (Hz)",  # New field
         "humidityRangeDelta (Hz)",     # New field
         "heatingPwmStatus",            # New field
         "referenceHeaterStatus",       # New field
         "mvBatU (mV)",                 # New field
-        "referenceAreaTemperature (°C)"  # New field
+        "referenceAreaTemperature (\u00b0C)"  # New field
     ]
 
     # Remove the last semicolon if present
@@ -106,7 +106,7 @@ def decode_nfw_packet(packet):
                 "6": "17 dBm (~50 mW)",
                 "7": "20 dBm (~100 mW)"
             }
-            value_color = YELLOW  # Here we just use yellow for power levels
+            value_color = GREEN  # Here we just use yellow for power levels
             value_text = power_levels_dBm_mW.get(value, "Unknown Power Level")
             print(f"  {field.split(' ')[0]}: {value_color}{value_text} ({value}){RESET}")
         elif "Temperature" in field or "radioTemp" in field:
@@ -140,15 +140,13 @@ def decode_nfw_packet(packet):
         elif "heatingPwmStatus" in field:
             # Decode heating PWM status with color
             pwm_value = int(value)
-            if pwm_value == 0:
-                print(f"  Humidity heating: {GREEN}L: OFF | H: OFF{RESET}")
-            elif pwm_value <= 100:
-                print(f"  Humidity heating: {ORANGE}L: ON {pwm_value}%{RESET} | {GREEN}H: OFF{RESET}")
-            elif pwm_value <= 200:
-                high_power = pwm_value - 100
-                print(f"  Humidity heating: {ORANGE}L: ON 100%{RESET} | {RED}H: ON {high_power}%{RESET}")
+            if 0 <= pwm_value <= 255:
+                print(f"  Humidity heating power: {ORANGE}L: ON {pwm_value}/255{RESET} | {GREEN}H: OFF{RESET}")
+            elif 256 <= pwm_value <= 500:
+                high_power = pwm_value - 255
+                print(f"  Humidity heating power: {ORANGE}L: ON 255/255{RESET} | {RED}H: ON {high_power}/245{RESET}")
             else:
-                print(f"  Humidity heating: {GREEN}L: OFF | H: OFF{RESET}")
+                print(f"  Humidity heating power: {GREEN}L: OFF | H: OFF{RESET}")
         elif "referenceHeaterStatus" in field:
             # Decode reference heater status with color
             heater_status_map = {
@@ -175,4 +173,3 @@ if __name__ == "__main__":
 
     # Call the decoder
     decode_nfw_packet(packet)
-

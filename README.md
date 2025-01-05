@@ -78,6 +78,7 @@ See: [hw/README.md](./hw/README.md)
 
 
 ## Firmware changelog
+* `v43` - minor improvements
 * `v42` - dataRecorder functionality improvement, which additionally sends power of all 3 heaters, temperatures of radio and references area and battery voltage in mV
 * `v41` - PWM humidity sensor heating, just like in the Vaisala firmware, which maintains the humidity module temperature ~5K above air temperature (by default). References heating improvement, which maintains the temperature more stabily and using 3 different power levels for power saving and efficiency. Improved calibration function based on variable heating power, speeding up the process. Pressure estimation (like in RS41-SG models?, here based on altitude, temperature and RH) sent via Horus and APRS WX packets. APRS coordinates conversion script adjustment based on RS41ng function. 
 * `v40` - now the `referenceHeating` option works like in the Vaisala firmware, maintaing temperature around 18*C.
