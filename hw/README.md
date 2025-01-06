@@ -72,14 +72,11 @@ The sonde can be turned OFF by setting `PA9` MCU pin HIGH, which opens `Q503` N-
 </p><br>
 
 As you can already know, it is a new STMicroelectronics [**STM32L412RBT6**](https://eu.mouser.com/datasheet/2/389/stm32l412c8-1851177.pdf) in a LQFP64 package. <br>
-Like the previous revision, many of the IOs have RC (resistor-capacitor) low pass filters.
+Like the previous revision, many of the IOs have RC (resistor-capacitor) low pass filters. <br>
+**NOTE:** This description is a little bit outdated, all pin definitions of both revisions are available in the firmware file.
 
 ## Frontend
 It is very similar to the previous version, please refer to the *radiosonde_hardware* repo.<br>
-
-For now, I didn't have time to reverse engineer it, apart from searching the pins for the SPST switches and pullup pins (available on the uC connection schematic above).<br>
-
-Only thing worth (for now) mentioning are the reference heating resistors on the cut-out part of the PCB. In my firmware, they are used to slightly heat up the board near it, which contains the 26MHz crystal. The fw contains some wild functions to control it, which is used to limit the radio losing PLL-lock at very low temperatures (this also occured on older boards, like [here](https://github.com/hexameron/RS41HUP?tab=readme-ov-file#warning:~:text=Some%20RS41s%20have,resetting%20the%20chip.) or [here](https://www.areg.org.au/archives/208844#:~:text=Payload%20Testing%20Results,and%209km%20altitude.)). The PLL-lock loss happens mainly on the RTTY modulation using faster than 45 baud rates (lock-loss on Horus TX mode was not observed) when the Si4032 and the crystal cool down below 0°C. The heating logic is described in the operation manual, but worth mentioning is that you could try to improve the heat transfer by mounting to the resistors something heat-conductive (warning - it must not conduct electricity or it will cause a short circuit), like a small thin insulated elastic copper plate.
 
 ## GPS
 The GPS module in the new revision is the component that differs the most - this time it is a **uBlox M10050-KB** in a QFN28 package. The circuit around it seems like a standard implementation, with RF filters and probably an LNA chip, and standard coupling capacitors and RC low pass. <br>
