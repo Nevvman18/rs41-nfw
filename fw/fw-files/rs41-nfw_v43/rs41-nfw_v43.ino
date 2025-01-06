@@ -2455,8 +2455,6 @@ void aprsHabFormat(char* aprsMessage) {
     // Convert gpsAlt from meters to feet
     int gpsAltFeet = static_cast<int>(gpsAlt * 3.28084);
 
-    int gpsSpeedKnots = static_cast<int>(gpsSpeedKph * 0.539957);
-
     // Convert battery voltage to integer (e.g., 3.75V -> 3750mV)
     int wxVoltageFormatted = static_cast<int>(readBatteryVoltage() * 1000);
 
@@ -2471,8 +2469,8 @@ void aprsHabFormat(char* aprsMessage) {
 
     // Format the string into the provided aprsMessage buffer 
     snprintf(aprsMessage, 200,
-        "/%03d/A=%06d/P%dS%dT%02dV%04dC00 %s", //C (climb) is currently empty, because there were some issues with it
-        gpsSpeedKnots, gpsAltFeet, aprsPacketNum, gpsSats, aprsTemperature, wxVoltageFormatted, aprsComment.c_str());
+        "/A=%06d/P%dS%dT%02dV%04dC00 %s", //C (climb) is currently empty, because there were some issues with it
+        gpsAltFeet, aprsPacketNum, gpsSats, aprsTemperature, wxVoltageFormatted, aprsComment.c_str());
 }
 
 void aprsWxFormat(float latitude, float longitude, char* aprsMessage) {
