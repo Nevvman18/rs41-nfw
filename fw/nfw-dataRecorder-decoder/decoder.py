@@ -8,7 +8,7 @@ ORANGE = '\033[38;5;214m'  # ANSI escape code for orange
 RESET = '\033[0m'
 
 def decode_nfw_packet(packet):
-    # Define the expected structure and number of fields, removing the heater operation time
+    # Define the expected structure and number of fields, adding GPS signal anomalies and GPS HDOP
     expected_fields = [
         "maxAlt (m)",
         "maxSpeed (km/h)",
@@ -32,7 +32,9 @@ def decode_nfw_packet(packet):
         "heatingPwmStatus",            # New field
         "referenceHeaterStatus",       # New field
         "mvBatU (mV)",                 # New field
-        "referenceAreaTemperature (\u00b0C)"  # New field
+        "referenceAreaTemperature (\u00b0C)",  # New field
+        "gpsSignalAnomalies (1 - true, 0 - false)",  # New field for GPS signal anomalies
+        "gpsHDOP"  # New field for GPS HDOP
     ]
 
     # Remove the last semicolon if present
@@ -163,13 +165,22 @@ def decode_nfw_packet(packet):
         elif "referenceAreaTemperature" in field:
             # Handle the reference area temperature
             print(f"  {field.split(' ')[0]}: {value}°C")
+        elif "gpsSignalAnomalies" in field:
+            # Handle GPS signal anomalies
+            value_color = RED if value == "1" else GREEN
+            value_text = "Anomalies Detected" if value == "1" else "No Anomalies"
+            print(f"  {field.split(' ')[0]}: {value_color}{value_text} ({value}){RESET}")
+        elif "gpsHDOP" in field:
+            # Handle GPS HDOP
+            print(f"  {field.split(' ')[0]}: {value}")
         else:
             print(f"  {field.split(' ')[0]}: {value}")
 
 if __name__ == "__main__":
     # Read input from the terminal
-    print("Enter the dataRecorder packet (example: 'NFW;3472;20;15;-15;0;0;30;2;0;0;4;1;0;7;2;0;0;35123;1000;98;2;2986;25;'): ")
+    print("Enter the dataRecorder packet (example: 'NFW;28651;20;-2;0;18;0;28;23;1;0;0;0;0;0;1;24;0;39631;950;16;0;2524;21;0;4'): ")
     packet = input().strip()
 
     # Call the decoder
     decode_nfw_packet(packet)
+
