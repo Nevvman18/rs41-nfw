@@ -350,7 +350,14 @@ String foxMorseMsgVbat = "N0CALL N0CALL FOX 11.123456 12.456789";
 float foxHuntFrequency = 434.5;
 unsigned int foxHuntTransmissionDelay = 0; //delay in fox hunting mode between transmission cycles in ms
 ```
-The firmware also contains fox hunting mode. More about it later.
+The firmware also contains fox hunting mode. More about it later. <br>
+
+
+```cpp
+bool enablePressureEstimation = false; //This option enables an algorithm that estimates the pressure of dry air, based on altitude, temperature and humidity. It is NOT read from any pressure sensor, like an RPM411 board (now!), but can give you a fair enough reading, more of an 'order of magnitude'. The pressureValue is sent via Horus v2 and APRS WX
+unsigned long seaLevelPressure = 101325; //Sea level pressure in Pascals, used to correctly estimate the pressure in the upper layers
+```
+This is the config of pressure estimation (like in RS41-SG sondes?). Described in comment and [here](#pressure-reading). <br>
 
 
 
@@ -585,7 +592,7 @@ If you want to achieve a very slightly better accuracy of the temperature readin
 Vaisala implemented heaters in the humidity module. Their use (apart from the ground-check) is to prevent from condensation and frost on the humidity sensor. The NFW firmware takes advantage of it by regularly heating up the sensor for (by default) 3.5 seconds at high power, to take off any frost/water/ice/anything that gets on it. It can be enabled with `humidityModuleDefrosting` (OFF by default!), and activates both above the `defrostingHumidityThreshold` and below `defrostingTemperatureThreshold`. These values should activate the defrosting only in high-humidity environments with low temperatures that could lead to water or ice on the sensor (for example clouds). Now, the sonde continuously maintains its temperature 5K (5*C) above air temperature. The algorithm ensures the temperature is stable and power consumption adjusts accordingly, using PWM. Currently, we observed that it may impact the readings, so it should only be enabled for humid flights (for example dense clouds in different layers).
 
 #### Pressure reading
-Currently, the pressure sensor board (RPM411) isn't supported, so can be detached. However, the NFW calculates dry air pressure from various factors, including temperature, altitude and relative humidity. This allows it to estimate the pressure, just like in RS41-SG models. It isn't the most accurate formula, but should be just enough for amateur use.
+Currently, the pressure sensor board (RPM411) isn't supported, so can be detached. However, the NFW calculates dry air pressure from various factors, including temperature, altitude and relative humidity. This allows it to estimate the pressure, just like in RS41-SG models. It isn't the most accurate formula, but should be just enough for amateur use. The user should input the current `seaLevelPressure` for better accuracy. The whole pressure estimation algorithm can be enabled with `enablePressureEstimation`.
 
 ### GPS operation modes
 In mode 0, the GPS is completely disabled, which could be used for example in a weather station. In both versions of sondes, this gives a power consumption of 50-60mA when idle (no radio TX)<br>

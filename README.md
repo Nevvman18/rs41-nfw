@@ -78,6 +78,7 @@ See: [hw/README.md](./hw/README.md)
 
 
 ## Firmware changelog
+* `v45` - pressure estimation can now be enabled/disabled. Also added what was forgotten - user input of sea level pressure.
 * `v44` - humidity readings accuracy improvement, temperature compensation improvement, GPS abnormalities detection with sending to ground in dataRecorder APRS extended packets, HDOP value in dataRecorder packets, other minor improvements
 * `v43` - minor improvements
 * `v42` - dataRecorder functionality improvement, which additionally sends power of all 3 heaters, temperatures of radio and references area and battery voltage in mV
