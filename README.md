@@ -117,7 +117,7 @@ Incoming features:
 
 ## People responsible for this project
 * Authors
-  * Franek 'nevvman' (no callsign, *yet*)
+  * **Franek SP5FRA 'nevvman'**
 * Contributors - speical thanks to:
   * My dad, for his help in catching the radiosondes and suggestions
   * Erik PA0ESH - helped with lots of issues
