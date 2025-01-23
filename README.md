@@ -78,6 +78,7 @@ See: [hw/README.md](./hw/README.md)
 
 
 ## Firmware changelog
+* `v48` - RTTY format, timing and customization bugfix and enhancements by OM3BC ([issue 15](https://github.com/Nevvman18/rs41-nfw/issues/15)), firmware crash fix ([issue 16](https://github.com/Nevvman18/rs41-nfw/issues/16)), APRS coordinate bugfix by KB8RCO ([issue 17](https://github.com/Nevvman18/rs41-nfw/issues/17)). Improvement in APRS timings.
 * `v47` - watchdog bugfix, which could to a sudden restart of GPS during flight (once every 30 minutes), due to a wrong condition check. Fixed and no problem.
 * `v46` - GPS bugfix, previous flights shouldn't have been affected
 * `v45` - pressure estimation can now be enabled/disabled. Also added what was forgotten - user input of sea level pressure.
@@ -119,17 +120,18 @@ Incoming features:
   * Franek 'nevvman' (no callsign, *yet*)
 * Contributors - speical thanks to:
   * My dad, for his help in catching the radiosondes and suggestions
-  * videobuff - helped with lots of issues
-  * darksidelemm - for help with GPS settings, Horus and sensors
+  * Erik PA0ESH - helped with lots of issues
+  * Mark VK5QI - for help with GPS settings, Horus and sensors
   * zanco PE2BZ - for a test flight and other notes
   * Ludwik SP6MPL - for a few flights and big help in development
   * Mateusz SP3WRO - for test flights, kind words and help in development, and also his team
   * [radioszynka blog](https://radioszynka.pl/) team - for article about this project
-  * PC9DB - TX formats etc.
-  * KB8RCO - big thread about APRS, WX use and others
+  * Mark PC9DB - TX formats etc.
+  * KB8RCO - big thread about APRS (also code to fix coordinate issue), WX use and others
   * whallman DF7PN - much help in discussions
   * Damian SQ2DEF and his team - SQ6KXY, Paweł, Lechu, McXander, wprzyb, Michał, Hubert...
-  * obi7zik
+  * obi7zik - thread about GPS power mode issue
+  * OM3BC - big help in getting the RTTY to finally have a proper format and timings
   * People from *Radiosondy Polska* group - Jarosław, Wojtek... - kind words in a local group argument
 
 
