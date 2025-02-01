@@ -78,6 +78,7 @@ See: [hw/README.md](./hw/README.md)
 
 
 ## Firmware changelog
+* `v49` - issue [18 fix](https://github.com/Nevvman18/rs41-nfw/issues/18). Si4032 temperature measurement change, to accurately measure negative temperatures. Option to calibrate temperature sensors using: manual offset setting, automatic calibration with entered air temperature and automatic calibration based on PCB temperature. Sensor boom diagnostics improvement. Vertical velocity calculation algorithm returns 0 if no fix. Default settings changed slightly. Stability and code structure improvements. Repo versioning fix.
 * `v48` - RTTY format, timing and customization bugfix and enhancements by OM3BC ([issue 15](https://github.com/Nevvman18/rs41-nfw/issues/15)), firmware crash fix ([issue 16](https://github.com/Nevvman18/rs41-nfw/issues/16)), APRS coordinate bugfix by KB8RCO ([issue 17](https://github.com/Nevvman18/rs41-nfw/issues/17)). Improvement in APRS timings.
 * `v47` - watchdog bugfix, which could to a sudden restart of GPS during flight (once every 30 minutes), due to a wrong condition check. Fixed and no problem.
 * `v46` - GPS bugfix, previous flights shouldn't have been affected

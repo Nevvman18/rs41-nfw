@@ -22,7 +22,7 @@
   * [Power management](#power-management)
     * [powerSave features](#powersave-features)
   * [Sensor boom](#sensor-boom)
-    * [Temperature compensation](#temperature-compensation)
+    * [Temperature compensation](#temperature-compensation-and-calibration)
     * [Humidity calibration](#humidity-calibration)
     * [Reference heating](#reference-heating)
     * [Automatic sensor defrosting](#automatic-sensor-defrosting)
@@ -255,6 +255,14 @@ float extHeaterTemperatureCorrectionC = 25;
 bool autoHumidityModuleTemperatureCorrection = true; //should be left at true. The firmware corrects the humidity module temperature readings (which have worse accuracy than the main hook) by comparing the readings with the main temperature hook sensor. Both sensors should be in the same temperature.
 ```
 The sensor boom measruements in the radiosonde can be enabled with `sensorBoomEnable`. Currently, the temperature offsets can be set for both main temperature (characteristic hook; `mainTemperatureCorrectionC`) and the humidity heater temperature sensor (`extHeaterTemperatureCorrectionC`). The humidity heater sensor can automatically calibrate by reading values from the hook sensor, but the hook sensor should be corrected by user.<br>
+
+
+```cpp
+bool autoTemperatureCalibration = false; //This option enables automatic calibration of the air temperature reading based on the method selected below. The process is marked as completed by 3 green LED blinks. If you disable it, you should do the offset calibration your self by the previous 2 values.
+int autoTemperatureCalibrationMethod = 1; //1 - calibration based on the known constant air temperature (for example your room has 24*C and you turn ON the sonde in it, the sonde will correct automatically itself), you MUST then turn ON the sonde in this environment. 2 - based on the average PCB temperature. The PCB temperature should be adapted to the environment temperature. The function corrects the calibration slightly by the self-heating polynomial.
+float environmentStartupAirTemperature = 24;
+```
+These options are explained in comments well, and the process is detailed [below](#temperature-compensation-and-calibration).
 
 
 ```cpp
@@ -565,10 +573,14 @@ The sonde also has an ability to lower the consumption after landing. If enabled
 ### Sensor Boom
 Each RS41 radiosonde has a sensor boom (the shiny elastic part with a characteristic hook). This firmware, being probably the first one, allows to utilize all advanced functions of it. The external temperature is being sent to ground in Horus v2, APRS, APRS WX, morse and RTTY payloads, and the humidity is sent by Horus v2 and APRS WX (by default; APRS can also send it down, just needs a little bit of code mod). The firmware also performs self-tests on the sensor which notify about either external temperature sensor fault, humidity module fault or entire sensor hook problem, both with LED status lights and on the debug UART terminal. <br>
 
-#### Temperature compensation
-Linearity of these sensors is very similiar in each. However, each one has a different temperature offset, which should be corrected by user. <br>
-To compensate for the offset, upload the firmware with sensor hook enabled and, preferebly, with Horus or APRS telemetry. Place the sonde in a stable environemnt and wait for it to boot (you main need to disable `improvedGpsPerformance` and `zeroHumidityCalibration` for now, because they aren't needed now and slow down the startup). Now, when the sonde is transmistting, take another independant temperature sensor, place it near the sonde and wait for it's reading to stabilize. If you have your real temperature measured, observe the sonde readings. Write down the average readings of the temperature (they might fluctuate a 1C or so) and calculate: `(real measurement) - (sonde measurement) = mainTemperatureCorrectionC`. This will be your temperature compensation offset. The calibration is done and you can enter this value into the firmware config. Note - this value is only for this sensor boom, if you want to use another one, you have to correct it another time. If your correction factor is higher than 25, consider changing the sensor hook to another one, because this could indicate a faulty unit. <br>
-If you have enabled the `autoHumidityModuleTemperatureCorrection` you won't have to do this again for the second temperature sensor, which is located in the humidity module (white glass/ceramic plate). The sonde will simply correct it for you.
+#### Temperature compensation and calibration
+Linearity of these sensors is very similiar in each. However, each one has a different temperature offset, which should be corrected by user. There are 3 methods of compensation. Two of them are automatic. <br>
+You can select `autoTemperatureCalibration` and the first method is set by `autoTemperatureCalibrationMethod = 1`. This setting compares the readings to a known value of air temperature, specified in `environmentStartupAirTemperature`. Set this to a temperature, in which the sonde will be turned ON, for example temperature of launch site or your room. When the sonde gets powered ON, the auto calibration begins. This is the most accurate way, together with the way of manual compensation in option 3. The measurement error here is the same as the third method, anywhere between 0 and 1.5*C.
+
+Second method is `autoTemperatureCalibrationMethod = 2`, which means comparing the air temperature redaing to the average PCB temperature. NOTE: the PCB has to match the temperature of the air, for example when the sonde was laying in the room for last 30 minutes, the power ON procedure has also to be done in this room. If it layed outside, then you have to power it ON outside. The calibration process also compensates slightly for self-heating effect and temperature memory effect using a carefully set polynomial. This way is accurate when the PCB has a stabilised temperature near the air temperature. The measurement error here could be anywhere from 0 to 3*C, assuming the PCB temperature is stabilised.
+
+The last, third way to compensate for the offset is the manual offset setting. This option is the most time-consuming and provides similar results to the autoCalibrationMethod = 1. Upload the firmware with sensor hook enabled and, preferebly, with Horus or APRS telemetry. Place the sonde in a stable environemnt and wait for it to boot (you main need to disable `improvedGpsPerformance` and `zeroHumidityCalibration` for now, because they aren't needed now and slow down the startup). Now, when the sonde is transmistting, take another independant temperature sensor, place it near the sonde and wait for it's reading to stabilize. If you have your real temperature measured, observe the sonde readings. Write down the average readings of the temperature (they might fluctuate a 1.5C or so) and calculate: `(real measurement) - (sonde measurement) = mainTemperatureCorrectionC`. This will be your temperature compensation offset. The calibration is done and you can enter this value into the firmware config. Note - this value is only for this sensor boom, if you want to use another one, you have to correct it another time. If your correction factor is higher than 25, consider changing the sensor hook to another one, because this could indicate a faulty unit. <br>
+If you have enabled the `autoHumidityModuleTemperatureCorrection` you won't have to do anything again for the second temperature sensor, which is located in the humidity module (white glass/ceramic plate). The sonde will simply correct it for you.
 
 #### Humidity calibration
 NFW reads the humidity in a simpler way than originally. This approach was chosen because of 2 reasons - more accurate readings would require from user to read Vaisala calibration values using a script from for example SondeHub (which gathers that telemetry data) and write into configuration of NFW **a lot** of values and data arrays (probably around 70 lines of raw factors), and also because I simply couldn't get it to work :). So instead, the sonde will make a zero humidity check (like originally before launch), calculate some values and using them and the compensation by air temperature will calculate the RH. <br>
