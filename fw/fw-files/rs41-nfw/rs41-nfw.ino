@@ -1,3 +1,16 @@
+/*
+RS41-NFW - versatile, feature-rich and user-friendly custom firmware for ALL revisions of Vaisala RS41 radiosondes
+Released on GPL-3.0 license.
+Authors: Franek Łada
+
+Version 49 (public, stable)
+
+All code and dependencies used or modified here that don't origin from me are described in code comments and repo details.
+https://github.com/Nevvman18/rs41-nfw
+*/
+
+
+
 //===== Libraries and lib-dependant definitions
 #include "horus_l2.h"
 //#include "horus_l2.cpp"
