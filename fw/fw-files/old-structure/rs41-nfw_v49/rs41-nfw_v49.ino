@@ -3,7 +3,7 @@ RS41-NFW - versatile, feature-rich and user-friendly custom firmware for ALL rev
 Released on GPL-3.0 license.
 Authors: Franek Łada
 
-Version 50 (public, stable)
+Version 49 (public, stable)
 
 All code and dependencies used or modified here that don't origin from me are described in code comments and repo details.
 https://github.com/Nevvman18/rs41-nfw
@@ -143,7 +143,7 @@ float horusSecondTransmissionFrequencyMhz = 434.714;
 unsigned long horusSecondTransmissionWait = 0;           //same
 unsigned long powerSaveHorusSecondTransmissionWait = 0;  //same
 unsigned int horusSecondTransmissionRepeatCount = 1;
-unsigned long horusSecondTransmissionInterval = 0;  //set to 0 for default delay (defined in horusWait or powerSaveHorusWait), otherwise will deterimne delay between transmissions if used with repeatCount > 1 (more than 1 teransmission in cycle)
+unsigned long horusSecondTransmissionInterval = 0;  //set to 0 for default delay (defined in defaultModeChangeDelay), otherwise will deterimne delay between first and second Horus transmission
 
 bool aprsEnable = true;
 float aprsFrequencyMhz = 432.5;
@@ -223,10 +223,8 @@ bool sensorBoomEnable = true;  //enables sensor boom measurement  and diagnostic
 
 float mainTemperatureCorrectionC = 3; //For most accurate readings, compensate by this correction factor and compare with another thermometer. This can be calibrated with autoTemperatureCalibration. The sensor booms are nearly similairly linear between each other and the only difference between them is the temperature offset here.
 float extHeaterTemperatureCorrectionC = 35; //this can be automatially corrected by activating the option below
-float lowTempCorrectionFactor = 1.15; //linearity correction factor for negative temperatures, going from 1.0 at 0*C and all the way to the specified value at -50*C
-float lowTempCorrectionFactorLimit = -30; //Use a fixed value after this instead of a factor
 
-bool autoTemperatureCalibration = false; //This option enables automatic calibration of the air temperature reading based on the method selected below. The process is marked as completed by 3 green LED blinks. If you disable it, you should do the offset calibration your self by the previous 2 values. The process is described also in the operation manual.
+bool autoTemperatureCalibration = false; //This option enables automatic calibration of the air temperature reading based on the method selected below. The process is marked as completed by 3 green LED blinks. If you disable it, you should do the offset calibration your self by the previous 2 values.
 int autoTemperatureCalibrationMethod = 1; //1 - calibration based on the known constant air temperature (for example your room has 24*C and you turn ON the sonde in it, the sonde will correct automatically itself), you MUST then turn ON the sonde in this environment. 2 - based on the average PCB temperature. The PCB temperature should be adapted to the environment temperature. The function corrects the calibration slightly by the self-heating polynomial.
 float environmentStartupAirTemperature = 24;
 bool autoHumidityModuleTemperatureCorrection = true; //should be left at true. The firmware corrects the humidity module temperature readings (which have worse accuracy than the main hook) by comparing the readings with the main temperature hook sensor. Both sensors should be in the same temperature.
@@ -234,26 +232,17 @@ bool autoHumidityModuleTemperatureCorrection = true; //should be left at true. T
 bool humidityModuleEnable = true; //Setting that enables the support of humidity module
 bool zeroHumidityCalibration = true; //if you don't know how to calibrate the values, leave true. The sonde will heat up the humidity module up to about 100*C and make some measurements
 unsigned int humidityRangeDelta = 950;  //empirical tests average
-float zeroHumidityFrequency = 0; //frequency of humidity sensor at 0%RH. If you measure this manually, you can set it here, if you want to auto calibrate it (prefered method), leave at zero and enable zeroHmidityCalibration.
-float empiricalHumidityLinearityFactor = 1.08; //linearly decreasing correction factor, specified at low humidity and decreases linearly to 1.00 at max humidity, stabilizes the sensitivity of the measurement
 bool humidityCalibrationDebug = false; //after calibration the sonde enters special mode that prints out on serial port the frequencies and a suggested humidityRangeDelta value. After it enters this mode, place the sensor in a 100%RH environment (for example close over a boiling water) and read the rangeDelta. This will give you a higher accuracy of the readings for each sensor boom.
 unsigned long humidityCalibrationTimeout = 300000; //calibration timeouts if it can't finish in (by default) 5 minutes (300000 milliseconds)
 int humidityCalibrationMeasurementTemperature = 105; //minimum sensor temperature, at which the calibration function takes measurements
-int humidityCalibrationHeatingTemperature = 145; //maximum temperature of heating element during calibration (should be higher than 100 + some margin)
+int humidityCalibrationHeatingTemperature = 150; //maximum temperature of heating element during calibration (should be higher than 100 + some margin)
 
-bool reconditioningEnabled = false; //phase before zero-humidity check, lasting for a minute, which heats the sensor to the specified value, to remove impurities and other things from the humidity module before calibration and flight. Suggested with the zero-humidity check. (Also used during the original Vaisala ground check, lasts a couple of minutes and heats the sensor to 180*C)
-unsigned int reconditioningTemperature = 150;
-
-bool referenceHeating = false; //This option enables slight warming up the reference heating resistors. This function works with the same method as the Vaisala firmware - maintaing temperature of around 20*C at the cut out PCB area. When enabled, this should give a notable improvement in temperature readings accuracy, increasing the power consumption a bit. NOTE: suggested with sensor boom and 2xAA batteries.
-int referenceAreaTargetTemperature = 20; //Target temperature of reference area heating. Leave at 20*C to provide accuracy, this is also the way in the original Vaisala firmware.
-bool humidityModuleHeating = false; //This option enables the defrosting of humidity module and 'prevents condensation'. This function works the same as in Vaisala firmware, keeping the module slightly warmer than air, 5K above air temperature. NOTE: May alter the readings.
-int humidityModuleHeatingAmount = 4; //algorithms will keep the temperature by this number more than air temperature [K]
-int heatingPwmUpperLimit = 75; //These three values shouldn't be changed, unless you know what they mean. Max PWM value of humidity module heating
-int heatingPwmCurrentValue = 3; //default start value, should be around the lower limit
-int heatingPwmLowerLimit = 3; //minimum PWM value of heating
-int heatingTemperatureThreshold = 2; //turns on only in conditions where condensation would be really possible, offers more accurate readings
-int heatingHumidityThreshold = 90; //turns on only in conditions where condensation would be really possible
-
+bool referenceHeating = false; //This option enables slight warming up the reference heating resistors. This function works with the same method as the Vaisala firmware - maintaing temperature of around 18*C at the cut out PCB area. When enabled, this should give just a slight improvement in temperature readings accuracy, increasing the power consumption a bit. NOTE: suggested with sensor boom and 2xAA batteries.
+bool humidityModuleHeating = false; //This option enables the defrosting of humidity module and 'prevents condensation'. This function works the same as in Vaisala firmware, keeping the module slightly warmer than air, 5K above air temperature. NOTE: May alter the readings and for now should be used only during very humid flights.
+int humidityModuleHeatingAmount = 5; //algorithms will keep the temperature by this number more than air temperature
+int heatingPwmUpperLimit = 255; //These three values shouldn't be changed, unless you know what they mean
+int heatingPwmCurrentValue = 5; //default from start value
+int heatingPwmLowerLimit = 5;
 
 bool enablePressureEstimation = false; //This option enables an algorithm that estimates the pressure of dry air, based on altitude, temperature and humidity. It is NOT read from any pressure sensor, like an RPM411 board (now!), but can give you a fair enough reading, more of an 'order of magnitude'. The pressureValue is sent via Horus v2 and APRS WX
 unsigned long seaLevelPressure = 101325; //Sea level pressure in Pascals, used to correctly estimate the pressure in the upper layers
@@ -363,7 +352,6 @@ bool burstDetected = false;
 bool recorderInitialized = false;  //not init by default
 bool hasLanded = false;
 bool lowAltitudeFastTxModeEnd = false;
-bool forceHeatingDuringMeasurement = false;
 
 // Sensor boom
 float mainTemperatureFrequency;
@@ -375,6 +363,7 @@ float extHeaterTemperaturePeriod;
 float extHeaterTemperatureResistance;
 float extHeaterTemperatureValue;
 float humidityFrequency;
+float zeroHumidityFrequency;
 float maxHumidityFrequency;
 int humidityValue;
 float pressureValue;
@@ -2038,11 +2027,7 @@ float convertPt1000ResToTemp(float resistance) {
 }
 
 void sensorBoomHandler() {
-  double tempCorrectionFactor = 1.0;
   if (sensorBoomEnable) {
-    if(!forceHeatingDuringMeasurement) {
-      heatingHandler(false, false);
-    }
     selectReferencesHeater(0);
     // Calibrate the sensor and get the calibration factor
     tempSensorBoomCalibrationFactor = calibrateTempSensorBoom();
@@ -2058,17 +2043,6 @@ void sensorBoomHandler() {
       sensorBoomMainTempError = false;  // No error
       mainTemperatureResistance = calculateSensorBoomResistance(mainTemperatureFrequency, tempSensorBoomCalibrationFactor);
       mainTemperatureValue = convertPt1000ResToTemp(mainTemperatureResistance) + mainTemperatureCorrectionC;
-
-      tempCorrectionFactor = 1.0;
-      if (mainTemperatureValue < 0) {
-          if (mainTemperatureValue >= lowTempCorrectionFactorLimit) {
-              tempCorrectionFactor = 1.0 + ((lowTempCorrectionFactor - 1) / -(lowTempCorrectionFactorLimit)) * (-mainTemperatureValue);
-              mainTemperatureValue *= tempCorrectionFactor;
-          } else {
-              mainTemperatureValue -= lowTempCorrectionFactorLimit * (1 - lowTempCorrectionFactor);
-          }
-      }
-
     }
 
     selectSensorBoom(0, 0);
@@ -2084,17 +2058,6 @@ void sensorBoomHandler() {
       sensorBoomHumidityModuleError = false;  // No error
       extHeaterTemperatureResistance = calculateSensorBoomResistance(extHeaterTemperatureFrequency, tempSensorBoomCalibrationFactor);
       extHeaterTemperatureValue = convertPt1000ResToTemp(extHeaterTemperatureResistance) + extHeaterTemperatureCorrectionC;
-
-      tempCorrectionFactor = 1.0;
-      if (extHeaterTemperatureValue < 0) {
-          if (extHeaterTemperatureValue >= lowTempCorrectionFactorLimit) {
-              tempCorrectionFactor = 1.0 + ((lowTempCorrectionFactor - 1) / -(lowTempCorrectionFactorLimit)) * (-extHeaterTemperatureValue);
-              extHeaterTemperatureValue *= tempCorrectionFactor;
-          } else {
-              extHeaterTemperatureValue -= lowTempCorrectionFactorLimit * (1 - lowTempCorrectionFactor);
-          }
-      }
-
     }
 
     selectSensorBoom(0, 0);
@@ -2116,23 +2079,6 @@ void sensorBoomHandler() {
         humidityValue *= 1.0 + (T2 - extHeaterTemperatureValue) / 220.0; // Additional compensation for T < T2
     }
 
-    if (humidityModuleHeating) { 
-      //correction of humidity reading when the module heating is enabled
-      if (heatingPwmStatus > 4) {
-        if (heatingPwmStatus == 6) { 
-            humidityValue *= 1.07;
-        } 
-        else if (heatingPwmStatus >= 50) {
-            humidityValue *= 1.18;
-        } 
-        else {
-            humidityValue *= (1.07 + (heatingPwmStatus - 4) * (1.18 - 1.07) / (50 - 4));
-        }
-      }
-    }
-
-
-    humidityValue *= empiricalHumidityLinearityFactor - ((empiricalHumidityLinearityFactor - 1) * humidityValue / 100.0); //slight sensitivity correction due to a worse linearity observed in empirical tests
 
 
     if(humidityValue > 105.0) {
@@ -2156,9 +2102,6 @@ void sensorBoomHandler() {
     }
 
     selectSensorBoom(0, 0);
-    if(!forceHeatingDuringMeasurement) {
-      heatingHandler(true, true);
-    }
   }
 }
 
@@ -2202,7 +2145,7 @@ void modeChangeDelayCallback(unsigned long waitTime) {
             buttonHandler();
             deviceStatusHandler();
             powerHandler();
-            heatingHandler(true, false);
+            heatingHandler(false, false, false);
           }
         }
         else {
@@ -2223,9 +2166,10 @@ void modeChangeDelayCallback(unsigned long waitTime) {
             deviceStatusHandler();
             powerHandler();
             gpsHandler();
+            heatingHandler(false, true, false);
             sensorBoomHandler();
+            heatingHandler(true, true, true);
             flightComputing();
-            heatingHandler(true, true);
           }
         }
     }
@@ -2849,7 +2793,9 @@ void flightComputing() {
 void lowAltitudeFastTxMode() {
   while (millis() - lowAltitudeFastTxModeBeginTime < lowAltitudeFastTxDuration && !lowAltitudeFastTxModeEnd) {
     gpsHandler();
+    heatingHandler(false, true, false);
     sensorBoomHandler();
+    heatingHandler(true, true, true);
 
     pressureEstimation();
 
@@ -3123,7 +3069,9 @@ void horusSecondTransmissionTx() {
       deviceStatusHandler();
       gpsHandler();
       powerHandler();
+      heatingHandler(false, true, false);
       sensorBoomHandler();
+      heatingHandler(true, true, true);
 
       modeChangeDelayCallback(horusSecondTransmissionInterval);
 
@@ -3416,74 +3364,8 @@ void temperatureCalibration() {
   
 }
 
-void reconditioningPhase() {
-  forceHeatingDuringMeasurement = true;
-  unsigned long reconBeginMillis = millis();
-  delay(500);
-  while(millis() - reconBeginMillis < 60000) { //1 minute
-    sensorBoomHandler();
-    buttonHandlerSimplified();
-
-    for(int i = 0; i < 3; i++) {
-      orangeLed();
-      delay(100);
-      bothLedOff();
-      delay(100);
-    }
-
-    if(sensorBoomHumidityModuleError) {
-      humidityModuleHeaterPowerControl(0);
-
-      for(int i = 0; i < 5; i++) {
-        redLed();
-        delay(250);
-        bothLedOff();
-        delay(300);
-      }
-
-      calibrationError = true;
-
-      if(xdataPortMode == 1) {
-        xdataSerial.println("[ERR]: Sensor boom measurement error (check boom and connection) - exiting reconditioning...");
-      }
-
-      return;
-    }
-
-
-    if (extHeaterTemperatureValue < reconditioningTemperature - 30) {
-        humidityModuleHeaterPowerControl(500);
-    } 
-    else if (extHeaterTemperatureValue < reconditioningTemperature - 15) {
-        humidityModuleHeaterPowerControl(450);
-    } 
-    else if (extHeaterTemperatureValue < reconditioningTemperature - 5) {
-        humidityModuleHeaterPowerControl(400);
-    } 
-    else if (extHeaterTemperatureValue > reconditioningTemperature + 17) {
-        humidityModuleHeaterPowerControl(255);
-    } 
-    else if (extHeaterTemperatureValue > reconditioningTemperature + 10) {
-        humidityModuleHeaterPowerControl(300);
-    } 
-    else if (extHeaterTemperatureValue > reconditioningTemperature + 5) {
-        humidityModuleHeaterPowerControl(350);
-    } 
-    else {
-        humidityModuleHeaterPowerControl(50);
-    }
-
-
-  }
-
-  forceHeatingDuringMeasurement = false;
-  humidityModuleHeaterPowerControl(0);
-}
-
 void zeroHumidityFrequencyCalibration() {
   orangeLed();
-
-  forceHeatingDuringMeasurement = true;
 
   unsigned long measurement = 0;
   unsigned int measurementCount = 0;
@@ -3643,50 +3525,42 @@ void zeroHumidityFrequencyCalibration() {
   
   calibrationError = false;
   zeroHumidityFrequency = (measurement / measurementCount);
-  forceHeatingDuringMeasurement = false;
+  maxHumidityFrequency = zeroHumidityFrequency - humidityRangeDelta;
 }
 
-void heatingHandler(bool referenceHeatingEnabledNow, bool changeModuleHeaterPowerNow) {
+void heatingHandler(bool referenceHeatingEnabledNow, bool humidityModuleHeatingEnabledNow, bool changeModuleHeaterPowerNow) {
   if(referenceHeating && referenceHeatingEnabledNow) {
-    float cutOutTemp = readThermistorTemp(); //maintaining reference area temperature of ~20*C
-
-    if (cutOutTemp >= referenceAreaTargetTemperature + 3) {
-      selectReferencesHeater(0); // Heating off if temp is too high
-    } 
-    else if (cutOutTemp > referenceAreaTargetTemperature + 1 && cutOutTemp < referenceAreaTargetTemperature + 3) {
-      selectReferencesHeater(1); // Low power when above 21°C
-    } 
-    else if (cutOutTemp <= referenceAreaTargetTemperature + 1 && cutOutTemp > referenceAreaTargetTemperature - 1) {
-      selectReferencesHeater(2); // Default to stable medium power
-    } 
-    else if (cutOutTemp <= referenceAreaTargetTemperature - 1 && cutOutTemp > referenceAreaTargetTemperature - 2) {
-      // If at low power (1), only increase to medium (2), not high (3)
-      if (referenceHeatingStatus < 2) {
-          selectReferencesHeater(2); // Gradual increase from 1 to 2
-      }
-      else {
-          selectReferencesHeater(3); // If already at 2, allow 3
-      }
-    } 
-    else if (cutOutTemp <= referenceAreaTargetTemperature - 2) {
-      selectReferencesHeater(3); // Ensure high power if temp drops too much
+    int cutOutTemp = readThermistorTemp();
+    if(cutOutTemp > 20) {
+      selectReferencesHeater(0); //heating off
+    }
+    else if(cutOutTemp <= 20 && cutOutTemp > 18) {
+      selectReferencesHeater(1); //low power
+    }
+    else if(cutOutTemp <= 18 && cutOutTemp > 15) {
+      selectReferencesHeater(2); //medium power
+    }
+    else if(cutOutTemp <= 10) {
+      selectReferencesHeater(3); //high power
     }
     else {
       selectReferencesHeater(0);
     }
+  }
+  else {
+    selectReferencesHeater(0);
+  }
 
 
-
-
-  if (humidityModuleHeating && changeModuleHeaterPowerNow && !sensorBoomGeneralError && mainTemperatureValue < heatingTemperatureThreshold && humidityValue > heatingHumidityThreshold) {
+  if (humidityModuleHeating && changeModuleHeaterPowerNow && humidityModuleHeatingEnabledNow && !sensorBoomGeneralError && mainTemperatureValue < 0 && humidityValue > 85) {
     float targetTemperature = mainTemperatureValue + humidityModuleHeatingAmount;
     float temperatureDifference = targetTemperature - extHeaterTemperatureValue;
 
     if (temperatureDifference > 6) {
-      heatingPwmCurrentValue = min(heatingPwmCurrentValue + 5, heatingPwmUpperLimit);
+      heatingPwmCurrentValue = min(heatingPwmCurrentValue + 7, heatingPwmUpperLimit);
     }
     else if (temperatureDifference > 4) {
-      heatingPwmCurrentValue = min(heatingPwmCurrentValue + 4, heatingPwmUpperLimit);
+      heatingPwmCurrentValue = min(heatingPwmCurrentValue + 5, heatingPwmUpperLimit);
     }
     else if (temperatureDifference > 2.8) {
       heatingPwmCurrentValue = min(heatingPwmCurrentValue + 3, heatingPwmUpperLimit);
@@ -3698,10 +3572,10 @@ void heatingHandler(bool referenceHeatingEnabledNow, bool changeModuleHeaterPowe
       heatingPwmCurrentValue = min(heatingPwmCurrentValue + 1, heatingPwmUpperLimit);
     }
     else if (temperatureDifference < -8) {
-      heatingPwmCurrentValue = max(heatingPwmCurrentValue - 5, heatingPwmLowerLimit);
+      heatingPwmCurrentValue = max(heatingPwmCurrentValue - 8, heatingPwmLowerLimit);
     }
     else if (temperatureDifference < -4) {
-      heatingPwmCurrentValue = max(heatingPwmCurrentValue - 3, heatingPwmLowerLimit);
+      heatingPwmCurrentValue = max(heatingPwmCurrentValue - 4, heatingPwmLowerLimit);
     }
     else if (temperatureDifference < -2.2) {
       heatingPwmCurrentValue = max(heatingPwmCurrentValue - 2, heatingPwmLowerLimit);
@@ -3716,14 +3590,13 @@ void heatingHandler(bool referenceHeatingEnabledNow, bool changeModuleHeaterPowe
 
     humidityModuleHeaterPowerControl(heatingPwmCurrentValue);
   }
-  else if(humidityModuleHeating && !changeModuleHeaterPowerNow && mainTemperatureValue < heatingTemperatureThreshold && humidityValue > heatingHumidityThreshold) {
+  else if(humidityModuleHeating && humidityModuleHeatingEnabledNow && !changeModuleHeaterPowerNow && mainTemperatureValue < 0 && humidityValue > 85) {
     humidityModuleHeaterPowerControl(heatingPwmCurrentValue);
   }
   else {
     humidityModuleHeaterPowerControl(0);
   }
 
-  }
 }
 
 
@@ -4010,10 +3883,6 @@ void setup() {
     temperatureCalibration();
   }
 
-  if(reconditioningEnabled) {
-    reconditioningPhase();
-  }
-
   if (sensorBoomEnable && humidityModuleEnable && zeroHumidityCalibration) {
     if (xdataPortMode == 1) {
       xdataSerial.println("[info]: Starting humidity calibration...");
@@ -4026,8 +3895,6 @@ void setup() {
       xdataSerial.println(maxHumidityFrequency);
     }
   }
-
-  maxHumidityFrequency = zeroHumidityFrequency - humidityRangeDelta;
 
   if(humidityCalibrationDebug && xdataPortMode == 1) {
     xdataSerial.println("[info]: Entering calibration adjustment mode...");
@@ -4050,7 +3917,9 @@ void setup() {
       delay(50);
       bothLedOff();
 
+      heatingHandler(false, true, false);
       sensorBoomHandler();
+      heatingHandler(true, true, true);
 
       xdataSerial.print("humidityFrequency = ");
       xdataSerial.print(humidityFrequency);
@@ -4077,11 +3946,14 @@ void setup() {
 
 void loop() {
   buttonHandler();
+  heatingHandler(true, true, false);
   deviceStatusHandler();
   serialStatusHandler();
   gpsHandler();
   powerHandler();
+  heatingHandler(false, true, false);
   sensorBoomHandler();
+  heatingHandler(true, true, true);
   flightComputing();
   ultraPowerSaveHandler();
   autoResetHandler();
@@ -4095,48 +3967,50 @@ void loop() {
   pipTx();
   buttonHandler();
   deviceStatusHandler();
-  heatingHandler(true, false);
+  heatingHandler(true, true, false);
 
   modeChangeDelayCallback(pipWaitActual);
   morseTx();
   buttonHandler();
   deviceStatusHandler();
-  heatingHandler(true, false);
+  heatingHandler(true, true, false);
 
   modeChangeDelayCallback(morseWaitActual);
   rttyTx();
   buttonHandler();
   deviceStatusHandler();
-  heatingHandler(true, false);
+  heatingHandler(true, true, false);
 
   modeChangeDelayCallback(rttyWaitActual);
   horusTx();
   buttonHandler();
   deviceStatusHandler();
-  heatingHandler(true, false);
+  heatingHandler(true, true, false);
 
   modeChangeDelayCallback(horusWaitActual);
   horusSecondTransmissionTx();
   buttonHandler();
   deviceStatusHandler();
-  heatingHandler(true, false);
+  heatingHandler(true, true, false);
 
   if(horusEnable && aprsEnable) { //update variables if both important modes are enabled to provide with the latest data
     gpsHandler();
     powerHandler();
+    heatingHandler(false, true, false);
     sensorBoomHandler();
+    heatingHandler(true, true, true);
   }
 
   modeChangeDelayCallback(horusSecondTransmissionWaitActual);
   aprsTx();
   buttonHandler();
   deviceStatusHandler();
-  heatingHandler(true, false);
+  heatingHandler(true, true, false);
 
   aprsDataRecorderTx();
   buttonHandler();
   deviceStatusHandler();
-  heatingHandler(true, false);
+  heatingHandler(true, true, false);
 
 
   if (!radioEnablePA) {
