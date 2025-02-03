@@ -238,11 +238,11 @@ float zeroHumidityFrequency = 0; //frequency of humidity sensor at 0%RH. If you 
 float empiricalHumidityLinearityFactor = 1.08; //linearly decreasing correction factor, specified at low humidity and decreases linearly to 1.00 at max humidity, stabilizes the sensitivity of the measurement
 bool humidityCalibrationDebug = false; //after calibration the sonde enters special mode that prints out on serial port the frequencies and a suggested humidityRangeDelta value. After it enters this mode, place the sensor in a 100%RH environment (for example close over a boiling water) and read the rangeDelta. This will give you a higher accuracy of the readings for each sensor boom.
 unsigned long humidityCalibrationTimeout = 300000; //calibration timeouts if it can't finish in (by default) 5 minutes (300000 milliseconds)
-int humidityCalibrationMeasurementTemperature = 105; //minimum sensor temperature, at which the calibration function takes measurements
-int humidityCalibrationHeatingTemperature = 145; //maximum temperature of heating element during calibration (should be higher than 100 + some margin)
+int humidityCalibrationMeasurementTemperature = 110; //minimum sensor temperature, at which the calibration function takes measurements
+int humidityCalibrationHeatingTemperature = 140; //maximum temperature of heating element during calibration (should be higher than 100 + some margin)
 
 bool reconditioningEnabled = false; //phase before zero-humidity check, lasting for a minute, which heats the sensor to the specified value, to remove impurities and other things from the humidity module before calibration and flight. Suggested with the zero-humidity check. (Also used during the original Vaisala ground check, lasts a couple of minutes and heats the sensor to 180*C)
-unsigned int reconditioningTemperature = 150;
+unsigned int reconditioningTemperature = 145;
 
 bool referenceHeating = false; //This option enables slight warming up the reference heating resistors. This function works with the same method as the Vaisala firmware - maintaing temperature of around 20*C at the cut out PCB area. When enabled, this should give a notable improvement in temperature readings accuracy, increasing the power consumption a bit. NOTE: suggested with sensor boom and 2xAA batteries.
 int referenceAreaTargetTemperature = 20; //Target temperature of reference area heating. Leave at 20*C to provide accuracy, this is also the way in the original Vaisala firmware.
