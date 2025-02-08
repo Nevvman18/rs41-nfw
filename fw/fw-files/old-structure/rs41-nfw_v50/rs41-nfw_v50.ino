@@ -3,7 +3,7 @@ RS41-NFW - versatile, feature-rich and user-friendly custom firmware for ALL rev
 Released on GPL-3.0 license.
 Authors: Franek Łada
 
-Version 51 (public, stable)
+Version 50 (public, stable)
 
 All code and dependencies used or modified here that don't origin from me are described in code comments and repo details.
 https://github.com/Nevvman18/rs41-nfw
@@ -223,7 +223,7 @@ bool sensorBoomEnable = true;  //enables sensor boom measurement  and diagnostic
 
 float mainTemperatureCorrectionC = 3; //For most accurate readings, compensate by this correction factor and compare with another thermometer. This can be calibrated with autoTemperatureCalibration. The sensor booms are nearly similairly linear between each other and the only difference between them is the temperature offset here.
 float extHeaterTemperatureCorrectionC = 35; //this can be automatially corrected by activating the option below
-float lowTempCorrectionFactor = 1.05; //linearity correction factor for negative temperatures, going from 1.0 at 0*C and all the way to the specified value at -50*C
+float lowTempCorrectionFactor = 1.15; //linearity correction factor for negative temperatures, going from 1.0 at 0*C and all the way to the specified value at -50*C
 float lowTempCorrectionFactorLimit = -30; //Use a fixed value after this instead of a factor
 
 bool autoTemperatureCalibration = false; //This option enables automatic calibration of the air temperature reading based on the method selected below. The process is marked as completed by 3 green LED blinks. If you disable it, you should do the offset calibration your self by the previous 2 values. The process is described also in the operation manual.
@@ -233,16 +233,16 @@ bool autoHumidityModuleTemperatureCorrection = true; //should be left at true. T
 
 bool humidityModuleEnable = true; //Setting that enables the support of humidity module
 bool zeroHumidityCalibration = true; //if you don't know how to calibrate the values, leave true. The sonde will heat up the humidity module up to about 100*C and make some measurements
-unsigned int humidityRangeDelta = 1100;  //empirical tests average
+unsigned int humidityRangeDelta = 950;  //empirical tests average
 float zeroHumidityFrequency = 0; //frequency of humidity sensor at 0%RH. If you measure this manually, you can set it here, if you want to auto calibrate it (prefered method), leave at zero and enable zeroHmidityCalibration.
-float empiricalHumidityLinearityFactor = 1.05; //linearly decreasing correction factor, specified at low humidity and decreases linearly to 1.00 at max humidity, stabilizes the sensitivity of the measurement
+float empiricalHumidityLinearityFactor = 1.08; //linearly decreasing correction factor, specified at low humidity and decreases linearly to 1.00 at max humidity, stabilizes the sensitivity of the measurement
 bool humidityCalibrationDebug = false; //after calibration the sonde enters special mode that prints out on serial port the frequencies and a suggested humidityRangeDelta value. After it enters this mode, place the sensor in a 100%RH environment (for example close over a boiling water) and read the rangeDelta. This will give you a higher accuracy of the readings for each sensor boom.
 unsigned long humidityCalibrationTimeout = 300000; //calibration timeouts if it can't finish in (by default) 5 minutes (300000 milliseconds)
-int humidityCalibrationMeasurementTemperature = 110; //minimum sensor temperature, at which the calibration function takes measurements
-int humidityCalibrationHeatingTemperature = 140; //maximum temperature of heating element during calibration (should be higher than 100 + some margin)
+int humidityCalibrationMeasurementTemperature = 105; //minimum sensor temperature, at which the calibration function takes measurements
+int humidityCalibrationHeatingTemperature = 145; //maximum temperature of heating element during calibration (should be higher than 100 + some margin)
 
 bool reconditioningEnabled = false; //phase before zero-humidity check, lasting for a minute, which heats the sensor to the specified value, to remove impurities and other things from the humidity module before calibration and flight. Suggested with the zero-humidity check. (Also used during the original Vaisala ground check, lasts a couple of minutes and heats the sensor to 180*C)
-unsigned int reconditioningTemperature = 145;
+unsigned int reconditioningTemperature = 150;
 
 bool referenceHeating = false; //This option enables slight warming up the reference heating resistors. This function works with the same method as the Vaisala firmware - maintaing temperature of around 20*C at the cut out PCB area. When enabled, this should give a notable improvement in temperature readings accuracy, increasing the power consumption a bit. NOTE: suggested with sensor boom and 2xAA batteries.
 int referenceAreaTargetTemperature = 20; //Target temperature of reference area heating. Leave at 20*C to provide accuracy, this is also the way in the original Vaisala firmware.
@@ -2123,10 +2123,10 @@ void sensorBoomHandler() {
             humidityValue *= 1.07;
         } 
         else if (heatingPwmStatus >= 50) {
-            humidityValue *= 1.12;
+            humidityValue *= 1.18;
         } 
         else {
-            humidityValue *= (1.07 + (heatingPwmStatus - 4) * (1.12 - 1.07) / (50 - 4));
+            humidityValue *= (1.07 + (heatingPwmStatus - 4) * (1.18 - 1.07) / (50 - 4));
         }
       }
     }
@@ -2637,6 +2637,9 @@ void aprsWxFormat(float latitude, float longitude, char* aprsMessage) {
     int wxTemperatureF = static_cast<int>(mainTemperatureValue * 9.0 / 5.0 + 32);
 
     // Additional WX tags (assuming these functions are defined and return valid data)
+    int wxWindCourse = 0;  // Wind course (angle in degrees)
+    int wxWindSpeed = 0;    // Wind speed in mph or kph
+    int wxWindGust = 0;      // Wind gust speed in mph or kph
     int wxHumidity = 0;
 
     if (humidityValue >= 100) {
@@ -2646,12 +2649,6 @@ void aprsWxFormat(float latitude, float longitude, char* aprsMessage) {
     } else {
         wxHumidity = humidityValue; // wxHumidity as percentage
     }
-
-    // Additional WX tags
-    int wxWindCourse = 0;  // Wind course (angle in degrees)
-    int wxWindSpeed = 0;    // Wind speed in mph or kph
-    int wxWindGust = 0;      // Wind gust speed in mph or kph
-    int wxHumidity = 0;
 
     int wxPressure = pressureValue * 10; // Barometric pressure (hPa * 10)
 
@@ -2713,18 +2710,20 @@ void aprsRecorderFormat(char* aprsMessage) {
     int sensorBoomFaultInt = static_cast<int>(sensorBoomFault ? 1 : 0);
     int gpsHdopInt = static_cast<int>(gpsHdop);
 
-    int gpsCurrentModeInt = 0;
-    if(gpsOperationMode == 0) {
-      gpsCurrentModeInt = 0;
-    }
-    else {
-      gpsCurrentModeInt = currentGPSPowerMode;
-    }
-
     // Format the string into the provided aprsMessage buffer (with a 55 character comment)
     snprintf(
         aprsMessage, 200,
+        "/A=%06d/"
+        "P%02d"
+        "S%01d"
+        "T%02d"
+        "V%03d"
         " NFW;%d;%d;%d;%d;%d;%d;%d;%d;%d;%d;%d;%d;%d;%d;%d;%d;%d;%d;%d;%d;%d;%d;%d;%d;%d %s",
+        gpsAltFeet,
+        aprsPacketNum,
+        gpsSats,
+        aprsTemperature,
+        wxVoltageFormatted,
         maxAlt,
         maxSpeed,
         maxAscentRate,
@@ -2739,7 +2738,7 @@ void aprsRecorderFormat(char* aprsMessage) {
         beganFlyingInt,
         burstDetectedInt,
         radioPwrSetting,
-        gpsCurrentModeInt,
+        currentGPSPowerMode,
         radioTemp,
         sensorBoomFaultInt,
         zeroHumidityFrequencyInt,
