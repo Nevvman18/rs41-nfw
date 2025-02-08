@@ -2651,7 +2651,6 @@ void aprsWxFormat(float latitude, float longitude, char* aprsMessage) {
     int wxWindCourse = 0;  // Wind course (angle in degrees)
     int wxWindSpeed = 0;    // Wind speed in mph or kph
     int wxWindGust = 0;      // Wind gust speed in mph or kph
-    int wxHumidity = 0;
 
     int wxPressure = pressureValue * 10; // Barometric pressure (hPa * 10)
 
