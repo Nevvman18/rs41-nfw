@@ -16,7 +16,7 @@ To make things work, the Arduino IDE has to use the STM32 core to provide functi
 * Click on **(IDE) File -> Preferences**
 * In the **Additional Boards Manager URLs**, add the new line with this board manager URL: https://github.com/stm32duino/BoardManagerFiles/raw/main/package_stmicroelectronics_index.json
 * Exit the Preferences window. Then open the **Boards Manager** using the toolbar on the right or by entering **(IDE) Tools -> Board -> Boards Manager...**
-* Search for the **STM32 MCU based boards** *by STMicroelectronics* (search in the top field for the *stm32* phrase), check that the newest stable version is selected (*2.8.1* was tested for now, which is the newest by the day of writing this) and click **Install**.
+* Search for the **STM32 MCU based boards** *by STMicroelectronics* (search in the top field for the *stm32* phrase), check that the newest stable version is selected (*3.2?* was tested for now, which is the newest by the day of writing this) and click **Install**.
 * The installation will take a while, especially on slower computers and network connections. The progress can be seen in the bottom debug window.
 * After the installation is completed, restart the Arduino IDE. Ideally, restart the computer.
 * After this is done, make sure that you have installed the **STM32CubeProgrammer**, because Arduino IDE may query it for uploading the binary to the MCU.
@@ -58,6 +58,7 @@ This depends on the PCB version you have. <br>
   * For newer versions (eg. `RSM414`, `RSM424`):
     * Select the **Generic STM32L4 series** under **(IDE) Tools**, then go to **(IDE) Tools -> Board part number:** and select the newely installed **Generic L412RBTxP**. Don't see it? Make sure you followed the [above](#new-sondes-compiler-configuration-guide) guide.
 * Select the appropriate programmer -  **(IDE) Tools -> Programmer: -> STMicroelectronics ST-LINK**
+* Select compiler optimization config as **Smallest (-Os default)**.
 
 
 ## Additional libraries
