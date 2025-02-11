@@ -3,7 +3,7 @@ RS41-NFW - versatile, feature-rich and user-friendly custom firmware for ALL rev
 Released on GPL-3.0 license.
 Authors: Franek Łada
 
-Version 52 (public, stable)
+Version 51 (public, stable)
 
 All code and dependencies used or modified here that don't origin from me are described in code comments and repo details.
 https://github.com/Nevvman18/rs41-nfw
@@ -2165,7 +2165,6 @@ void sensorBoomHandler() {
 
 void modeChangeDelayCallback(unsigned long waitTime) {
   modeChangeDelayCallbackTimer = txBeginTimeMillis + waitTime;
-  unsigned long lastSensorBoomTime = 0;
 
   if (disableGpsImprovementInFlight && beganFlying) {
     cancelGpsImprovement = true;
@@ -2224,13 +2223,7 @@ void modeChangeDelayCallback(unsigned long waitTime) {
             deviceStatusHandler();
             powerHandler();
             gpsHandler();
-            
-            // Execute sensorBoomHandler every 10 seconds
-            if (millis() - lastSensorBoomTime >= 10000) {
-                sensorBoomHandler();
-                lastSensorBoomTime = millis(); // Update last execution time
-            }
-
+            sensorBoomHandler();
             flightComputing();
             heatingHandler(true, true);
           }
@@ -2658,6 +2651,7 @@ void aprsWxFormat(float latitude, float longitude, char* aprsMessage) {
     int wxWindCourse = 0;  // Wind course (angle in degrees)
     int wxWindSpeed = 0;    // Wind speed in mph or kph
     int wxWindGust = 0;      // Wind gust speed in mph or kph
+    int wxHumidity = 0;
 
     int wxPressure = pressureValue * 10; // Barometric pressure (hPa * 10)
 
@@ -2668,7 +2662,7 @@ void aprsWxFormat(float latitude, float longitude, char* aprsMessage) {
     // Combine Latitude, Longitude, WX data, and additional information into APRS WX format
     // Example: !DDMM.ssN/DDDMM.ssE_tXXX PSTV
     snprintf(aprsMessage, 200,
-         "!%s/%s_c%03ds%03dg%03dt%03dh%02d U=%dmV %s", //NOTE!: if you want to report pressure, add 'b&05d' after humidity tag and a wxPressure variable after wxHumidity variable
+         "!%s/%s_c%03ds%03dg%03dt%03dh%02db%05d T_Ext=%dC T_Int=%dC RH=%d%% Ubat=%dmV, %s",
          latBuffer,       // Formatted Latitude buffer
          lonBuffer,       // Formatted Longitude buffer
          wxWindCourse,    // Wind direction in degrees (0 - 359)
@@ -2676,6 +2670,10 @@ void aprsWxFormat(float latitude, float longitude, char* aprsMessage) {
          wxWindGust,      // Wind gust speed in mph
          wxTemperatureF,  // Temperature in Fahrenheit
          wxHumidity,      // Humidity
+         wxPressure,      // Pressure
+         static_cast<int>(mainTemperatureValue), // External temperature (in Celsius)
+         static_cast<int>(readAvgIntTemp()), // Internal temperature (in Celsius)
+         humidityValue,   // Humidity percentage
          static_cast<int>(readBatteryVoltage() * 1000), // Battery voltage (mV)
          aprsComment.c_str() // APRS comment
     );
