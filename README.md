@@ -25,7 +25,7 @@ But, currently the best way is to utilize a Software-Defined Radio (SDR, for exa
 For more details about HAB and sonde hunting, please look on google and social media, there is a ton of valuable content.
 
 ## RS41-NFW Firmware features
-* **Full support for ALL** RS41 versions (eg. `RSM421`, `RSM414`, `RSM424`), including the new ones with the '4' at the end of the PCB model.
+* **Full support for ALL** RS41 versions (eg. `RSM421`, `RSM412`, `RSM414`, `RSM424`), including the new ones with the '4' at the end of the PCB model.
 * Multiple, customizable transmission modes
     * [**Horus Binary 4FSK v2**](https://github.com/projecthorus/horusdemodlib/wiki)
         * One of the most efficient radio modes for HAB and other simple telemetry designs, allows for decoding of very weak signals
