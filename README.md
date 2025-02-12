@@ -78,6 +78,7 @@ See: [hw/README.md](./hw/README.md)
 
 
 ## Firmware changelog
+* `v53` - timing improvements down to milliseconds, with help of Bernd DL1XH. More talkative UART debug messages.
 * `v52` - heating bug with time management, APRS format improvement
 * `v51` - small corrections and improvements
 * `v50` - issue [20 fix](https://github.com/Nevvman18/rs41-nfw/issues/20) corrected description. Improved accuracy of both temperature and humidity reading based on empirical tests. Added optional reconditioning phase before zero-humidity check. Improved reference area heating and humidity sensor heating control algorithms, allowing to run more smoothly and precisely. More customization options.

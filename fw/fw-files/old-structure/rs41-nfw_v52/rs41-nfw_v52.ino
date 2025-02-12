@@ -3,7 +3,7 @@ RS41-NFW - versatile, feature-rich and user-friendly custom firmware for ALL rev
 Released on GPL-3.0 license.
 Authors: Franek Łada
 
-Version 53 (public, stable)
+Version 52 (public, stable)
 
 All code and dependencies used or modified here that don't origin from me are described in code comments and repo details.
 https://github.com/Nevvman18/rs41-nfw
@@ -20,8 +20,8 @@ TinyGPSPlus gps;
 
 
 //===== Device revision definitions
-#define RSM4x4 //new pcb versions (based on MCU STM32L412RBT6 LQFP64)
-//#define RSM4x2  //old pcb versions, also rsm4x1 (based on MCU STM32F100C8T6B LQFP48)
+//#define RSM4x4 //new pcb versions (based on MCU STM32L412RBT6 LQFP64)
+#define RSM4x2  //old pcb versions, also rsm4x1 (based on MCU STM32F100C8T6B LQFP48)
 
 #ifdef RSM4x4
 bool rsm4x2 = false;
@@ -336,7 +336,7 @@ int radioPwrSetting = defaultRadioPwrSetting;
 float lastGpsAlt;
 unsigned long lastGpsAltMillisTime = 1;
 float vVCalc;
-long long modeChangeDelayCallbackTimer = 0;
+unsigned long modeChangeDelayCallbackTimer = 0;
 unsigned long txBeginTimeMillis = 0;
 bool gpsTimeoutCounterActive = false;
 unsigned long gpsTimerBegin = 0;
@@ -349,8 +349,6 @@ unsigned long lastDataRecorderTransmission = 0;
 unsigned long landingTimeMillis = 0;
 bool cancelGpsImprovement = false;
 bool gpsJamWarning = false;
-bool sensorBoomMeasuredWhileWaiting = false;
-bool gpsMeasuredWhileWaiting = false;
 
 int maxAlt = 0;
 int maxSpeed = 0;
@@ -1410,10 +1408,6 @@ void gpsHandler() {
 
     if(beganFlying && (gpsHdop > 15 || abs(vVCalc) > 300)) {
       gpsJamWarning = true;
-
-      if (xdataPortMode == 1) {
-        xdataSerial.println("[WARN]: GPS Jam warning is active!");
-      }
     }
     else {
       gpsJamWarning = false;
@@ -1424,18 +1418,10 @@ void gpsHandler() {
 
 void shutdownGPS() {
   digitalWrite(GPS_RESET_PIN, LOW);
-
-  if (xdataPortMode == 1) {
-    xdataSerial.println("[info]: GPS shutdown");
-  }
 }
 
 void startGPS() {
   digitalWrite(GPS_RESET_PIN, HIGH);
-
-  if (xdataPortMode == 1) {
-    xdataSerial.println("[info]: GPS is ON");
-  }
 }
 
 void restartGPS() {
@@ -1459,17 +1445,9 @@ void restartGPS() {
   orangeLed();
 
   gpsResetCounter++;
-
-  if (xdataPortMode == 1) {
-    xdataSerial.println("[info]: GPS restart has been issued");
-  }
 }
 
 void initGPS() {
-  if (xdataPortMode == 1) {
-    xdataSerial.println("[info]: GPS settings are being initialized...");
-  }
-
   if (ubloxGpsAirborneMode) {
     if (xdataPortMode == 1) {
       xdataSerial.println("[info] Setting the Airborne 1G (6) GPS dynamic model...");
@@ -1490,10 +1468,6 @@ void initGPS() {
   digitalWrite(GREEN_LED_PIN, LOW);
   delay(50);
   digitalWrite(GREEN_LED_PIN, HIGH);
-  
-  if (xdataPortMode == 1) {
-    xdataSerial.println("[info]: GPS settings done");
-  }
 }
 
 void GPSPowerModeSet(int mode) {
@@ -1501,20 +1475,11 @@ void GPSPowerModeSet(int mode) {
     if (mode == 1 && currentGPSPowerMode != 1) {  //set to max performance, ensure that it is not already in that mode
       sendUblox(sizeof(ubxCfgNav5_maxPerformance), ubxCfgNav5_maxPerformance);
       currentGPSPowerMode = 1;
-
-      if (xdataPortMode == 1) {
-        xdataSerial.println("[info]: Setting current GPS operation power mode to Max Performance");
-      }
-
     } else if (mode == 2 && currentGPSPowerMode != 2) {
       if (millis() - lastPowerSaveChange > gpsPowerSaveDebounce) {
         sendUblox(sizeof(ubxCfgNav5_powerSave), ubxCfgNav5_powerSave);
         currentGPSPowerMode = 2;
         lastPowerSaveChange = millis();
-
-        if (xdataPortMode == 1) {
-          xdataSerial.println("[info]: Setting current GPS operation power mode to Power Save");
-        }
       }
     } else {
     }
@@ -1525,11 +1490,6 @@ void GPSPowerModeSet(int mode) {
 // Function to select heater and change its state (on/off)
 void selectReferencesHeater(int heatingMode) {
   referenceHeatingStatus = heatingMode;
-
-  if (xdataPortMode == 1) {
-    xdataSerial.print("[info]: References heater power has been set to ");
-    xdataSerial.println(heatingMode);
-  }
 
   switch(heatingMode) {
     case 0: //all OFF
@@ -2234,7 +2194,7 @@ void modeChangeDelayCallback(unsigned long waitTime) {
       }
   }
     else {
-        if (waitTime != 0 && modeChangeDelayCallbackTimer - millis() < 2000) {
+        if (waitTime != 0 && waitTime < 5000) {
           if (xdataPortMode == 1) {
             xdataSerial.print("[info]: modeChangeDelay enabled, waiting for: ");
             xdataSerial.println(waitTime);
@@ -2264,13 +2224,11 @@ void modeChangeDelayCallback(unsigned long waitTime) {
             deviceStatusHandler();
             powerHandler();
             gpsHandler();
-            gpsMeasuredWhileWaiting = true;
             
-            // Execute sensorBoomHandler every 10 seconds, only if more than 10 seconds remain
-            if (millis() - lastSensorBoomTime >= 10000 && modeChangeDelayCallbackTimer - millis() > 6500) {
+            // Execute sensorBoomHandler every 10 seconds
+            if (millis() - lastSensorBoomTime >= 10000) {
                 sensorBoomHandler();
                 lastSensorBoomTime = millis(); // Update last execution time
-                 sensorBoomMeasuredWhileWaiting = true;
             }
 
             flightComputing();
@@ -3416,10 +3374,6 @@ void ultraPowerSaveHandler() {
 }
 
 void temperatureCalibration() {
-  if (xdataPortMode == 1) {
-    xdataSerial.println("[info]: Automatic temperature calibration - performing readings...");
-  }
-
   if(autoTemperatureCalibration) {
     bothLedOff();
     delay(50);
@@ -3434,30 +3388,11 @@ void temperatureCalibration() {
 
     if(autoTemperatureCalibrationMethod == 1) { //using constant start environment temperature
       mainTemperatureCorrectionC = environmentStartupAirTemperature - mainTemperatureValue;
-
-      if (xdataPortMode == 1) {
-        xdataSerial.println("[info]: Method 1 - via environment constant");
-      }
     }
     else if (autoTemperatureCalibrationMethod == 2) { //based on the PCB temperature
       float internalTemperature = readAvgIntTemp();
       float selfHeatingCorrectedInternalTemperature = -8.5 + 1.307 * internalTemperature - 0.001461 * pow(internalTemperature, 2) - 0.000082 * pow(internalTemperature, 3);
       mainTemperatureCorrectionC = selfHeatingCorrectedInternalTemperature - mainTemperatureValue;
-
-      if (xdataPortMode == 1) {
-        xdataSerial.println("[info]: Method 2 - via PCB temperature.");
-        xdataSerial.print("[info]: Average PCB temperature = ");
-        xdataSerial.print(internalTemperature);
-        xdataSerial.print("*C, estimated air temperature (empirical, polynomial self-heating and heat-capacity -assumed correction) = ");
-        xdataSerial.print(selfHeatingCorrectedInternalTemperature);
-        xdataSerial.println("*C");
-      }
-    }
-
-    if (xdataPortMode == 1) {
-      xdataSerial.print("mainTemperatureCorrectionC = ");
-      xdataSerial.print(mainTemperatureCorrectionC);
-      xdataSerial.println("*C");
     }
 
   }
@@ -3473,12 +3408,6 @@ void temperatureCalibration() {
     bothLedOff();
     delay(50);
     orangeLed();
-
-    if (xdataPortMode == 1) {
-      xdataSerial.print("[info]: Automatic humidity module temperature calibration - extHeaterTemperatureCorrectionC = ");
-      xdataSerial.print(extHeaterTemperatureCorrectionC);
-      xdataSerial.println("*C");
-    }
   }
 
   for(int i = 0; i < 3; i++) {
@@ -3488,16 +3417,9 @@ void temperatureCalibration() {
     delay(100);
   }
   
-  if (xdataPortMode == 1) {
-    xdataSerial.println("[info]: Automatic temperature calibration and correction complete");
-  }
 }
 
 void reconditioningPhase() {
-  if (xdataPortMode == 1) {
-    xdataSerial.println("[info]: Entering reconditioning phase...");
-    xdataSerial.println("[WARN]: The humidity module WILL GET HOT SOON! Don't touch it with anything.");
-  }
   forceHeatingDuringMeasurement = true;
   unsigned long reconBeginMillis = millis();
   delay(500);
@@ -3554,28 +3476,14 @@ void reconditioningPhase() {
         humidityModuleHeaterPowerControl(50);
     }
 
-    if (xdataPortMode == 1) {
-      xdataSerial.print("[WARN]: Current humidity module temperature = ");
-      xdataSerial.print(extHeaterTemperatureValue);
-      xdataSerial.println("*C");
-    }
 
   }
 
   forceHeatingDuringMeasurement = false;
   humidityModuleHeaterPowerControl(0);
-
-  if (xdataPortMode == 1) {
-    xdataSerial.println("[info]: Reconditioning phase completed. Heating OFF.");
-  }
 }
 
 void zeroHumidityFrequencyCalibration() {
-  if (xdataPortMode == 1) {
-    xdataSerial.println("[info]: Entering zero-humidity calibration...");
-    xdataSerial.println("[WARN]: The humidity module WILL GET HOT! During 0-humidity check, please keep the device in a stable environment, with little to no wind, RH < 70%, temperature > 0*C and don't touch, submerge, blow, lick or do anything with the sensor.");
-  }
-
   orangeLed();
 
   forceHeatingDuringMeasurement = true;
@@ -3619,7 +3527,7 @@ void zeroHumidityFrequencyCalibration() {
     humidityModuleHeaterPowerControl(0);
 
     if(xdataPortMode == 1) {
-      xdataSerial.println("[ERR]: Wrong measurement conditions read from humidity temperature sensor - verify the envorionment, temperature calibration and settings. Exiting calibration...");
+      xdataSerial.println("[ERR]: Wrong measurement conditions read from humidity temperature sensor - exiting calibration...");
     }
 
     return;
@@ -3653,12 +3561,6 @@ void zeroHumidityFrequencyCalibration() {
       return;
     }
 
-    if (xdataPortMode == 1) {
-      xdataSerial.print("[info]: Humidity module temperature = ");
-      xdataSerial.print(extHeaterTemperatureValue);
-      xdataSerial.println("*C");
-    }
-
     if(extHeaterTemperatureValue > humidityCalibrationMeasurementTemperature && extHeaterTemperatureValue < humidityCalibrationHeatingTemperature + 20 && !sensorBoomHumidityModuleError) {
       orangeLed();
       delay(60);
@@ -3666,11 +3568,6 @@ void zeroHumidityFrequencyCalibration() {
       measurement += humidityFrequency;
       measurementCount++;
       humidityModuleHeaterPowerControl(375);
-      if (xdataPortMode == 1) {
-        xdataSerial.print("[info]: Taking measurement ");
-        xdataSerial.print(measurementCount);
-        xdataSerial.println("/8.");
-      }
     }
     else if(extHeaterTemperatureValue > humidityCalibrationHeatingTemperature + 30) {
       humidityModuleHeaterPowerControl(255);
@@ -3683,10 +3580,6 @@ void zeroHumidityFrequencyCalibration() {
       delay(200);
       bothLedOff();
       delay(400);
-
-      if (xdataPortMode == 1) {
-        xdataSerial.println("[info]: Not taking measurement - temperature 30*C over calibration heating temp.");
-      }
     }
     else if(extHeaterTemperatureValue > humidityCalibrationHeatingTemperature + 15) {
       humidityModuleHeaterPowerControl(310);
@@ -3699,10 +3592,6 @@ void zeroHumidityFrequencyCalibration() {
       delay(200);
       bothLedOff();
       delay(400);
-
-      if (xdataPortMode == 1) {
-        xdataSerial.println("[info]: Not taking measurement - temperature 15*C over calibration heating temp.");
-      }
     }
     else if(extHeaterTemperatureValue > humidityCalibrationHeatingTemperature + 5) {
       humidityModuleHeaterPowerControl(360);
@@ -3715,20 +3604,12 @@ void zeroHumidityFrequencyCalibration() {
       delay(200);
       bothLedOff();
       delay(400);
-
-      if (xdataPortMode == 1) {
-        xdataSerial.println("[info]: Not taking measurement - temperature slightly too high.");
-      }
     }
     else if(extHeaterTemperatureValue < humidityCalibrationMeasurementTemperature) {
       humidityModuleHeaterPowerControl(500);
       orangeLed();
       delay(200);
       bothLedOff();
-
-      if (xdataPortMode == 1) {
-        xdataSerial.println("[info]: Not taking measurement - temperature significantly too low.");
-      }
     }
 
     if(millis() - measurementBeginMillis > humidityCalibrationTimeout) {
@@ -3743,7 +3624,7 @@ void zeroHumidityFrequencyCalibration() {
       }
 
       if(xdataPortMode == 1) {
-        xdataSerial.println("[WARN]: Calibration timeout. This could be due to unstable environment parameters, bad settings, hardware or user error.");
+        xdataSerial.println("[WARN]: Calibration timeout");
       }
 
       return;
@@ -3760,7 +3641,7 @@ void zeroHumidityFrequencyCalibration() {
   }
 
   if(xdataPortMode == 1) {
-    xdataSerial.println("[info]: Zero humidity calibration complete.");
+    xdataSerial.println("[info]: Calibration complete.");
   }
   
   calibrationError = false;
@@ -3798,12 +3679,6 @@ void heatingHandler(bool referenceHeatingEnabledNow, bool changeModuleHeaterPowe
     }
 
 
-    if (xdataPortMode == 1) {
-      xdataSerial.print("[info]: Reference area heating handler, cut-out temperature = ");
-      xdataSerial.println(cutOutTemp);
-    }
-    
-  }
 
 
   if (humidityModuleHeating && changeModuleHeaterPowerNow && !sensorBoomGeneralError && mainTemperatureValue < heatingTemperatureThreshold && humidityValue > heatingHumidityThreshold) {
@@ -3843,11 +3718,6 @@ void heatingHandler(bool referenceHeatingEnabledNow, bool changeModuleHeaterPowe
     }
 
     humidityModuleHeaterPowerControl(heatingPwmCurrentValue);
-
-    if (xdataPortMode == 1) {
-      xdataSerial.print("[info]: Humidity module heating active, temperature = ");
-      xdataSerial.println(extHeaterTemperatureValue);
-    }
   }
   else if(humidityModuleHeating && !changeModuleHeaterPowerNow && mainTemperatureValue < heatingTemperatureThreshold && humidityValue > heatingHumidityThreshold) {
     humidityModuleHeaterPowerControl(heatingPwmCurrentValue);
@@ -3856,7 +3726,7 @@ void heatingHandler(bool referenceHeatingEnabledNow, bool changeModuleHeaterPowe
     humidityModuleHeaterPowerControl(0);
   }
 
-
+  }
 }
 
 
@@ -3982,12 +3852,6 @@ void foxHuntModeLoop() {
 
 void humidityModuleHeaterPowerControl(unsigned int heaterPower) {  //0 - OFF, 1-255 - only low power heater PWM, 256-500 - low power heater at max and high power heater PWM-controlled
   heatingPwmStatus = heaterPower;
-
-  if (xdataPortMode == 1) {
-    xdataSerial.print("[info]: Humidity module heating power is ");
-    xdataSerial.print(heaterPower);
-    xdataSerial.println("/500 .");
-  }
 
   if(heaterPower == 0) {
     analogWrite(HEAT_HUM1, 0);
@@ -4140,10 +4004,6 @@ void setup() {
   delay(50);
   digitalWrite(GREEN_LED_PIN, HIGH);
 
-  if (xdataPortMode == 1) {
-    xdataSerial.println("[info]: Hardware init seems done");
-  }  
-
   if(foxHuntMode) {
     shutdownGPS();
     foxHuntModeLoop();
@@ -4163,18 +4023,14 @@ void setup() {
     }
     zeroHumidityFrequencyCalibration();
     if (xdataPortMode == 1) {
-      xdataSerial.println("[info]: Exiting calibration.");
+      xdataSerial.print("[info]: Exiting calibration. 0RH_freq | 100RH_freq => ");
+      xdataSerial.print(zeroHumidityFrequency);
+      xdataSerial.print(" | ");
+      xdataSerial.println(maxHumidityFrequency);
     }
   }
 
   maxHumidityFrequency = zeroHumidityFrequency - humidityRangeDelta;
-
-  if (xdataPortMode == 1) {
-    xdataSerial.print("0RH_freq | 100RH_freq => ");
-    xdataSerial.print(zeroHumidityFrequency);
-    xdataSerial.print(" | ");
-    xdataSerial.println(maxHumidityFrequency);
-  }  
 
   if(humidityCalibrationDebug && xdataPortMode == 1) {
     xdataSerial.println("[info]: Entering calibration adjustment mode...");
@@ -4190,7 +4046,7 @@ void setup() {
       sensorBoomHandler();
     }
 
-    xdataSerial.println("Hardware ready - place the sensor in 100%RH environment and observe the suggested humidityRangeDelta value.");
+    xdataSerial.print("Hardware ready - place the sensor in 100%RH environment and observe the suggested humidityRangeDelta value.");
 
     for(;;) {
       greenLed();
@@ -4219,10 +4075,6 @@ void setup() {
     initGPS();
   }
 
-  
-  if (xdataPortMode == 1) {
-    xdataSerial.println("[info]: Exiting setup and entering main program loop...");
-  }  
 }
 
 
@@ -4230,16 +4082,9 @@ void loop() {
   buttonHandler();
   deviceStatusHandler();
   serialStatusHandler();
-  
-  if(!gpsMeasuredWhileWaiting) {
-    gpsHandler();
-  }
-
-  if(!sensorBoomMeasuredWhileWaiting) {
-    sensorBoomHandler();
-  }
-
+  gpsHandler();
   powerHandler();
+  sensorBoomHandler();
   flightComputing();
   ultraPowerSaveHandler();
   autoResetHandler();
