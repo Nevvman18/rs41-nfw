@@ -5,6 +5,7 @@ Vaisala some time ago began launching new RS41 sondes, with new internal design.
 
 * [Radiosondes?](#radiosondes)
 * [RS41-NFW Firmware features](#rs41-nfw-firmware-features)
+* [Terms of Use](#terms-of-use)
 * [Installation guide](#installation-guide)
 * [Firmware flashing](#firmware-flashing)
 * [Firmware compilation](#firmware-compilation)
@@ -53,6 +54,11 @@ For more details about HAB and sonde hunting, please look on google and social m
 * Flight controling algorithms. Ability to rapidly send packets when below set altitude.
 * Calibration modes for temperature and humidity sensor on the silver boom
 * And many more - mentioned in [changelog](#firmware-changelog) and [manual](./fw/OPERATION_MANUAL.md)
+
+
+## Terms of Use
+**RS41-NFW** project (author - Franek *nevvman SP5FRA*) is released under **GNU GPL-3.0 license**. This software is **open source** and **free to use for amateur projects**, **which cannot lead to profit** in any kind. This excludes usage of this firmware as a commercial product. **For commercial use, please contact me**. 
+The creator of this project isn't at all responsible for any kind of harm made by devices operated with these instructions. Follow your local law about radio transmissions and ballon flights. Altough the firmware **tested successfully** on several dozen of flights, keep in mind that it is still a *hobbyst project*.
 
 
 ## Installation guide
@@ -147,6 +153,3 @@ Incoming features:
 * [*radiosonde_hardware* - made reversing the new version easier](https://github.com/bazjo/radiosonde_hardware)<br>
 * [*Horus Binary* - awesome HAB radio protocol](https://github.com/projecthorus/horusdemodlib)<br>
 * [*Arduino APRS*](https://handiko.github.io/Arduino-APRS/) library, partially utilized here to create APRS messages
-
-## Final notes
-The creator of this project isn't at all responsible for any kind of harm made by devices operated with these instructions. Follow your local law about radio transmissions and ballon flights. This device isn't a certified airplane. Altough the firmware tested successfully on a dozen of flights, it still is a 'hobbyst' project. Have a nice day!
