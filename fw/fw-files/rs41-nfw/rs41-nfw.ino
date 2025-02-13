@@ -2263,14 +2263,18 @@ void modeChangeDelayCallback(unsigned long waitTime) {
             buttonHandler();
             deviceStatusHandler();
             powerHandler();
-            gpsHandler();
-            gpsMeasuredWhileWaiting = true;
+
+            // Execute gpsHandler only if more than 2 seconds of waiting remain
+            if (modeChangeDelayCallbackTimer - millis() > 2000) {
+              gpsHandler();
+              gpsMeasuredWhileWaiting = true;
+            }
             
-            // Execute sensorBoomHandler every 10 seconds, only if more than 10 seconds remain
-            if (millis() - lastSensorBoomTime >= 10000 && modeChangeDelayCallbackTimer - millis() > 6500) {
-                sensorBoomHandler();
-                lastSensorBoomTime = millis(); // Update last execution time
-                 sensorBoomMeasuredWhileWaiting = true;
+            // Execute sensorBoomHandler every 10 seconds, and only if more than 6 seconds of waiting time remain
+            if (millis() - lastSensorBoomTime >= 10000 && modeChangeDelayCallbackTimer - millis() > 6000) {
+              sensorBoomHandler();
+              lastSensorBoomTime = millis(); // Update last execution time
+              sensorBoomMeasuredWhileWaiting = true;
             }
 
             flightComputing();
@@ -4231,11 +4235,17 @@ void loop() {
   deviceStatusHandler();
   serialStatusHandler();
   
-  if(!gpsMeasuredWhileWaiting) {
+  if(gpsMeasuredWhileWaiting) {
+    gpsMeasuredWhileWaiting = false;
+  }
+  else {
     gpsHandler();
   }
 
-  if(!sensorBoomMeasuredWhileWaiting) {
+  if(sensorBoomMeasuredWhileWaiting) {
+    sensorBoomMeasuredWhileWaiting = false;
+  }
+  else {
     sensorBoomHandler();
   }
 
