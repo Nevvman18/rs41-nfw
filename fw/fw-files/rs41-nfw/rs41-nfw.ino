@@ -3,7 +3,8 @@ RS41-NFW - versatile, feature-rich and user-friendly custom firmware for ALL rev
 Released on GPL-3.0 license.
 Authors: Franek Łada
 
-Version 53 (public, stable)
+Version 53.2 (public, stable)
+(versions 53 and 53.1 were just so small fixes that a new tag isn't necessary :D)
 
 All code and dependencies used or modified here that don't origin from me are described in code comments and repo details.
 https://github.com/Nevvman18/rs41-nfw
@@ -2643,7 +2644,7 @@ void aprsHabFormat(char* aprsMessage) {
 
     int aprsTemperature;
 
-    if(sensorBoomFault) {
+    if(sensorBoomFault || !sensorBoomEnable) {
       aprsTemperature = readAvgIntTemp();
     }
     else {
