@@ -84,6 +84,7 @@ See: [hw/README.md](./hw/README.md)
 
 
 ## Firmware changelog
+* `v54` - power OFF routine modification, making the procedure status more clear. APRS temperature reporting length improvement.
 * `v53` - timing improvements down to milliseconds, with help of Bernd DL1XH. More talkative UART debug messages.
 * `v52` - heating bug with time management, APRS format improvement
 * `v51` - small corrections and improvements
