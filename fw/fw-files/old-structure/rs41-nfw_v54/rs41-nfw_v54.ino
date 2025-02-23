@@ -3,7 +3,7 @@ RS41-NFW - versatile, feature-rich and user-friendly custom firmware for ALL rev
 Released on GPL-3.0 license.
 Authors: Franek Łada
 
-Version 55 (public, stable)
+Version 54 (public, stable)
 
 All code and dependencies used or modified here that don't origin from me are described in code comments and repo details.
 https://github.com/Nevvman18/rs41-nfw
@@ -119,31 +119,36 @@ int gpsBaudRate = 9600;
 HardwareSerial xdataSerial(PB11, PB10);
 
 //===== Radio signals config
+int defaultRadioPwrSetting = 0;     //default TX power, also see lines down below; 0 = -1dBm (~0.8mW), 1 = 2dBm (~1.6mW), 2 = 5dBm (~3 mW), 3 = 8dBm (~6 mW), 4 = 11dBm (~12 mW), 5 = 14dBm (25 mW), 6 = 17dBm (50 mW), 7 = 20dBm (100 mW)
+int powerSaveRadioPwrSetting = -1;  //radio TX power for power save feature - deterimnes the TX power level at which the sonde will be transmitting when certain altitude (powerSaveAltitude), set to -1 to disable the powerSave features applying to the TX power. If this option is activated, the button logic for changing the radio power won't work
 bool radioEnablePA = true;          //default tx state
+bool radioSleep = true;             //lowers power consumption and recalibrates oscillator (drift compensation)
 
 bool pipEnable = false;             //pip tx mode
 float pipFrequencyMhz = 432.5;      //pip tx frequency
-unsigned long pipWait = 0;           //delay after pip transmission, SET TO 0 IF PIP NOT USED, in milliseconds. If the firmware cant keep up with the delay, it transmits as fast as possible, else this is the delay after pip and before horus. 0 - disable, 0<delay<5000 - standard delay, 5000<delay - delay + radio sleep mode and recalibration (if radioStableWait enabled) and additional flight computing and gps receiving.
+unsigned long pipWait = 0;           //delay after pip transmission, SET TO 0 IF PIP NOT USED, in milliseconds. If the firmware cant keep up with the delay, it transmits as fast as possible, else this is the delay after pip and before horus. 0 - disable, 0<delay<5000 - standard delay, 5000<delay - delay + radio sleep mode and recalibration (if radioSleep enabled) and additional flight computing and gps receiving.
+unsigned long powerSavePipWait = 0;  //activates when the powerSave is ON, set to -1 to disable changing of the transmission delay above powerSaveAltitude
 int pipLengthMs = 1000;             //pip signal length in ms
 int pipRepeat = 3;                  //pip signal repeat count in 1 transmit group
-int pipRadioPower = 6; //TX power, 0 = -1dBm (~0.8mW), 1 = 2dBm (~1.6mW), 2 = 5dBm (~3 mW), 3 = 8dBm (~6 mW), 4 = 11dBm (~12 mW), 5 = 14dBm (25 mW), 6 = 17dBm (50 mW), 7 = 20dBm (100 mW)
 
 bool horusEnable = true;  //horus v2 tx mode
 float horusFrequencyMhz = 437.6;
 unsigned long horusWait = 0;           //same as in pip but after horus
+unsigned long powerSaveHorusWait = 0;  //same as in pip but after horus
 unsigned int horusPayloadId = 256;
 int horusBdr = 100;
-int horusRadioPower = 5; //TX power, 0 = -1dBm (~0.8mW), 1 = 2dBm (~1.6mW), 2 = 5dBm (~3 mW), 3 = 8dBm (~6 mW), 4 = 11dBm (~12 mW), 5 = 14dBm (25 mW), 6 = 17dBm (50 mW), 7 = 20dBm (100 mW)
 
 bool horusEnableSecondTransmission = false;  //enable second horus transmission, may be used for example to transmit on different frequencies or at different intervals
 float horusSecondTransmissionFrequencyMhz = 434.714;
 unsigned long horusSecondTransmissionWait = 0;           //same
+unsigned long powerSaveHorusSecondTransmissionWait = 0;  //same
 unsigned int horusSecondTransmissionRepeatCount = 1;
 unsigned long horusSecondTransmissionInterval = 0;  //set to 0 for default delay (defined in horusWait or powerSaveHorusWait), otherwise will deterimne delay between transmissions if used with repeatCount > 1 (more than 1 teransmission in cycle)
 
 bool aprsEnable = true;
 float aprsFrequencyMhz = 432.5;
 unsigned long aprsWait = 0;
+unsigned long powerSaveAprsWait = 0;
 char aprsCall[] = "N0CALL";  // Callsign
 String aprsComment = " @RS41-NFW"; //Leaving the nfw comment would help identify the usage of this firmware :)
 char aprsSsid = 11;            // SSID for the call sign
@@ -153,24 +158,23 @@ char aprsDigiSsid = 1;         // Digipeater SSID
 char aprsSymbolOverlay = 'O';  // Symbol overlay
 char aprsSymTable = 'a';       // Symbol table (e.g., 'a' for standard symbol)
 int aprsOperationMode = 1;     //1 - standard telemetry format (similiar to RS41HUP), 2 - WX format (weather station)
-int aprsRadioPower = 7; //TX power, 0 = -1dBm (~0.8mW), 1 = 2dBm (~1.6mW), 2 = 5dBm (~3 mW), 3 = 8dBm (~6 mW), 4 = 11dBm (~12 mW), 5 = 14dBm (25 mW), 6 = 17dBm (50 mW), 7 = 20dBm (100 mW)
 
 #define CALLSIGN "N0CALL"         //used for morse and rtty
 bool rttyEnable = false;          //rtty tx mode, compliant with UKHAS format
 float rttyFrequencyMhz = 434.6;  //rtty tx frequency
 unsigned long rttyWait = 0;
+unsigned long powerSaveRttyWait = 0;
 int rttyBitDelay = 10000;             //22000 ~= 45bdrate, 13333 ~= 75bdr, 10000 ~= 100bdr
 int rttyBits = 7;                //rtty 7 = 7bit character, 8 = 8bit character
 float rttyStopBits = 2;          //rtty stop bits (1, 1.5, 2)
 #define RTTY_RADIO_MARK_OFFSET 0x03
 #define RTTY_RADIO_SPACE_OFFSET 0x01  //usually set to 0x01
-int rttyRadioPower = 7; //TX power, 0 = -1dBm (~0.8mW), 1 = 2dBm (~1.6mW), 2 = 5dBm (~3 mW), 3 = 8dBm (~6 mW), 4 = 11dBm (~12 mW), 5 = 14dBm (25 mW), 6 = 17dBm (50 mW), 7 = 20dBm (100 mW)
 
 bool morseEnable = false;          //morse tx mode
 float morseFrequencyMhz = 434.6;  //morse tx frequency
 int morseUnitTime = 40;
 unsigned long morseWait = 0;
-int morseRadioPower = 7; //TX power, 0 = -1dBm (~0.8mW), 1 = 2dBm (~1.6mW), 2 = 5dBm (~3 mW), 3 = 8dBm (~6 mW), 4 = 11dBm (~12 mW), 5 = 14dBm (25 mW), 6 = 17dBm (50 mW), 7 = 20dBm (100 mW)
+unsigned long powerSaveMorseWait = 0;
 
 
 //Fox hunting mode
@@ -183,7 +187,6 @@ bool foxHuntLowVoltageAdditionalMarker = true; //when the low voltage threshold 
 String foxMorseMsgVbat = "N0CALL N0CALL FOX 11.123456 12.456789";
 float foxHuntFrequency = 434.5;
 unsigned int foxHuntTransmissionDelay = 0; //delay in fox hunting mode between transmission cycles in ms
-int foxHuntRadioPower = 7; //TX power, 0 = -1dBm (~0.8mW), 1 = 2dBm (~1.6mW), 2 = 5dBm (~3 mW), 3 = 8dBm (~6 mW), 4 = 11dBm (~12 mW), 5 = 14dBm (25 mW), 6 = 17dBm (50 mW), 7 = 20dBm (100 mW)
 
 
 //===== Other operation config
@@ -199,6 +202,7 @@ int oif411MsgWaitTime = 1100;  //waiting time for oif411 message
 float vBatWarnValue = 0;                  //battery warning voltage
 float vBatErrValue = 0;                   //error voltage
 float batteryCutOffVoltage = 0;           //good for nimh rechargable cell life, below 0.8V per AA cell the damage could occur; if you plan on maximising the working time, set to 0V to disable the auto turn OFF, or if using lithium batteries, which are safer to use
+int powerSaveAltitude = -1;             //altitude in meters above which the powerSave features start to occur (currently, TX power is lowered from defaultRadioPwrSetting to powerSaveRadioPwrSetting and the transmision interval is changed from default delay to powerSave... delay), set to -1 to completely disable all powerSave features
 bool ultraPowerSaveAfterLanding = false;  //20 minutes after landing the sonde will turn OFF the GPS completely, turn OFF all sensors and change the transmit interval to 10 minutes and switch to Horus and APRS, transmitting the last coordinates
 
 //GPS configuration
@@ -210,7 +214,6 @@ bool improvedGpsPerformance = true;           //if true, the device improves the
 bool disableGpsImprovementInFlight = true;    //this settings disables the improvedGpsPerformance features when the sonde is in-flight, because it can cause a loss of data for up to 2 minutes. If you fly under interference conditions, set this to false. Else - consider setting to true;
 float gpsLat = 0;                             //change this to set the default coordinates (updated with GPS position if enabled)
 float gpsLong = 0;                            //change this to set the default coordinates (updated with GPS position if enabled)
-float gpsAlt = 0;                             //change this to set the default altitude
 int gpsOperationMode = 1;                     //0 - fully OFF (stationary use, like WX station, the stationary coordinates can be specified in gpsLat-gpsLong); 1 - default, always ON; 2 - powersaving when fix OK (only on old sondes, lowers power consumption by +-30mA. Not implemented on newer sondes, because their GPS already draws very little current, comparable with the old one in power-saving, also they don't have an obvious power saving mode, only some interval-like ones).
 unsigned long gpsPowerSaveDebounce = 300000;  //debounce to limit setting the GPS back and forth into the power saving mode
 
@@ -280,7 +283,6 @@ int buttonMode = 1;                                 //0 - button operation disab
 //dataRecoder config
 bool dataRecorderEnable = true;              //enables mode, in which the sonde transmits some recorded and debug data to the ground via additional APRS comments (described in repo). Format: ...NFW;[maxAlt];[maxSpeed];[maxAscentRate];[maxDescentRate];[maxMainTemperature];[minMainTemperature];[maxInternalTemp];[minInternalTemp];[ledsEnable];[healthStatus];[gpsResetCounter];[beganFlying];[burstDetected];[isReferenceHeaterOn];[radioPwrSetting];[currentGPSPowerMode];[radioTemp];...
 unsigned int dataRecorderInterval = 600000;  //10 minutes by default (600000 milliseconds)
-bool dataRecorderFlightNoiseFiltering = true; //filter out noisy data on ground and duing position gathering and include in the measurements only flight data
 
 
 //Support of ability to heat up the radio/gps oscillator by reference heating resistors has ENDED. This is due to the decision, that RTTY (especially 75 baud) is not used widely, so the heating isn't needed, and also that the heating of them at max power is very power hungry. Also, they are used for temperature calibration and now have been implemented to correct the readings properly. This can be configured in the sensorBoom area
@@ -309,6 +311,7 @@ unsigned long gpsTime;
 int gpsHours;
 int gpsMinutes;
 int gpsSeconds;
+float gpsAlt;
 float gpsSpeed;
 float gpsSpeedKph = 0;
 int gpsSats;                      //system wide variables, for use in functions that dont read the gps on their own
@@ -329,6 +332,7 @@ float xdataOzonePumpTemperature = 0;
 float xdataOzoneCurrent = 0;
 float xdataOzonewxVoltage = 0;
 int xdataOzonePumpCurrent = 0;
+int radioPwrSetting = defaultRadioPwrSetting;
 float lastGpsAlt;
 unsigned long lastGpsAltMillisTime = 1;
 float vVCalc;
@@ -347,7 +351,6 @@ bool cancelGpsImprovement = false;
 bool gpsJamWarning = false;
 bool sensorBoomMeasuredWhileWaiting = false;
 bool gpsMeasuredWhileWaiting = false;
-int currentRadioPwrSetting = 0;
 
 int maxAlt = 0;
 int maxSpeed = 0;
@@ -396,6 +399,14 @@ char aprsWxMsg[256];
 char aprsBitStuffingCounter = 0;  // Bit stuffing counter
 unsigned short aprsCrc = 0xffff;  // CRC for error checking
 unsigned int aprsPacketNum = 0;
+
+
+unsigned long pipWaitActual = pipWait;
+unsigned long horusWaitActual = horusWait;
+unsigned long horusSecondTransmissionWaitActual = horusSecondTransmissionWait;
+unsigned long aprsWaitActual = aprsWait;
+unsigned long morseWaitActual = morseWait;
+unsigned long rttyWaitActual = rttyWait;
 
 
 
@@ -684,7 +695,6 @@ void setRadioFrequency(const float frequency_mhz) {  //adapted from RS41ng
 
 void setRadioPower(uint8_t power) {
   writeRegister(0x6D, power & 0x7U);
-  currentRadioPwrSetting = power;
 }
 
 void setRadioOffset(uint16_t offset) {
@@ -1064,7 +1074,7 @@ void buttonHandler() {
       hardwarePowerShutdown();
     }
     else if(buttonMode == 2) {
-      while (btnCounter < 3 && analogRead(VBTN_PIN) + 50 > analogRead(VBAT_PIN)) {
+      while (btnCounter < 4 && analogRead(VBTN_PIN) + 50 > analogRead(VBAT_PIN)) {
         greenLed();
         delay(400);
         redLed();
@@ -1121,6 +1131,50 @@ void buttonHandler() {
 
       }
       else if (btnCounter == 3) {
+        if (powerSaveRadioPwrSetting == -1) {
+          if (defaultRadioPwrSetting != 7) {
+            defaultRadioPwrSetting = 7;
+            radioPwrSetting = 7;
+            setRadioPower(7);
+
+            for (int i = 0; i < btnCounter; i++) {
+              greenLed();
+              delay(50);
+              bothLedOff();
+              delay(50);
+            }
+
+            if (xdataPortMode == 1) {
+              xdataSerial.println("Radio PA power set to 100mW (+20dBm, MAX!)");
+            }
+
+          }
+          else {
+            defaultRadioPwrSetting = 0;
+            radioPwrSetting = 0;
+            setRadioPower(0);
+
+            for (int i = 0; i < btnCounter; i++) {
+              redLed();
+              delay(50);
+              bothLedOff();
+              delay(50);
+            }
+
+            if (xdataPortMode == 1) {
+              xdataSerial.println("Radio PA power set to 2mW (min)");
+            }
+          }
+
+        }
+        else {
+          digitalWrite(RED_LED_PIN, LOW);
+          delay(400);
+          digitalWrite(RED_LED_PIN, HIGH);
+          delay(100);
+        }
+      }
+      else if (btnCounter == 4) {
         hardwarePowerShutdown();
       }
 
@@ -1723,6 +1777,69 @@ void powerHandler() {
     hardwarePowerShutdown();
   }
 
+  if (powerSaveAltitude != -1) {
+    if (gpsAlt > powerSaveAltitude) {
+      if (powerSaveRadioPwrSetting != -1) {
+        radioPwrSetting = powerSaveRadioPwrSetting;
+        setRadioPower(radioPwrSetting);
+      }
+
+      if (powerSavePipWait != -1) {
+        pipWaitActual = powerSavePipWait;
+      }
+
+      if (powerSaveHorusWait != -1) {
+        horusWaitActual = powerSaveHorusWait;
+      }
+
+      if (powerSaveHorusSecondTransmissionWait != -1) {
+        horusSecondTransmissionWaitActual = powerSaveHorusSecondTransmissionWait;
+      }
+
+      if (powerSaveAprsWait != -1) {
+        aprsWaitActual = powerSaveAprsWait;
+      }
+
+      if (powerSaveMorseWait != -1) {
+        morseWaitActual = powerSaveMorseWait;
+      }
+
+      if (powerSaveRttyWait != -1) {
+        rttyWaitActual = powerSaveRttyWait;
+      }
+
+
+    } else {
+      if (powerSaveRadioPwrSetting != -1) {
+        radioPwrSetting = defaultRadioPwrSetting;
+        setRadioPower(radioPwrSetting);
+      }
+
+      if (powerSavePipWait != -1) {
+        pipWaitActual = pipWait;
+      }
+
+      if (powerSaveHorusWait != -1) {
+        pipWaitActual = horusWait;
+      }
+
+      if (powerSaveHorusSecondTransmissionWait != -1) {
+        pipWaitActual = horusSecondTransmissionWait;
+      }
+
+      if (powerSaveAprsWait != -1) {
+        pipWaitActual = aprsWait;
+      }
+
+      if (powerSaveMorseWait != -1) {
+        pipWaitActual = morseWait;
+      }
+
+      if (powerSaveRttyWait != -1) {
+        pipWaitActual = rttyWait;
+      }
+    }
+  }
 }
 
 
@@ -2101,10 +2218,10 @@ void modeChangeDelayCallback(unsigned long waitTime) {
   }
 
   if (improvedGpsPerformance && gpsSats < 4 && gpsOperationMode != 0 && !cancelGpsImprovement) {
-      radioDisableTx();
+      radioInhibitTx();
       GPSPowerModeSet(1);
 
-      for (int i = 0; i < 10; i++) {
+      for (int i = 0; i < 20; i++) {
         deviceStatusHandler();
         powerHandler();
         gpsHandler();
@@ -2139,6 +2256,13 @@ void modeChangeDelayCallback(unsigned long waitTime) {
           if (xdataPortMode == 1) {
             xdataSerial.print("[info]: modeChangeDelay enabled, waiting for: ");
             xdataSerial.println(waitTime);
+          }
+
+          if (radioSleep) {
+            radioInhibitTx();
+            if (xdataPortMode == 1) {
+              xdataSerial.println("[info]: Radio sleep");
+            }
           }
 
           while (millis() < modeChangeDelayCallbackTimer) {
@@ -2668,7 +2792,7 @@ void aprsRecorderFormat(char* aprsMessage) {
         gpsResetCounter,
         beganFlyingInt,
         burstDetectedInt,
-        currentRadioPwrSetting,
+        radioPwrSetting,
         gpsCurrentModeInt,
         radioTemp,
         sensorBoomFaultInt,
@@ -2715,22 +2839,20 @@ void pressureEstimation() {
 }
 
 void flightComputing() {
-  if(dataRecorderFlightNoiseFiltering && beganFlying) {
-    if (static_cast<int>(gpsAlt) > maxAlt) {
-      maxAlt = static_cast<int>(gpsAlt);
-    }
+  if (static_cast<int>(gpsAlt) > maxAlt) {
+    maxAlt = static_cast<int>(gpsAlt);
+  }
 
-    if (static_cast<int>(gpsSpeedKph) > maxSpeed) {
-      maxSpeed = static_cast<int>(gpsSpeedKph);
-    }
+  if (static_cast<int>(gpsSpeedKph) > maxSpeed) {
+    maxSpeed = static_cast<int>(gpsSpeedKph);
+  }
 
-    if (vVCalc > 0 && vVCalc > maxAscentRate) {
-      maxAscentRate = vVCalc;
-    }
+  if (vVCalc > 0 && vVCalc > maxAscentRate) {
+    maxAscentRate = vVCalc;
+  }
 
-    if (vVCalc < 0 && vVCalc < maxDescentRate) {
-      maxDescentRate = vVCalc;
-    }
+  if (vVCalc < 0 && vVCalc < maxDescentRate) {
+    maxDescentRate = vVCalc;
   }
 
 
@@ -2780,7 +2902,6 @@ void flightComputing() {
 }
 
 void lowAltitudeFastTxMode() {
-  setRadioPower(7);
   while (millis() - lowAltitudeFastTxModeBeginTime < lowAltitudeFastTxDuration && !lowAltitudeFastTxModeEnd) {
     gpsHandler();
     sensorBoomHandler();
@@ -2858,7 +2979,6 @@ void pipTx() {
     }
 
     if (radioEnablePA) {
-      setRadioPower(pipRadioPower);
       setRadioModulation(0);
       setRadioFrequency(pipFrequencyMhz);
 
@@ -2914,8 +3034,7 @@ void morseTx() {
         xdataSerial.println(morseMsg);
         xdataSerial.println();
       }
-      
-      setRadioPower(morseRadioPower);
+
       setRadioModulation(0);  // CW modulation
       setRadioFrequency(morseFrequencyMhz);
 
@@ -2961,7 +3080,7 @@ void rttyTx() {
         xdataSerial.println("");
       }
 
-      setRadioPower(rttyRadioPower);
+
       setRadioModulation(0);  // CW modulation
       setRadioFrequency(rttyFrequencyMhz);
       if (xdataPortMode == 1) {
@@ -3017,7 +3136,7 @@ void horusTx() {
         xdataSerial.println(debugbuffer);
       }
 
-      setRadioPower(horusRadioPower);
+
       setRadioModulation(0);  // CW modulation
       setRadioFrequency(horusFrequencyMhz);
       if (xdataPortMode == 1) {
@@ -3086,7 +3205,6 @@ void horusSecondTransmissionTx() {
           xdataSerial.println(debugbuffer);
         }
         
-        setRadioPower(horusRadioPower);
         setRadioModulation(0);  // CW modulation
         setRadioFrequency(horusSecondTransmissionFrequencyMhz);
         if (xdataPortMode == 1) {
@@ -3130,7 +3248,6 @@ void aprsTx() {
     }
 
     if (radioEnablePA) {
-      setRadioPower(aprsRadioPower);
       setRadioModulation(2);
       setRadioFrequency((aprsFrequencyMhz - 0.002));  //its lower due to the deviation in FSK adding 0.002MHz when the signal is in total 10kHz wide
       if (xdataPortMode == 1) {
@@ -3192,7 +3309,6 @@ void aprsDataRecorderTx() {
       }
 
       if (radioEnablePA) {
-        setRadioPower(aprsRadioPower);
         setRadioModulation(2);
         setRadioFrequency((aprsFrequencyMhz - 0.002));  //its lower due to the deviation in FSK adding 0.002MHz when the signal is in total 10kHz wide
         if (xdataPortMode == 1) {
@@ -3240,7 +3356,6 @@ void ultraPowerSaveHandler() {
       sensorBoomEnable = false;
       ledStatusEnable = false;
       selectSensorBoom(0, 0);
-      setRadioPower(6); //NOTE: power save mode changes the power to 50mW, which may not be what a powersave is meant to be. However, sonde laying on the ground has a very poor radio propagation and range, therefore a couple second long transmission won't impact it much
       for (;;) {
         if (horusEnable) {
           int pkt_len = build_horus_binary_packet_v2(rawbuffer);
@@ -3809,7 +3924,6 @@ void foxHuntMiscHandler() {
 
 
 void foxHuntModeLoop() {
-  setRadioPower(foxHuntRadioPower);
   for(;;) {
     foxHuntMiscHandler();
 
@@ -3825,7 +3939,7 @@ void foxHuntModeLoop() {
 
         buttonHandlerSimplified();
       }
-      radioDisableTx();
+      radioInhibitTx();
     }
 
     foxHuntMiscHandler();
@@ -3837,7 +3951,7 @@ void foxHuntModeLoop() {
       setRadioFrequency(foxHuntFrequency);
       radioEnableTx();
       delay(10000);
-      radioDisableTx();
+      radioInhibitTx();
     }
 
     foxHuntMiscHandler();
@@ -3852,7 +3966,7 @@ void foxHuntModeLoop() {
       setRadioModulation(0);
       setRadioFrequency(foxHuntFrequency);
       transmitMorseString(morseMsgCstr, morseUnitTime);
-      radioDisableTx();
+      radioInhibitTx();
     }
 
     foxHuntMiscHandler();
@@ -3866,7 +3980,7 @@ void foxHuntModeLoop() {
       setRadioModulation(0);
       setRadioFrequency(foxHuntFrequency);
       transmitMorseString(morseMsgCstr, morseUnitTime);
-      radioDisableTx();
+      radioInhibitTx();
     }
 
     foxHuntMiscHandler();
@@ -4010,10 +4124,10 @@ void setup() {
   }
   //digitalWrite(CS_RADIO_SPI, HIGH); //no need to disable cs because no other spi devices on the bus
 
-  setRadioPower(6);
+  setRadioPower(radioPwrSetting);
   if (xdataPortMode == 1) {
-    xdataSerial.print("[info]: Si4032 PA power set to default 6 (50mW): ");
-    xdataSerial.println(6);
+    xdataSerial.print("[info]: Si4032 PA power set to (pre-config): ");
+    xdataSerial.println(radioPwrSetting);
   }
 
   writeRegister(0x72, 0x05);  //for aprs
@@ -4151,31 +4265,31 @@ void loop() {
     xdataInstrumentHandler();
   }
 
-  modeChangeDelayCallback(aprsWait);
+  modeChangeDelayCallback(aprsWaitActual);
   pipTx();
   buttonHandler();
   deviceStatusHandler();
   heatingHandler(true, false);
 
-  modeChangeDelayCallback(pipWait);
+  modeChangeDelayCallback(pipWaitActual);
   morseTx();
   buttonHandler();
   deviceStatusHandler();
   heatingHandler(true, false);
 
-  modeChangeDelayCallback(morseWait);
+  modeChangeDelayCallback(morseWaitActual);
   rttyTx();
   buttonHandler();
   deviceStatusHandler();
   heatingHandler(true, false);
 
-  modeChangeDelayCallback(rttyWait);
+  modeChangeDelayCallback(rttyWaitActual);
   horusTx();
   buttonHandler();
   deviceStatusHandler();
   heatingHandler(true, false);
 
-  modeChangeDelayCallback(horusWait);
+  modeChangeDelayCallback(horusWaitActual);
   horusSecondTransmissionTx();
   buttonHandler();
   deviceStatusHandler();
@@ -4187,7 +4301,7 @@ void loop() {
     sensorBoomHandler();
   }
 
-  modeChangeDelayCallback(horusSecondTransmissionWait);
+  modeChangeDelayCallback(horusSecondTransmissionWaitActual);
   aprsTx();
   buttonHandler();
   deviceStatusHandler();

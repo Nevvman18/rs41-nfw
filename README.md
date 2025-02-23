@@ -87,6 +87,7 @@ See: [hw/README.md](./hw/README.md)
 
 
 ## Firmware changelog
+* `v55` - Si4032 radio now consumes 10-15mA less current than before, due to a misunderstanding of operation stages, allowing now to sleep properly between transmissions. Ability to specify TX power in each mode. Removed power save mode which changed interval and power below a certain altitude, which was a clone of a newer feature called `lowAltitudeFastTx`. Ability yo specify constant altitude when stationary use with no GPS. Others.
 * `v54` - power OFF routine modification, making the procedure status more clear. APRS temperature reporting length improvement.
 * `v53` - timing improvements down to milliseconds, with help of Bernd DL1XH. More talkative UART debug messages.
 * `v52` - heating bug with time management, APRS format improvement
