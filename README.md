@@ -26,33 +26,36 @@ But, currently the best way is to utilize a Software-Defined Radio (SDR, for exa
 For more details about HAB and sonde hunting, please look on google and social media, there is a ton of valuable content.
 
 ## RS41-NFW Firmware features
-* **Full support for ALL** RS41 versions (eg. `RSM421`, `RSM412`, `RSM414`, `RSM424`), including the new ones with the '4' at the end of the PCB model.
+* **Full support for ALL** RS41 versions (eg. `RSM421`, `RSM412`, `RSM414`, `RSM424`), including the old and new ones with the '4' at the end of the PCB model
 * Multiple, customizable transmission modes
     * [**Horus Binary 4FSK v2**](https://github.com/projecthorus/horusdemodlib/wiki)
         * One of the most efficient radio modes for HAB and other simple telemetry designs, allows for decoding of very weak signals
+        * Multi-QRG operation (ability to specify second Horus one, user can modify the code easily to get as much QRGs as wanted on every mode)
     * APRS
-      * 1200 baud, with 1200Hz and 2200Hz tones achieved by FSK switching in a loop
-      * Standard balloon and WX reporting format
+      * 1200 baud, with 1200Hz and 2200Hz tones, achieved by FSK switching in a precisely tuned loop (very good performance)
+      * Many config options, including HAB (PSTVC structure compliant with RS41ng) and WX station reporting formats, overlay symbol modifier, SSID, destination (`APZNFW` supported and decoded by SondeHub), digi, etc.
     * RTTY
-        * Customizable 45 and 75 baud rates, possibly other available
-        * Customizable tone spacing as a multiplication of 270Hz (minimum Si4032 offset)
-        * Compliant with UKHAS format
+        * Customizable 45, 75 and 100 baud rates, also other available
+        * Customizable tone spacing as a multiplication of 270Hz, default 570Hz
+        * Data bits and stop bits customizable (default 7N2)
+        * Compliant with UKHAS format. Provided by OM3BC
     * Morse code (CW)
         * Customizable wpm speed and dot length
         * Compliant with UKHAS format
     * PIP
         * Beacon operation, transmitting short beep with a specified interval, which could be used as a foxhunting TX device
 * Thorough support of RS41 hardware, including GPS, radio, power circuitry, reference heating etc. ...and:
-* Support for **onboard boom sensors**, including **temperature and humidity** sensors. Pressure *estimation* (like SG models).
+* Support for **onboard boom sensors**, including **temperature and humidity** sensors. Pressure *estimation* (like SG models)
 * Detailed in-built **debugging** features via LED status and serial messages
 * Onboard **button** allowing user to change different operation modes and parameters 'in-flight'
-* **Safety features**, including GPS watchdog and position improvement (these two improve flights in environments with interference/noise), battery voltage and temperature protection, sensors defrosting and condensation prevention
-* Support for extending hardware capabilities, including external I2C or UART sensors - including **OIF411**
-* **Power saving** features, including GPS power management (together with powersaving modes and complete disable for stationary use cases) and automatic radio adjusting
+* **Safety features**, including GPS watchdog and position improvement (these two improve flights in environments with interference/noise), battery voltage protection, sensors defrosting and condensation prevention, system reset watchdog
+* Support for extending hardware capabilities, including **OIF411**
+* **Power saving** features, including GPS power management (together with powersaving modes and OFF mode for stationary use cases) and automatic radio adjusting
 * **User-friendly** firmware and IDE allows users to easily customimze the device operation
-* Weather station mode, supporting APRS WX reporting
-* Flight controling algorithms. Ability to rapidly send packets when below set altitude.
-* Calibration modes for temperature and humidity sensor on the silver boom
+* Weather station mode, supporting APRS WX report, constant coordinates
+* Fox hunting mode, with CW and FM audio beacons
+* Flight controling algorithms. Ability to rapidly send packets when below set altitude. Data analysis and debug sent via APRS extended packets every set interval
+* Automatic calibration modes for temperature and humidity sensors on the silver boom, ground-check procedures, humidity module reconditioning. Ability to further improve accuracy by manually calibrating the readings
 * And many more - mentioned in [changelog](#firmware-changelog) and [manual](./fw/OPERATION_MANUAL.md)
 
 
