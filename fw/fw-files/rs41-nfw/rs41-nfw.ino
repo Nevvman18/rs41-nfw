@@ -20,8 +20,8 @@ TinyGPSPlus gps;
 
 
 //===== Device revision definitions
-#define RSM4x4 //new pcb versions (based on MCU STM32L412RBT6 LQFP64)
-//#define RSM4x2  //old pcb versions, also rsm4x1 (based on MCU STM32F100C8T6B LQFP48)
+#define RSM4x4 //new pcb versions, RSM4x4 AND RSM4x5 (based on MCU STM32L412RBT6 LQFP64)
+//#define RSM4x2  //old pcb versions, RSM4x2 and RSM4x1 (based on MCU STM32F100C8T6B LQFP48)
 
 #ifdef RSM4x4
 bool rsm4x2 = false;

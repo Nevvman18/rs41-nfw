@@ -83,7 +83,7 @@ Factory new sondes with original firmware have read and write protections enable
       * `RDP byte` to `unchecked` (read out protection disabled)
     * In the **Write Protection**
       * Set **all** boxes to `unchecked`, the write protection has to be disabled on all sectors.
-  * For newer models (eg. `RSM414`, `RSM424`), set like on [this picture](./photos/mcu-unlock-rsm414.png):
+  * For newer models (eg. `RSM414`, `RSM424`, `RSM425`), set like on [this picture](./photos/mcu-unlock-rsm414.png):
     * In the **Read Out Protection**
       * `RDP byte` to `AA`
     * In the **Write Protection**

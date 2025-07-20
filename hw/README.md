@@ -24,8 +24,10 @@ The component naming also refers to this document, as well as some pin definitio
 
 ## Older vs newer - how do I know which one I'm holding now?
 Open the enclosure and take out the PCB. On the back side of it (the one without battery holder), in the middle of the coil on the bottom, there should be a PCB model, that starts with `RSM...`<br>
-* PCB model with a **last digit of '4'** - newer **~2023** version (for example `RSM414`, `RSM424`)
-* PCB model with a **last digit other than '4'**, for example '1' or '2' - *older* version (for example `RSM412`, `RSM421` etc.)
+* PCB model with a **last digit of '4' or '5'** (or simply **`RSM4x4`** or **`RSM4x5`**)- newer (**after ~2023**) version (for example `RSM414`, `RSM424`, `RSM425`)
+* PCB model with a **last digit of '1' or '2'**, (or simply **`RSM4x1`** or **`RSM4x2`**) - *older* version (for example `RSM412`, `RSM421` etc.)
+
+`RSM4x1` and `RSM4x2` seem to be really similar and share the same design, the same goes for `RSM4x4` and `RSM4x5`. The first ones get called the old ones, and the `x4 x5` revisions are the new ones. **RS41-NFW project is compatible with all of them.**
 
 <br>
 
@@ -112,7 +114,7 @@ XDATA_TX(PB10)  | o   o |  +3V_MCU                             3  XDATA_TX(PB10)
 ```
 
 ### Internal expansion connector
-I only have the RS41-SG version (without additional pressure sensor board), so the PCBs only contain a footprint for soldering one. I bet that the pinout is the same, desciription can be found in the *radiosonde_hardware*.
+In the new revisions, connector pinout is left the same, desciription can be found in the *radiosonde_hardware*. The pressure sensor (`RPM411` module) is the only known one to use it, and has only one revision, wihtout changes over time, so far.
 
 ### NFC interface
 Besides the lack of the `C604` capacitor (but the footprint is still there?) the circuit looks the same as the one before. <br>

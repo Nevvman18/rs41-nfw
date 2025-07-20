@@ -1,7 +1,7 @@
 # RS41-NFW - Versatile, custom firmware for ALL revisions of Vaisala RS41 radiosondes
 ## **Vaisala RS41 New Firmware** (*RS41 Nevvman's Firmware*) <br>
-**NOTE:** This firmware works with the ALL variants of RS41 radiosondes, with the new ones too, bringing full hardware and software support with lots of features for everyone. More below.<br><br>
-Vaisala some time ago began launching new RS41 sondes, with new internal design. They can be recognized by a last digit of 4 of the PCB model (eg. `RSM414`, `RSM424`). This firmware is an approach for reusing them as amateur devices for many different purposes. It also brings full support for older models.<br>
+**NOTE:** This firmware works with the **ALL** variants of RS41 radiosondes, with the new (2023 and 2025) ones too, bringing full hardware and software support with lots of features for everyone. More below.<br><br>
+Vaisala some time ago began launching new RS41 sonde revisions, with new internal design. They can be recognized by a last digit of 4 or 5 of the PCB model (eg. `RSM414`, `RSM424`, `RSM425`). This firmware is an approach for reusing them as amateur devices for many different purposes. It brings full and thorough support for [all revisions](../hw/README.md#older-vs-newer---how-do-i-know-which-one-im-holding-now).<br>
 
 * [RS41-NFW Firmware features](#rs41-nfw-firmware-features)
 * [Terms of Use](#terms-of-use)
@@ -17,7 +17,7 @@ Vaisala some time ago began launching new RS41 sondes, with new internal design.
 * [Final notes](#final-notes)
 
 ## RS41-NFW Firmware features
-* **Full support for ALL** RS41 versions (eg. `RSM421`, `RSM412`, `RSM414`, `RSM424`), including the old and new ones with the '4' at the end of the PCB model
+* **Full support for ALL** RS41 versions (eg. `RSM421`, `RSM412`, `RSM414`, `RSM424`, `RSM425`), including the old and new ones with the '4' at the end of the PCB model
 * Multiple, customizable transmission modes
     * [**Horus Binary 4FSK v2**](https://github.com/projecthorus/horusdemodlib/wiki)
         * One of the most efficient radio modes for HAB and other simple telemetry designs, allows for decoding of very weak signals
@@ -87,7 +87,7 @@ See: [hw/README.md](./hw/README.md)
 
 
 ## Firmware changelog
-* `v55` - Si4032 radio now consumes 10-15mA less current than before, due to a misunderstanding of operation stages, allowing now to sleep properly between transmissions. Ability to specify TX power in each mode. Removed power save mode which changed interval and power below a certain altitude, which was a clone of a newer feature called `lowAltitudeFastTx`. Ability yo specify constant altitude when stationary use with no GPS. Others.
+* `v55` - Si4032 radio now consumes 10-15mA less current than before, due to a misunderstanding of operation stages, allowing now to sleep properly between transmissions. Ability to specify TX power in each mode. Removed power save mode which changed interval and power below a certain altitude, which was a clone of a newer feature called `lowAltitudeFastTx`. Ability yo specify constant altitude when stationary use with no GPS. Others. + support of the newest `RSM425` boards.
 * `v54` - power OFF routine modification, making the procedure status more clear. APRS temperature reporting length improvement.
 * `v53` - timing improvements down to milliseconds, with help of Bernd DL1XH. More talkative UART debug messages.
 * `v52` - heating bug with time management, APRS format improvement
@@ -128,6 +128,7 @@ See: [hw/README.md](./hw/README.md)
 <br>
 
 Incoming features:
+* Document the hardware of `RSM425` revision - it works flawlessly with the RS41-NFW, however, I don't have one yet that I can study on. If you have one, please contact me.
 * Somehow get the RPM411 to work
 
 
@@ -148,6 +149,7 @@ Incoming features:
   * Damian SQ2DEF and his team - SQ6KXY, Paweł, Lechu, McXander, wprzyb, Michał, Hubert...
   * obi7zik - thread about GPS power mode issue
   * OM3BC - big help in getting the RTTY to finally have a proper format and timings
+  * maxkup14 - suggested accuracy of sensor measurements is affected by GPS (to be investigated) and successfully tested the RS41-NFW with 2025 `RSM425` revision!
   * People from *Radiosondy Polska* group - Jarosław, Wojtek... - kind words in a local group argument
 
 
