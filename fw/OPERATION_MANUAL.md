@@ -36,8 +36,7 @@
 ## Firmware configuration
 To configure the firmware, open the .ino project file in the IDE. <br>
 Configuration options are located in definitions on the first ~200 of lines.
-**READ ME:** the options in the firmware should be self explanatory (alongside with the comments near them). This manual should be up-to-date, but there may be some issues with it (it's hard to manage that long markdown file, sorry :) ). If you have **any** problems, questions and suggestions, feel free to open issues here! <br>
-Temporairly, sorry for lack of versioning in the firmware files, this will be soon corrected.
+**READ ME:** the options in the firmware should be self explanatory (alongside with the comments near them). This manual should be up-to-date, but there may be some issues with it (it's hard to manage that long markdown file, sorry :) ). If you have **any** problems, questions and suggestions, feel free to open issues here!
 
 
 

@@ -78,7 +78,7 @@ See: [fw/COMPILE.md](./fw/COMPILE.md)
 
 
 ## Firmware and device operation
-See: [fw/OPERATION_MANUAL.md](./fw/OPERATION_MANUAL.md)
+See: [fw/OPERATION_MANUAL.md](./fw/OPERATION_MANUAL.md) <br>
 The options in the firmware file should be self explanatory (alongside with the comments near them). This manual should be up-to-date, but there may be some issues with it (it's hard to manage that long markdown file, sorry :) ). If you have **any** problems, questions and suggestions, feel free to open issues here!
 
 
