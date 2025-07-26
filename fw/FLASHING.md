@@ -16,12 +16,8 @@ To install the firmware on the RS41 radiosonde, you should follow these instruct
 
 <br>
 
-**NOTE:** Pre-compiled binaries provide few customization options compared to compiling the firmware itself! The only recommended solution for HAB and other stuff is to compile the binary itself, it isn't hard with the guide.<br>
-The pre-compiled binary should never be used, unless you can't compile the binary or you only want to test some part of the default firmware config.
-
-**Note:** If you can't find the binary for your platform (sometimes the binary for OLD revisions will be missing), this means that the firmware was *not tested* on the missing platform. HOWEVER, this does **not** mean that the missing platform won't work with the specified firmware. In 95% of the cases the missing platform will just need the compilation and will work just fine. Only concern would be some stabillity issues, which are the left 5% of the chance. Usually, the missing platform will be supplied with support in the next release.
-
-**Note:** Pre-compiled binaries use default settings and configurations, which are the same that the firmware source file is distributed with.
+**NOTE:** The pre-compiled binaries aren't provided anymore with each release, due to increasing number of customization options and sonde-specific things, such as an automatic sensor boom calibration.
+Compiling the firmware is a very straight-forward process, by following the documentation it is rather easy and really takes under 30 minutes.
 
 <br>**Note:** Radiosondes that are factory new, with original firmware, need to be [unlocked](#unlocking-the-factory-mcu-protection).
 
