@@ -74,7 +74,9 @@ In the `//===== Interfaces` part, the communication interfaces are set-up, like 
 
 
 ### Radio signals config
-This is the first interesting part that a user should customize. It is located at the section `//===== Radio signals config`.  [More about radio here](#radio-signals-operation)<br><br>
+This is the first interesting part that a user should customize. It is located at the section `//===== Radio signals config`.  [More about radio here](#radio-signals-operation)<br>
+
+**NOTE:** This part is out of date, if help needed, please follow the code comments. <br> <br>
 
 
 
@@ -393,36 +395,28 @@ Immediately after pressing the button, during the setup function, the LEDs can b
 Device debug states, LED colors and conditions, during normal device operation:
 * OK - continuous green light
   * If no valid warning or error, ok is true
-* Flight-ready, but wait a while
-  * Sonde is waiting to discover more GPS signals to lock on before launch.
+* Flight-ready, but wait a while - blinking green LED
+  * Sonde has fix and is still waiting to discover more GPS signals to lock on before launch. The radio may still be not transmitting, wait for the continuous green light.
 * Warning - continuous orange light (both red and green make orange-like color)
   * `vBatErrValue` < Battery voltage < `vBatWarnValue`
-  * `ovhtErrValue` < Thermistor temp. < `ovhtWarnValue`
   * GNSS satellites < `gpsSatsWarnValue`
+  * `ovhtErrValue` < Thermistor temp. < `ovhtWarnValue`
 * Error - continuous red light
   * Battery voltage < `vBatErrValue` < `vBatWarnValue`
-  * Thermistor temp. < `ovhtErrValue` < `ovhtWarnValue`
   * `sensorBoomMainTempError` OR|| `sensorBoomHumidityModuleError`
+  * Thermistor temp. < `ovhtErrValue` < `ovhtWarnValue`
+* Constant red LED and blinking green LED (red-orange pattern)
+  * Only if `improvedGpsPerformance` is enabled.
+  * The sonde has no fix and is waiting to gather it. The radio is not transmitting and waiting to transmit after GPS fix is acquired.
   
-* Undefined - continuous orange light
-  * If 2 error levels happen simoultaneously (for example warn and error), this sets the status to undefined, which should never happen
+* Undefined status - continuous orange light
+  * If 2 error levels happen simoultaneously (for example warn and error), this sets the status to undefined, which never happens, but is possible.
 
 <br>
 
 LED status lights can be permamently turned OFF by defining `ledStatusEnable = false`. LED status lights turn OFF itself above 1000m to save the power.
 
 The LEDs also change their status when the button modes are being selected, which is described in [Button operation](#button-operation).
-
-The device also contains an 8 bit unsigned value called `deviceDebugState` which determines the device status and is sent via one of the Horus v2 additional packets. It is calculated using the following formula:
-`deviceDebugState = statusNum + heaterDebugState`
-<br>
-
-The statusNum is determined by the status state:
-* OK -> `statusNum = 0`;
-* Warning -> `statusNum = 100`
-* Error -> `statusNum = 200`
-
-The deviceDebugState contains a failsafe that when it overflows the `uint8_t` range, it sets to `249`.
 
 The `heaterDebugState` calculation is described in the [Heater algorithm](#heater-algorithm).
 
@@ -434,7 +428,7 @@ If set to 0, the button gets completely disabled, the only way to turn the sonde
 
 If set to 1, the button can turn the sonde OFF on it's press (press - due to tasks management, the actual press length may vary between 0 and 5 seconds).<br>
 
-When the mode is set to 2 (extended button operation mode), there button operation algorithm contains a page-like setting system, with pages from 1 to 4, whereas each page can be recognized by a 500ms GREEN-RED LED cycle. Entering a page is done by holding the button until the desired page number is selected, and then by releasing the button at this desired page number (previous RTTY configuration pages were deleted - who uses the RTTY today in HAB flights ? :) ):
+When the mode is set to 2 (not suggested at all, please stick to the mode 0 or 1), button operation algorithm contains a page-like setting system, with pages from 1 to 4, whereas each page can be recognized by a 500ms GREEN-RED LED cycle. Entering a page is done by holding the button until the desired page number is selected, and then by releasing the button at this desired page number (previous RTTY configuration pages were deleted - who uses the RTTY today in HAB flights ? :) ):
 * Page 1 - `empty` - unless there is a function ongoing (currently this can cancel the improveGpsPerformance setting when active).
 * Page 2 - `radioEnablePA`. Green blinks 2 times for true, red 2 times for false.
 * Page 3 - `radioPwrSetting`. Green blinks 3 times for 100mW (7 max), red 3 times for 2mW (0 min). *annotation below*
@@ -450,11 +444,10 @@ GREEN___++++----++++----++++----____++--++--++--    _______________________
 ```
 <br>
 
-`radioPwrSetting` annotation - this setting cannot be changed via the button when the powerSave features for the radio TX power are enabled (when the `powerSaveRadioPwrSetting` != -1). This case is indicated with the RED led glowing for 500ms, which means that the operation didn't end successfully (radio power not changed). <br>
 
 ### Radio signals operation
 
-The radio modes are switched in cycles. Each cycle contains a transmission with each mode. Each transmission in one of the modes can be separated from the other with a defined `modeChangeDelay`, described above.
+The radio modes are switched in cycles. Each cycle contains a transmission with each mode. Each transmission in one of the modes can be separated from the other with a defined `..Wait` variable (for example horusWait), described above.
 
 #### PIP
 <p align="center">
@@ -514,10 +507,10 @@ This project uses Horus v2 binary format, with 32 byte message length. This tabl
 | extTemperature   	| External temperature integer (from sensor boom)                                         	        |
 | humidity        	| humidity                                         	                                                |
 | pressure        	| Pressure (estimated - no sensor support now)   	                                                  |
-| deviceDebugState  | deviceDebugState       	                                                                          |
+| empty             | empty                  	                                                                          |
 
 <br>
-When the OIF411 is connected, the last 5 dummy places change to this unofficial format (good only for testing only):
+When the OIF411 is connected, the last 5 dummy places change to this unofficial format (good for testing only):
 
 | Data               | Description                                                                                 |
 |-------------------|--------------------------------------------------------------------------------------------- |
@@ -533,7 +526,7 @@ When the OIF411 is connected, the last 5 dummy places change to this unofficial 
 <img src="./photos/aprs-waterfall.png" alt="aprs-waterfall" style="height:20%"/><br>
 </p><br>
 
-This implementation is a standard APRS 1200bd modem with tones at 1200Hz and 2200Hz. It supports 2 message formats - standard for HAB tracking and WX format for weather station reports, which currently only send temperature external in their reports, and internal temperature and battery voltage in APRS comment.
+This implementation is a standard APRS 1200bd modem with tones at 1200Hz and 2200Hz. It supports 2 message formats - standard for HAB tracking and WX format for weather station reports, which currently send temperature and humidity external in their reports, and internal temperature and battery voltage in APRS comment.
 
 
 
@@ -541,19 +534,17 @@ This implementation is a standard APRS 1200bd modem with tones at 1200Hz and 220
 The RS41 sondes provide an expansion port on the bottom part of the device, which implement a protocol called XDATA. The capabilities of the device allow users to utilise them like standard GPIO pins. The following modes of it's operation are available via setting the `xdataPortMode`:
 * Disabled (0) - fully disables the XDATA IO pins
 * Debug UART (1) - utilizes the XDATA pins (number 2 and 3) to print out the debug messages as a standard serial port (@115200 baudrate, can be changed).
-* I2C (2) - upcoming releases of the firmware *will* support I2C devices, such as BME280 enviromental sensor, no support for now, because of the raster issues in the development site.
+* I2C (2) - not supported now and probably won't be, external sensors via I2C are far worse option than having an accurate sensor boom.
 * XDATA UART (3) - utilizes the XDATA pins as their default use was - to connect XDATA capable devices. Currently the only device supported and decoded is the OIF411 ozone sounding pump with ECC electrodes. (XDATA protocol uses a simple 9600baud UART with properitary message format)
 
 <br>
 
 The UART and I2C capabilities cannot be used at the same time.<br>
-The ozone data is sent via RTTY and Horus, described above.
 
 
 ### Power management
 Device measures the battery voltage and according to this sets the warning and error messages (described above).<br>
-If the battery voltage goes below defined `batteryCutOffVoltage`, the sonde transmitts `VBAT-CUTOFF VBAT-CUTOFF VBAT-CUTOFF` via RTTY even if it is disabled and then powers OFF.<br>
-The sonde also has some power saving capabilities, like radio sleep and LED turn OFF at heights. In future, it is planned to implement GPS power saving and MCU sleep.
+The sonde also has some power saving capabilities, like radio sleep and LED turn OFF at heights, or GPS management.
 
 #### powerSave features
 The sonde has GPS power saving features, described later in GPS opeartion modes.
@@ -561,10 +552,7 @@ The sonde has GPS power saving features, described later in GPS opeartion modes.
 Besides that, some power saving features are activated above certain altitude. This behaviour is determined by the `powerSaveAltitude` variable in meters.
 The power saving changes 2 settings - radio TX power and interval between radio modes. <br>
 
-After the power saving mode is entered (gpsAlt > powerSaveAltitude), the radio TX power is changed (usually lowered) from the `defaultRadioPwrSetting` to `powerSaveRadioPwrSetting`. This particular behaviour can be disabled by setting the `powerSaveRadioPwrSetting` to -1. <br>
-The interval between transmission modes is also being changed, from `defaultModeChangeDelay` to `powerSaveModeChangeDelay`. his particular behaviour can be disabled by setting the `powerSaveModeChangeDelay` to -1. <br>
-
-The whole power saving feature can be disabled by setting the `powerSaveAltitude` to -1. <br>
+*writeup here needed*
 
 The sonde also has an ability to lower the consumption after landing. If enabled via `ultraPowerSaveAfterLanding`, 20 minutes after landing the sonde fully turns of the GPS, sensors and some peripherals, only leaving the CPU working, together with radio, which transmits Horus, APRS and dataRecorder values every 10 minutes, consuming around 55mA. In future we want to investigate the STM power saving capabilities.
 
