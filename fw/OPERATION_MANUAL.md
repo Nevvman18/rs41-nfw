@@ -1,5 +1,10 @@
 # RS41-NFW Operation manual
 
+# NOTE! This manual became **outdated** as the further development kept going.
+# **The most up-to-date documentation of all firmware features are comments in the code**.
+## They became very very detailed now, please read them as you won't be disappointed. <br> If you still encounter questions, don't hesitate to ask.
+
+
 * [Firmware configuration](#firmware-configuration)
   * [Recommended settings](#recommended-settings)
   * [Sonde PCB version](#sonde-pcb-version)

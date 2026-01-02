@@ -1,0 +1,609 @@
+<!--
+RS41-NFW Ground Control Software. Frontend, version v10
+Released on GPL-3.0 license. Authors: Franek Łada (nevvman, SP5FRA)
+-->
+
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>RS41-NFW Ground Control</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.1/socket.io.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        body { background-color: #0b0f1a; color: #e2e8f0; font-family: 'Inter', sans-serif; }
+        .data-card { background: #161e2d; border: 1px solid #2d3748; padding: 1.25rem; border-radius: 12px; }
+        .tab-content { display: none; }
+        .tab-content.active { display: block; }
+        .sonde-container { height: 100px; width: 100px; display: flex; align-items: center; justify-content: center; overflow: hidden; }
+        .sonde-img { transform: rotate(-90deg); max-height: 140%; width: auto; }
+        .active-tab { border-bottom: 3px solid #38bdf8; color: #38bdf8; font-weight: bold; }
+        .val-hero { font-family: 'JetBrains Mono', monospace; font-size: 1.5rem; font-weight: 800; color: #fff; }
+        .val-sub { font-family: 'JetBrains Mono', monospace; font-size: 0.7rem; color: #94a3b8; }
+        .val-mono { font-family: 'JetBrains Mono', monospace; font-size: 0.75rem; color: #e2e8f0; }
+        .pwr-bar { height: 6px; border-radius: 3px; background: #1e293b; overflow: hidden; }
+        .pwr-fill { height: 100%; transition: width 0.3s; }
+        .bg-heat-ref { background: linear-gradient(90deg, #f59e0b, #ef4444); }
+        .bg-heat-hyg { background: linear-gradient(90deg, #3b82f6, #8b5cf6); }
+        .bg-power-bar { background: linear-gradient(90deg, #10b981, #3b82f6, #8b5cf6); }
+        .section-header { font-size: 0.65rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 0.75rem; color: #64748b; }
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+    </style>
+</head>
+<body class="p-4">
+
+    <div class="flex justify-between items-center mb-6 bg-slate-900 px-6 py-2 rounded-2xl border border-slate-800 shadow-xl overflow-hidden h-32">
+        <div class="flex flex-col">
+            <h1 class="text-2xl font-black text-white uppercase tracking-tighter">RS41-NFW Ground control software</h1>
+            <div class="flex items-center mt-2 space-x-4">
+                <div class="flex items-center space-x-2 bg-slate-800 px-3 py-1 rounded-full border border-slate-700">
+                    <span class="text-slate-500 text-[10px] font-bold uppercase">Status:</span>
+                    <span id="status-label" class="text-green-500 text-xs font-black">OK</span>
+                    <div id="status-dot" class="h-3 w-3 rounded-full bg-green-500 shadow-[0_0_10px_#22c55e]"></div>
+                </div>
+                <div class="text-[10px] font-mono text-slate-500">FW: <span id="fwVer" class="text-sky-400">---</span></div>
+            </div>
+        </div>
+    </div>
+
+    <div class="flex space-x-4 mb-4 border-b border-slate-800 text-[11px] uppercase font-bold tracking-widest overflow-x-auto pb-1 no-scrollbar">
+        <button onclick="openTab(event, 'ground')" class="tab-btn active-tab px-2 pb-2 whitespace-nowrap">Ground Check</button>
+        <button onclick="openTab(event, 'sys')" class="tab-btn px-2 pb-2 whitespace-nowrap">System</button>
+        <button onclick="openTab(event, 'gps')" class="tab-btn px-2 pb-2 whitespace-nowrap">GPS</button>
+        <button onclick="openTab(event, 'radio')" class="tab-btn px-2 pb-2 whitespace-nowrap">Radio</button>
+        <button onclick="openTab(event, 'power')" class="tab-btn px-2 pb-2 whitespace-nowrap">Power</button>
+        <button onclick="openTab(event, 'flight')" class="tab-btn px-2 pb-2 whitespace-nowrap">Flight</button>
+        <button onclick="openTab(event, 'sensors')" class="tab-btn px-2 pb-2 whitespace-nowrap">Sensors</button>
+        <button onclick="openTab(event, 'heating')" class="tab-btn px-2 pb-2 whitespace-nowrap">Heating</button>
+        <button onclick="openTab(event, 'recorder')" class="tab-btn px-2 pb-2 whitespace-nowrap">Recorder</button>
+    </div>
+
+    <div id="ground" class="tab-content active">
+        <div class="grid grid-cols-1 md:grid-cols-1 gap-4">
+            <div class="data-card">
+                <h3 class="section-header">Serial Connection</h3>
+                <div class="flex space-x-2">
+                    <input id="serial-port" type="text" value="COM3" class="bg-slate-950 border border-slate-800 p-2 rounded text-xs flex-1 text-white">
+                    <select id="serial-baud" class="bg-slate-950 border border-slate-800 p-2 rounded text-xs text-white">
+                        <option value="115200">115200</option>
+                        <option value="9600">9600</option>
+                    </select>
+                    <button onclick="connectSerial()" class="bg-sky-600 px-4 rounded font-bold text-xs text-white hover:bg-sky-500">CONNECT</button>
+                </div>
+            </div>
+            <div class="data-card border-l-4 border-sky-500">
+                <h3 class="section-header">Operation Stage</h3>
+                <div class="flex items-center space-x-4">
+                    <div id="stage-num" class="hidden text-4xl font-black text-white">--</div>
+                    <div>
+                        <p id="stage-title" class="text-sky-400 font-bold text-xl italic">Waiting for data...</p>
+                        <p id="stage-desc" class="text-slate-200 text-m leading-tight mt-1">Please connect the sonde.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="sys" class="tab-content">
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div class="data-card">
+                <p class="section-header">Hardware Info</p>
+                <p id="hw-rev-str" class="text-sm font-bold text-white mt-2">Unknown Revision</p>
+                <div class="mt-4 space-y-1 text-[10px]">
+                    <div class="flex justify-between"><span>isRSM4x2:</span><span id="isRSM4x2" class="bool-val">?</span></div>
+                    <div class="flex justify-between"><span>isRSM4x4:</span><span id="isRSM4x4" class="bool-val">?</span></div>
+                </div>
+            </div>
+            <div class="data-card">
+                <p class="section-header">GPS Time (main clock)</p>
+                <p id="gps_time_formatted" class="text-3xl font-black text-white mt-1">00:00:00</p>
+                <div class="mt-2 space-y-1 text-[10px] text-slate-400">
+                    <div class="flex justify-between"><span>Raw System Millis Counter:</span><span id="millis">0</span></div>
+                    <div class="flex justify-between"><span>System Scheduler Time:</span><span id="sys_time_formatted">00:00:00</span></div>
+                </div>
+            </div>
+            <div class="data-card">
+                <p class="section-header">Configuration</p>
+                <div class="mt-2 space-y-2 text-[10px]">
+                    <div class="flex justify-between border-b border-slate-800 pb-1"><span>Auto CPU Reset:</span><span id="autoResetEnable" class="bool-val"></span></div>
+                    <div class="flex justify-between border-b border-slate-800 pb-1"><span>Button Mode:</span><span id="buttonModeLabel" class="text-white font-bold">Disabled</span></div>
+                    <div class="flex justify-between border-b border-slate-800 pb-1"><span>LED Status Enabled:</span><span id="ledStatusEnable" class="bool-val"></span></div>
+                    <div class="flex justify-between"><span>LED Disable Altitude:</span><span id="ledAutoDisableHeight" class="text-sky-400"></span></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="gps" class="tab-content">
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
+            <div class="lg:col-span-2 data-card">
+                <h3 class="text-sky-400 font-black text-[10px] uppercase mb-4">Position & Navigation</h3>
+                <div class="grid grid-cols-2 md:grid-cols-4 gap-6 mb-4">
+                    <div><span class="text-[10px] text-slate-500 uppercase block">Latitude</span><span id="gpsLat" class="font-mono text-white text-sm">0.000000</span></div>
+                    <div><span class="text-[10px] text-slate-500 uppercase block">Longitude</span><span id="gpsLong" class="font-mono text-white text-sm">0.000000</span></div>
+                    <div><span class="text-[10px] text-slate-500 uppercase block">Altitude</span><span id="gpsAlt" class="text-xl font-black text-white"></span></div>
+                    <div><span class="text-[10px] text-slate-500 uppercase block">Speed</span><span id="gpsSpeedKph" class="text-xl font-black"></span></div>
+                    <div><span class="text-[10px] text-slate-500 uppercase block">Vert. Vel</span><span id="vVCalc" class="text-xl font-black text-white"></span></div>
+                    <div><span class="text-[10px] text-slate-500 uppercase block">Sats</span><span id="gpsSats" class="text-xl font-black text-white"></span></div>
+                    <div><span class="text-[10px] text-slate-500 uppercase block">HDOP</span><span id="gpsHdop" class="font-mono text-white"></span></div>
+                </div>
+                <a id="gmaps-link" href="#" target="_blank" class="block w-full bg-slate-950 p-2 rounded text-center text-[10px] font-black text-slate-300 hover:text-white hover:bg-slate-800 transition-all border border-slate-800">
+                    <i class="fas fa-map-marker-alt mr-2 text-red-500"></i> OPEN LOCATION IN GOOGLE MAPS
+                </a>
+            </div>
+            <div class="data-card">
+                <h3 class="section-header">GPS Debug & Config</h3>
+                <div class="space-y-2 text-[10px]">
+                    <div class="flex justify-between items-center"><span>UBlox Airborne Mode (model 6):</span><span id="ubloxGpsAirborneMode" class="bool-val"></span></div>
+                    <div class="flex justify-between items-center"><span>GPS Fix Watchdog interval (ms):</span><span id="gpsTimeoutWatchdog" class="text-white"></span></div>
+                    <div class="flex justify-between items-center"><span>Improved GPS Performance Algorithm:</span><span id="improvedGpsPerformance" class="bool-val"></span></div>
+                    <div class="flex justify-between items-center"><span>Disable Additional Improvement In-flight:</span><span id="disableGpsImprovementInFlight" class="bool-val"></span></div>
+                    <div class="flex justify-between items-center"><span>GPS Operation Mode:</span><span id="gpsOperationModeLabel" class="text-white font-bold"></span></div>
+                    <div class="flex justify-between items-center"><span>Current GPS Power Mode:</span><span id="currentGPSPowerMode" class="text-white"></span></div>
+                    <div class="flex justify-between items-center"><span>GPS Signal Jam Warning:</span><span id="gpsJamWarning" class="bool-val"></span></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="radio" class="tab-content">
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            
+            <div class="data-card border-b-2 border-slate-700">
+                <h3 class="section-header text-sky-400">Radio General</h3>
+                <div class="grid grid-cols-2 gap-2 text-[10px] mb-2">
+                    <div class="flex flex-col"><span>PA Enabled:</span><span id="radioEnablePA" class="bool-val"></span></div>
+                    <div class="flex flex-col"><span>Radio Temp:</span><span id="radioTemp" class="text-white"></span></div>
+                    <div class="flex flex-col"><span>Callsign:</span><span id="callsign" class="text-white"></span></div>
+                </div>
+            </div>
+
+            <div class="data-card border-l-2 border-blue-500 lg:col-span-2">
+                <h3 class="section-header text-blue-400">APRS Mode</h3>
+                <div class="grid grid-cols-2 gap-4 text-[10px]">
+                    <div class="space-y-1">
+                        <div class="flex justify-between"><span>Enabled:</span><span id="aprsEnable" class="bool-val"></span></div>
+                        <div class="flex justify-between"><span>TX Frequency (MHz):</span><span id="aprsFrequencyMhz" class="val-mono"></span></div>
+                        <div class="flex justify-between"><span>TX Power (0-7):</span><span id="aprsRadioPower" class="val-mono"></span></div>
+                        <div class="flex justify-between"><span class="text-slate-500 italic text-[9px]" id="aprsRadioPower-dbm"></span></div>
+                    </div>
+                    <div class="space-y-1">
+                        <div class="flex justify-between"><span>Callsign:</span><span id="aprsCall" class="text-white"></span></div>
+                        <div class="flex justify-between"><span>APRS SSID:</span><span id="aprsSsid" class="text-white"></span></div>
+                        <div class="flex justify-between"><span>Packet Comment:</span><span id="aprsComment" class="text-slate-400 italic"></span></div>
+                        <div class="flex justify-between"><span>Time Sync (s):</span><span id="aprsTimeSyncSeconds" class="val-mono"></span></div>
+                        <div class="flex justify-between"><span>Sync Offset (s):</span><span id="aprsTimeSyncOffsetSeconds" class="val-mono"></span></div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="data-card border-l-2 border-green-500">
+                <h3 class="section-header text-green-400">Horus Mode</h3>
+                <div class="space-y-1 text-[10px]">
+                    <div class="flex justify-between"><span>Enabled:</span><span id="horusEnable" class="bool-val"></span></div>
+                    <div class="flex justify-between"><span>TX Frequency (MHz):</span><span id="horusFrequencyMhz" class="val-mono"></span></div>
+                    <div class="flex justify-between"><span>Payload ID:</span><span id="horusPayloadId" class="val-mono"></span></div>
+                    <div class="flex justify-between"><span>TX Power (0-7):</span><span id="horusRadioPower" class="val-mono"></span></div>
+                    <div class="flex justify-between"><span class="text-slate-500 italic text-[9px]" id="horusRadioPower-dbm"></span></div>
+                    <div class="flex justify-between"><span>Time Sync (s):</span><span id="horusTimeSyncSeconds" class="val-mono"></span></div>
+                    <div class="flex justify-between"><span>Sync Offset (s):</span><span id="horusTimeSyncOffsetSeconds" class="val-mono"></span></div>
+                </div>
+            </div>
+
+            <div class="data-card border-l-2 border-orange-500">
+                <h3 class="section-header text-orange-400">RTTY</h3>
+                <div class="space-y-1 text-[10px]">
+                        <div class="flex justify-between"><span>RTTY Enabled:</span><span id="rttyEnable" class="bool-val"></span></div>
+                        <div class="flex justify-between"><span>TX Frequency (MHz):</span><span id="rttyFrequencyMhz" class="val-mono"></span></div>
+                        <div class="flex justify-between"><span>TX Power (0-7):</span><span id="rttyRadioPower" class="val-mono"></span></div>
+                        <div class="flex justify-between"><span class="text-slate-500 italic text-[9px]" id="rttyRadioPower-dbm"></span></div>
+                        <div class="flex justify-between"><span>Time Sync (s):</span><span id="rttyTimeSyncSeconds" class="val-mono"></span></div>
+                        <div class="flex justify-between"><span>Sync Offset (s):</span><span id="rttyTimeSyncOffsetSeconds" class="val-mono"></span></div>
+                </div>
+            </div>
+
+            <div class="data-card border-l-2 border-purple-500">
+                <h3 class="section-header text-purple-400">Morse</h3>
+                <div class="space-y-1 text-[10px]">
+                        <div class="flex justify-between"><span>Morse Enabled:</span><span id="morseEnable" class="bool-val"></span></div>
+                        <div class="flex justify-between"><span>TX Frequency (MHz):</span><span id="morseFrequencyMhz" class="val-mono"></span></div>
+                        <div class="flex justify-between"><span>TX Power (0-7):</span><span id="morseRadioPower" class="val-mono"></span></div>
+                        <div class="flex justify-between"><span class="text-slate-500 italic text-[9px]" id="morseRadioPower-dbm"></span></div>
+                        <div class="flex justify-between"><span>Time Sync (s):</span><span id="morseTimeSyncSeconds" class="val-mono"></span></div>
+                        <div class="flex justify-between"><span>Sync Offset (s):</span><span id="morseTimeSyncOffsetSeconds" class="val-mono"></span></div>
+                </div>
+            </div>
+
+            <div class="data-card border-b-2 border-slate-700">
+                <h3 class="section-header text-sky-400">PIP Mode</h3>
+                <div class="space-y-1 text-[10px]">
+                    <div class="flex justify-between"><span>Enabled:</span><span id="pipEnable" class="bool-val"></span></div>
+                    <div class="flex justify-between"><span>TX Frequency (MHz):</span><span id="pipFrequencyMhz" class="val-mono"></span></div>
+                    <div class="flex justify-between"><span>TX Power (0-7):</span><span id="pipRadioPower" class="val-mono"></span></div>
+                    <div class="flex justify-between"><span class="text-slate-500 italic text-[9px]" id="pipRadioPower-dbm"></span></div>
+                    <div class="flex justify-between"><span>Time Sync (s):</span><span id="pipTimeSyncSeconds" class="val-mono"></span></div>
+                    <div class="flex justify-between"><span>Sync Offset (s):</span><span id="pipTimeSyncOffsetSeconds" class="val-mono"></span></div>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <div id="power" class="tab-content">
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div class="data-card flex items-center space-x-6">
+                <div id="bat-icon" class="text-4xl text-green-500"><i class="fas fa-battery-three-quarters"></i></div>
+                <div>
+                    <p class="section-header">Battery Voltage</p>
+                    <p id="batV" class="text-4xl font-black text-white">0.00V</p>
+                </div>
+            </div>
+            <div class="data-card text-[10px] space-y-2">
+                <div class="flex justify-between"><span>Warn Value:</span><span id="vBatWarnValue"></span></div>
+                <div class="flex justify-between"><span>Cut-off:</span><span id="batteryCutOffVoltage"></span></div>
+                <div class="flex justify-between"><span>Ultra Save:</span><span id="ultraPowerSaveAfterLanding" class="bool-val"></span></div>
+            </div>
+        </div>
+    </div>
+
+    <div id="flight" class="tab-content">
+        
+        <div class="grid grid-cols-3 gap-4 mb-4">
+            <div class="data-card text-center p-2">
+                <p class="section-header">Flying</p>
+                <span id="beganFlying" class="bool-val text-xl">0</span>
+            </div>
+            <div class="data-card text-center p-2">
+                <p class="section-header">Burst</p>
+                <span id="burstDetected" class="bool-val text-xl">0</span>
+            </div>
+            <div class="data-card text-center p-2">
+                <p class="section-header">Landed</p>
+                <span id="hasLanded" class="bool-val text-xl">0</span>
+            </div>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            
+            <div class="data-card border-t-2 border-sky-500">
+                <h3 class="section-header text-sky-400">Flight Records</h3>
+                <div class="grid grid-cols-2 gap-4">
+                    <div><span class="text-[10px] text-slate-500 block">Max Alt</span><span id="maxAlt" class="val-hero text-sky-400">0</span></div>
+                    <div><span class="text-[10px] text-slate-500 block">Max Speed</span><span id="maxSpeed" class="val-hero text-white">0</span></div>
+                    <div><span class="text-[10px] text-slate-500 block">Max Ascent</span><span id="maxAscentRate" class="val-hero text-green-500">0</span></div>
+                    <div><span class="text-[10px] text-slate-500 block">Max Descent</span><span id="maxDescentRate" class="val-hero text-orange-500">0</span></div>
+                </div>
+            </div>
+
+            <div class="data-card border-t-2 border-orange-500">
+                <h3 class="section-header text-orange-400">Thermal Extremes</h3>
+                <div class="space-y-2 text-xs">
+                    <div class="flex justify-between"><span>Max Main Temp:</span><span id="maxMainTemperature" class="text-white font-bold"></span></div>
+                    <div class="flex justify-between"><span>Min Main Temp:</span><span id="minMainTemperature" class="text-white font-bold"></span></div>
+                    <div class="border-t border-slate-800 my-2"></div>
+                    <div class="flex justify-between"><span>Max Internal:</span><span id="maxInternalTemp" class="text-slate-400 font-bold"></span></div>
+                    <div class="flex justify-between"><span>Min Internal:</span><span id="minInternalTemp" class="text-slate-400 font-bold"></span></div>
+                </div>
+            </div>
+
+            <div class="data-card">
+                <h3 class="section-header">Logic Thresholds</h3>
+                <div class="space-y-1 text-[10px]">
+                    <div class="flex justify-between"><span>Flight Detect Alt:</span><span id="flightDetectionAltitude" class="text-white"></span></div>
+                    <div class="flex justify-between"><span>Burst Detect Thresh:</span><span id="burstDetectionThreshold" class="text-white"></span></div>
+                    <div class="flex justify-between"><span>Low Alt Fast TX:</span><span id="lowAltitudeFastTxThreshold" class="text-white"></span></div>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <div id="sensors" class="tab-content">
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            
+            <div class="data-card border-t-2 border-orange-500">
+                <h3 class="section-header">Main Boom Temperature</h3>
+                <p id="mainTemperatureValue" class="val-hero">0.00°C</p>
+                <div class="mt-4 space-y-1 text-[10px] text-slate-300 bg-slate-950 p-2 rounded">
+                    <div class="flex justify-between"><span>Frequency (Hz):</span><span id="mainTemperatureFrequency" class="val-mono"></span></div>
+                    <div class="flex justify-between"><span>Resistance (ohms):</span><span id="mainTemperatureResistance" class="val-mono"></span></div>
+                    <div class="flex justify-between"><span>Automatic Temperature Calibration Enabled:</span><span id="autoTemperatureCalibration" class="bool-val"></span></div>
+                    <div class="flex justify-between"><span>Temperature correction offset (C):</span><span id="mainTemperatureCorrectionC" class="val-mono"></span></div>
+                    <div class="flex justify-between"><span>Calibration Method:</span><span id="autoTemperatureCalibrationMethod" class="val-mono"></span></div>
+                    <div class="flex justify-between"><span>Calibration Environment Air Temperature:</span><span id="environmentStartupAirTemperature" class="val-mono"></span></div>
+                    <div class="flex justify-between"><span>Temperature Linear Factor:</span><span id="tempSensorBoomCalibrationFactor" class="val-mono"></span></div>
+                    <div class="flex justify-between"><span>Temperature Sensor Error:</span><span id="sensorBoomMainTempError" class="val-mono"></span></div>
+                </div>
+            </div>
+
+            <div class="data-card border-t-2 border-blue-500">
+                <h3 class="section-header">Humidity Module</h3>
+                <p id="humidityValue" class="val-hero">0%</p>
+                <div class="mt-4 space-y-1 text-[10px] text-slate-300 bg-slate-950 p-2 rounded">
+                    <div class="flex justify-between"><span>Humidity Module Enabled:</span><span id="humidityModuleEnable" class="bool-val"></span></div>
+                    <div class="flex justify-between"><span>Frequency (Hz):</span><span id="humidityFrequency" class="val-mono"></span></div>
+                    <div class="flex justify-between"><span>Zero-Humidity-Calibration Enabled:</span><span id="zeroHumidityCalibration" class="bool-val"></span></div>
+                    <div class="flex justify-between"><span>Max RH Frequency:</span><span id="maxHumidityFrequency" class="val-mono"></span></div>
+                    <div class="flex justify-between"><span>Zero-Humidity-Calibration Frequency:</span><span id="zeroHumidityFrequency" class="val-mono"></span></div>
+                    <div class="flex justify-between"><span>Frequency Range Delta:</span><span id="humidityRangeDelta" class="val-mono"></span></div>
+                    <div class="flex justify-between"><span>Humidity Module Error:</span><span id="sensorBoomHumidityModuleError" class="val-mono"></span></div>
+                </div>
+            </div>
+
+            <div class="data-card border-t-2 border-cyan-500">
+                <h3 class="section-header">Ext. Heater Sensor</h3>
+                <p id="extHeaterTemperatureValue" class="val-hero">0.00°C</p>
+                <div class="mt-4 space-y-1 text-[10px] text-slate-300 bg-slate-950 p-2 rounded">
+                    <div class="flex justify-between"><span>Frequency (Hz):</span><span id="extHeaterTemperatureFrequency" class="val-mono"></span></div>
+                    <div class="flex justify-between"><span>Resistance (ohms):</span><span id="extHeaterTemperatureResistance" class="val-mono"></span></div>
+                    <div class="flex justify-between"><span>Automatic Correction Enabled:</span><span id="autoHumidityModuleTemperatureCorrection" class="bool-val"></span></div>
+                    <div class="flex justify-between"><span>Temperature Correction Offset (C):</span><span id="extHeaterTemperatureCorrectionC" class="val-mono">0.00</span></div>
+                </div>
+            </div>
+
+            <div class="data-card border-t-2 border-emerald-500">
+                <h3 class="section-header">Estimated Pressure</h3>
+                <p id="pressureValue" class="val-hero">0 hPa</p>
+                <div class="mt-4 space-y-1 text-[10px] text-slate-300 bg-slate-950 p-2 rounded">
+                    <div class="flex justify-between"><span>Pressure Estimation Algorithm Enabled:</span><span id="enablePressureEstimation" class="bool-val"></span></div>
+                    <div class="flex justify-between"><span>Mean Sea Level Pressure Constant (Pa):</span><span id="seaLevelPressure" class="val-mono"></span></div>
+                </div>
+            </div>
+
+            <div class="data-card border-t-2 border-purple-500">
+                <h3 class="section-header">Internal Temperatures</h3>
+                <div class="space-y-3">
+                    <div>
+                        <p class="text-[9px] text-slate-300 mb-1">Thermistor (Reference Cutout)</p>
+                        <p id="thermistorTemp" class="text-2xl font-black text-white">0</p>
+                        <div class="mt-1 text-[9px] text-slate-300">
+                            R25: <span id="THERMISTOR_R25">?</span>, B: <span id="THERMISTOR_B">?</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="data-card border-t-2 border-pink-500">
+                <h3 class="section-header ">Temperature Calibration & Config</h3>
+                <div class="mt-4 space-y-1 text-[10px] text-slate-300 bg-slate-950 p-2 rounded">
+                     <div class="flex justify-between"><span>Sensor Boom Subsystem Enabled:</span><span id="sensorBoomEnable" class="bool-val"></span></div>
+                    <div class="flex justify-between"><span>Calibration Error:</span><span id="calibrationError" class="bool-val"></span></div>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <div id="heating" class="tab-content">
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            
+            <div class="data-card relative overflow-hidden">
+                <div class="flex justify-between items-start z-10 relative">
+                    <div>
+                        <h3 class="section-header text-orange-400">Reference Heater</h3>
+                        <p class="text-[10px] text-slate-300">Target: <span id="referenceAreaTargetTemperature">32</span>°C</p>
+                    </div>
+                    <div class="text-right">
+                        <span id="referenceHeaterStatus" class="text-4xl font-black text-white">0</span>
+                        <span class="text-sm text-slate-500 font-bold">/ 3</span>
+                    </div>
+                </div>
+                <div class="mt-4 flex justify-between items-center text-xs bg-slate-950 p-2 rounded">
+                    <span class="text-slate-500 font-bold">Heater temperature</span>
+                    <span id="thermistorTempHeating" class="text-orange-400 font-mono font-bold">0.00°C</span>
+                </div>
+                <div class="absolute bottom-0 left-0 w-full pwr-bar bg-slate-800">
+                     <div id="ref-bar" class="pwr-fill bg-heat-ref" style="width: 0%"></div>
+                </div>
+            </div>
+
+            <div class="data-card relative overflow-hidden">
+                <div class="flex justify-between items-start z-10 relative">
+                    <div>
+                        <h3 class="section-header text-blue-400">Ext. Humidity Heater</h3>
+                        <p class="text-[10px] text-slate-300">Enabled: <span id="humidityModuleHeating" class="bool-val">0</span></p>
+                    </div>
+                    <div class="text-right">
+                        <span id="extHeaterPwmStatus" class="text-4xl font-black text-white">0</span>
+                        <span class="text-sm text-slate-500 font-bold">/ 500</span>
+                    </div>
+                </div>
+                
+                <div class="mt-4 flex justify-between items-center text-xs bg-slate-950 p-2 rounded">
+                    <span class="text-slate-500 font-bold">Heater temperature</span>
+                    <span id="extHeaterTemperatureValueHeating" class="text-blue-400 font-mono font-bold">0.00°C</span>
+                </div>
+                <div class="absolute bottom-0 left-0 w-full pwr-bar bg-slate-800">
+                     <div id="hyg-bar" class="pwr-fill bg-heat-hyg" style="width: 0%"></div>
+                </div>
+
+            </div>
+
+        </div>
+    </div>
+
+    <div id="recorder" class="tab-content">
+        <div class="data-card">
+            <h3 class="text-sky-400 font-black text-[10px] uppercase mb-4">Recorder Status</h3>
+            <div class="grid grid-cols-4 gap-4 text-xs">
+                <div class="flex flex-col"><span>Enabled:</span> <span id="dataRecorderEnable" class="bool-val">1</span></div>
+                <div class="flex flex-col"><span>APRS TX Interval (ms):</span> <span id="dataRecorderInterval" class="val-mono">600000</span></div>
+                <div class="flex flex-col"><span>Data filters enabled:</span> <span id="dataRecorderFlightNoiseFiltering" class="bool-val">1</span></div>
+                <div class="flex flex-col"><span>Recorder initialized:</span> <span id="recorderInitialized" class="bool-val">0</span></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const socket = io();
+        const stageMap = {{ STAGE_MAP | tojson }};
+        const pwrMap = {{ POWER_MAP | tojson }};
+
+        // --- FIX 1: Defined the missing Map for GPS modes ---
+        const gpsOpMap = {
+            "0": "GPS disabled, stationary mode",
+            "1": "GPS enabled, max performance",
+            "2": "GPS enabled, auto power saving"
+        };
+
+        const boolKeys = [
+            "isRSM4x2", "isRSM4x4", "autoResetEnable", "ledStatusEnable", "ubloxGpsAirborneMode",
+            "improvedGpsPerformance", "disableGpsImprovementInFlight", "gpsJamWarning",
+            "radioEnablePA", "pipEnable", "horusEnable", "aprsEnable", "aprsToneCalibrationMode",
+            "rttyEnable", "morseEnable", "ultraPowerSaveAfterLanding", "beganFlying",
+            "burstDetected", "hasLanded", "zeroHumidityCalibration", "enablePressureEstimation",
+             "humidityModuleHeating", "dataRecorderEnable", 
+            "dataRecorderFlightNoiseFiltering", "recorderInitialized", "sensorBoomEnable",
+            "humidityModuleEnable", "autoTemperatureCalibration", "autoHumidityModuleTemperatureCorrection",
+            "calibrationError", "sensorBoomMainTempError", "sensorBoomHumidityModuleError"
+        ];
+
+        function openTab(evt, tabName) {
+            document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+            document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active-tab'));
+            document.getElementById(tabName).classList.add('active');
+            evt.currentTarget.classList.add('active-tab');
+        }
+
+        function connectSerial() {
+            socket.emit('connect_serial', {
+                port: document.getElementById('serial-port').value,
+                baud: document.getElementById('serial-baud').value
+            });
+        }
+
+        function refreshData() {
+            socket.emit('refresh_data');
+        }
+
+        socket.on('telemetry_update', (data) => {
+            for (let key in data) {
+                let el = document.getElementById(key);
+                if (el) {
+                    if (boolKeys.includes(key)) {
+                        if (data[key] == "1") el.innerHTML = '<span class="text-green-500 font-bold">True</span>';
+                        else if (data[key] == "0") el.innerHTML = '<span class="text-red-500 font-bold">False</span>';
+                        else el.innerText = data[key];
+                    } else {
+                        el.innerText = data[key];
+                    }
+                }
+            }
+
+            const statusLabel = document.getElementById('status-label');
+            const statusDot = document.getElementById('status-dot');
+            if (data.err === "1") {
+                statusLabel.textContent = "ERROR";
+                statusLabel.className = "text-red-500 text-xs font-black";
+                statusDot.className = "h-3 w-3 rounded-full bg-red-500 shadow-[0_0_10px_#ef4444]";
+            } else if (data.warn === "1") {
+                statusLabel.textContent = "WARNING";
+                statusLabel.className = "text-yellow-500 text-xs font-black";
+                statusDot.className = "h-3 w-3 rounded-full bg-yellow-500 shadow-[0_0_10px_#eab308]";
+            } else {
+                statusLabel.textContent = "OK";
+                statusLabel.className = "text-green-500 text-xs font-black";
+                statusDot.className = "h-3 w-3 rounded-full bg-green-500 shadow-[0_0_10px_#22c55e]";
+            }
+
+            const is4x2 = data.isRSM4x2 === "1";
+            document.getElementById('hw-rev-str').innerText = is4x2 ? "RSM4x2 STM32F100 revision" : "RSM4x4 STM32L412 revision";
+            
+            if(data.gpsHours) {
+                document.getElementById('gps_time_formatted').innerText = 
+                    `${data.gpsHours.toString().padStart(2,'0')}:${data.gpsMinutes.toString().padStart(2,'0')}:${data.gpsSeconds.toString().padStart(2,'0')}`;
+            }
+            
+            if(data.sys_h) {
+                document.getElementById('sys_time_formatted').innerText = 
+                    `${data.sys_h.toString().padStart(2,'0')}:${data.sys_m.toString().padStart(2,'0')}:${data.sys_s.toString().padStart(2,'0')}`;
+            }
+
+            if (data.gpsLat && data.gpsLong) {
+                document.getElementById('gmaps-link').href = `https://maps.google.com/?q=${data.gpsLat},${data.gpsLong}`;
+            }
+
+            // --- FIX 2: Safely update stage-num (check if exists first) ---
+            if (data.stage && stageMap[data.stage]) {
+                const stageNumEl = document.getElementById('stage-num');
+                if (stageNumEl) stageNumEl.innerText = data.stage; 
+                
+                document.getElementById('stage-title').innerText = stageMap[data.stage][0];
+                document.getElementById('stage-desc').innerText = stageMap[data.stage][1];
+            }
+
+            const mapPwr = (id, targetId, barId) => {
+                if(data[id]) {
+                    const pwr = parseInt(data[id]);
+                    document.getElementById(targetId).innerText = pwrMap[data[id]] || '';
+                    if (barId) {
+                        const el = document.getElementById(barId);
+                        if(el) {
+                             const percentage = (pwr / 7) * 100;
+                             el.style.width = `${percentage}%`;
+                        }
+                    }
+                }
+            };
+            mapPwr('pipRadioPower', 'pipRadioPower-dbm', 'pip-pwr-bar');
+            mapPwr('horusRadioPower', 'horusRadioPower-dbm', 'horus-pwr-bar');
+            mapPwr('aprsRadioPower', 'aprsRadioPower-dbm', 'aprs-pwr-bar');
+            mapPwr('rttyRadioPower', 'rttyRadioPower-dbm', 'rtty-pwr-bar');
+            mapPwr('morseRadioPower', 'morseRadioPower-dbm', 'morse-pwr-bar');
+
+            const btnMap = {
+                "0": "Button Disabled",
+                "1": "Hold for Shutdown",
+                "2": "Config Menu Mode"
+            };
+            document.getElementById('buttonModeLabel').innerText =
+                btnMap[data.buttonMode] || data.buttonMode;
+
+
+            if ('gpsOperationMode' in data) {
+                // Now this won't crash because gpsOpMap is defined
+                document.getElementById('gpsOperationModeLabel').innerText =
+                    gpsOpMap[data.gpsOperationMode] || data.gpsOperationMode;
+            }
+
+
+            if (data.batV) {
+                const bat = parseFloat(data.batV);
+                document.getElementById('batV').innerText = bat.toFixed(2) + "V";
+                const icon = document.getElementById('bat-icon');
+                if(bat < 2.9) icon.className = "text-4xl text-orange-500";
+                else icon.className = "text-4xl text-green-500";
+            }
+
+            if (data.vBatWarnValue) {
+                document.getElementById('vBatWarnValue').innerText = parseFloat(data.vBatWarnValue).toFixed(2) + "V";
+            }
+            if (data.batteryCutOffVoltage) {
+                document.getElementById('batteryCutOffVoltage').innerText = parseFloat(data.batteryCutOffVoltage).toFixed(2) + "V";
+            }
+
+            if (data.referenceHeaterStatus) {
+                const perc = (parseInt(data.referenceHeaterStatus) / 3) * 100;
+                const bar = document.getElementById('ref-bar');
+                if(bar) bar.style.width = `${perc}%`;
+            }
+            if (data.extHeaterPwmStatus) {
+                const perc = (parseInt(data.extHeaterPwmStatus) / 500) * 100;
+                const bar = document.getElementById('hyg-bar');
+                if(bar) bar.style.width = `${perc}%`;
+            }
+
+            if (data.thermistorTemp) {
+                document.getElementById('thermistorTempHeating').innerText = data.thermistorTemp;
+            }
+
+            if (data.extHeaterTemperatureValue) {
+                document.getElementById('extHeaterTemperatureValueHeating').innerText = data.extHeaterTemperatureValue;
+            }
+        });
+    </script>
+</body>
+</html>

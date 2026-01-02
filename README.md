@@ -35,18 +35,19 @@ Vaisala some time ago began launching new RS41 sonde revisions, with new interna
         * Compliant with UKHAS format
     * PIP
         * Beacon operation, transmitting short beep with a specified interval, which could be used as a foxhunting TX device
-* Thorough support of RS41 hardware, including GPS, radio, power circuitry, reference heating etc. ...and:
+* Thorough support of RS41 hardware, including GPS, radio, power circuitry, heaters etc. ...and:
 * Support for **onboard boom sensors**, including **temperature and humidity** sensors. Pressure *estimation* (like SG models)
 * Detailed in-built **debugging** features via LED status and serial messages
-* Onboard **button** allowing user to change different operation modes and parameters 'in-flight'
-* **Safety features**, including GPS watchdog and position improvement (these two improve flights in environments with interference/noise), battery voltage protection, sensors defrosting and condensation prevention, system reset watchdog
-* Support for extending hardware capabilities, including **OIF411**
-* **Power saving** features, including GPS power management (together with powersaving modes and OFF mode for stationary use cases) and automatic radio adjusting
+* Onboard **button** allowing user to shutdown the sonde and change different operation modes
+* **Safety features**, including GPS watchdog and position improvement (these two nicely improve flights in environments with interference/noise), battery voltage protection, sensors defrosting and condensation prevention, system reset watchdog
+* Support for extending hardware capabilities, including **XDATA port**
+* **Power saving** features, including GPS power management (together with powersaving modes and OFF mode for stationary use cases), flight modes, after-landing powersave and advanced heating algorithms.
 * **User-friendly** firmware and IDE allows users to easily customimze the device operation
 * Weather station mode, supporting APRS WX report, constant coordinates
 * Fox hunting mode, with CW and FM audio beacons
 * Flight controling algorithms. Ability to rapidly send packets when below set altitude. Data analysis and debug sent via APRS extended packets every set interval
 * Automatic calibration modes for temperature and humidity sensors on the silver boom, ground-check procedures, humidity module reconditioning. Ability to further improve accuracy by manually calibrating the readings
+* Dedicated **RS41-NFW Ground Control Software**, for simple and detailed pre-flilght things
 * And many more - mentioned in [changelog](#firmware-changelog) and [manual](./fw/OPERATION_MANUAL.md)
 
 
@@ -79,7 +80,16 @@ See: [fw/COMPILE.md](./fw/COMPILE.md)
 
 ## Firmware and device operation
 See: [fw/OPERATION_MANUAL.md](./fw/OPERATION_MANUAL.md) <br>
-The options in the firmware file should be self explanatory (alongside with the comments near them). This manual should be up-to-date, but there may be some issues with it (it's hard to manage that long markdown file, sorry :) ). If you have **any** problems, questions and suggestions, feel free to open issues here!
+**Note:** this manual is outdated, please refer to new improved code comments, as they are up-to-date resource full of information about the functions of this project.
+
+## RS41-NFW Ground Control Software
+Advanced and user friendly webGUI created in Python. <br>
+See: [./rs41-nfw_ground_control_software/README.MD](./rs41-nfw_ground_control_software/README.MD)
+<p float="left">
+  <img src="./rs41-nfw_ground_control_software/picture1.png" width="33%"/>
+  <img src="./rs41-nfw_ground_control_software/picture2.png" width="33%" /> 
+  <img src="./rs41-nfw_ground_control_software/picture3.png" width="33%" />
+</p>
 
 
 ## RSM414 hardware
@@ -87,6 +97,7 @@ See: [hw/README.md](./hw/README.md)
 
 
 ## Firmware changelog
+* `v56` - Introducing **Scheduler** - new CPU time management function. Introducing **RS41-NFW Ground Control Software**, which guides you through different ground check stages and lets you inspect a lot(!) of flight parameters and sensor data. Improved sensor readout - much faster, more acurate, and with slightly reduced oscillations. Support for infinite number of cycling Horus and APRS frequencies. Redefined heating algorithms - now based on precise PID control and PWM, also with new in-flight control, allowing for sensor defrosting, while having no impact on the radings. New humidity correction algorithms, based on empirical data from many previous flights. Faster program operation. New LED status messages. Redefined documentation - operation manual markdown file became outdated, but new detailed code comments are here.
 * `v55` - Si4032 radio now consumes 10-15mA less current than before, due to a misunderstanding of operation stages, allowing now to sleep properly between transmissions. Ability to specify TX power in each mode. Removed power save mode which changed interval and power below a certain altitude, which was a clone of a newer feature called `lowAltitudeFastTx`. Ability yo specify constant altitude when stationary use with no GPS. Others. + support of the newest `RSM425` boards.
 * `v54` - power OFF routine modification, making the procedure status more clear. APRS temperature reporting length improvement.
 * `v53` - timing improvements down to milliseconds, with help of Bernd DL1XH. More talkative UART debug messages.
