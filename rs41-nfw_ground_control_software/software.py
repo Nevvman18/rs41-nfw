@@ -1,14 +1,16 @@
-# RS41-NFW Ground Control Software. Backend, version v10
+# RS41-NFW Ground Control Software. Backend, version v11
 # Released on GPL-3.0 license. Authors: Franek Łada (nevvman, SP5FRA)
 
 import serial
 import threading
 import time
+import sys
 from flask import Flask, render_template
 from flask_socketio import SocketIO
 
 app = Flask(__name__)
-socketio = SocketIO(app, cors_allowed_origins="*")
+# Added async_mode for better stability on Windows
+socketio = SocketIO(app, cors_allowed_origins="*", async_mode='threading')
 
 # Initialize ALL variables to default values to prevent UI errors on startup
 telemetry = {
@@ -128,8 +130,10 @@ POWER_MAP = {
 
 def serial_worker(port, baud):
     global telemetry, ser
+    print(f"DEBUG: Attempting to connect to {port} at {baud}...")
     try:
         ser = serial.Serial(port, baud, timeout=0.1)
+        print(f"DEBUG: Serial connection established on {port}")
         while not stop_thread.is_set():
             if ser.in_waiting:
                 line = ser.readline().decode('utf-8', errors='ignore').strip()
@@ -139,6 +143,7 @@ def serial_worker(port, baud):
                     socketio.emit('telemetry_update', telemetry)
             time.sleep(0.01)
     except Exception as e:
+        print(f"DEBUG ERROR: Serial failed: {e}")
         socketio.emit('serial_error', str(e))
 
 @app.route('/')
@@ -148,6 +153,7 @@ def index():
 @socketio.on('connect_serial')
 def handle_connect(data):
     global stop_thread
+    print(f"DEBUG: UI Requesting connection to {data['port']}")
     stop_thread.set()
     time.sleep(0.2)
     stop_thread.clear()
@@ -161,4 +167,13 @@ def handle_refresh():
             time.sleep(0.05)
 
 if __name__ == '__main__':
-    socketio.run(app, host='0.0.0.0', port=4141)
+    # Print a clear message so you know the script is alive
+    print("-----------------------------------------")
+    print("RS41-NFW Ground Control Station Starting")
+    print("Navigate to: http://127.0.0.1:4141")
+    print("-----------------------------------------")
+    
+    try:
+        socketio.run(app, host='0.0.0.0', port=4141, debug=True)
+    except Exception as e:
+        print(f"CRITICAL ERROR: {e}")
