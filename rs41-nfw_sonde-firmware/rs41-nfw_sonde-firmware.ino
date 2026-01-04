@@ -3,7 +3,7 @@ RS41-NFW - versatile, feature-rich and user-friendly custom firmware for ALL rev
 Released on GPL-3.0 license.
 Authors: Franek Łada (nevvman, SP5FRA)
 
-Version 56 (public, stable)
+Version 57 (public, stable)
 
 All code and dependencies used or modified here that don't origin from me are described in code comments and repo details.
 https://github.com/Nevvman18/rs41-nfw
@@ -151,7 +151,7 @@ HardwareSerial xdataSerial(PB11, PB10);
 
 
 
-#define NFW_VERSION "RS41-NFW v56, GPL-3.0 Franek Lada (nevvman, SP5FRA)"  //This is the firmware version You are running
+#define NFW_VERSION "RS41-NFW v57, GPL-3.0 Franek Lada (nevvman, SP5FRA)"  //This is the firmware version You are running
 
 
 
@@ -173,27 +173,27 @@ Offset however (example: offset 2 means 2 seconds after set interval time, so 10
 */
 
 // Pip:
-unsigned int pipTimeSyncSeconds = 1;
+unsigned int pipTimeSyncSeconds = 10;
 unsigned int pipTimeSyncOffsetSeconds = 0;
 
 
 // Horus v2:
-unsigned int horusTimeSyncSeconds = 1;
+unsigned int horusTimeSyncSeconds = 10;
 unsigned int horusTimeSyncOffsetSeconds = 0;
 
 
 // APRS:
-unsigned int aprsTimeSyncSeconds = 1;
+unsigned int aprsTimeSyncSeconds = 10;
 unsigned int aprsTimeSyncOffsetSeconds = 0;
 
 
 // RTTY:
-unsigned int rttyTimeSyncSeconds = 1;
+unsigned int rttyTimeSyncSeconds = 10;
 unsigned int rttyTimeSyncOffsetSeconds = 0;
 
 
 // Morse:
-unsigned int morseTimeSyncSeconds = 1;
+unsigned int morseTimeSyncSeconds = 10;
 unsigned int morseTimeSyncOffsetSeconds = 0;
 
 
@@ -223,16 +223,31 @@ float aprsFreqTable[] = {432.5};      // APRS frequency table (same format as Ho
 char aprsCall[] = "N0CALL";           // Callsign
 String aprsComment = " @RS41-NFW";    // APRS message comment, leaving the nfw comment would help identify the usage of this firmware :), if You don't mind, please leave this comment, thanks!
 char aprsSsid = 11;                   // SSID for the call sign
-char aprsDest[] = "APZNFW";           // Destination address for APRS
+char aprsDest[] = "APRNFW";           // Destination address for APRS
 char aprsDigi[] = "WIDE2";            // Digipeater callsign
 char aprsDigiSsid = 1;                // Digipeater SSID
 char aprsSymbolOverlay = 'O';         // Symbol overlay - 'O' for balloon icon, '_' for WX station icon
 char aprsSymTable = 'a';              // Symbol table (e.g., 'a' for standard symbol)
-int aprsOperationMode = 1;            // APRS operation mode - 1 - standard sonde telemetry format (similiar to RS41HUP), 2 - WX format (for weather station)
 int aprsRadioPower = 7;               // TX power, 0 = -1dBm (~0.8mW), 1 = 2dBm (~1.6mW), 2 = 5dBm (~3 mW), 3 = 8dBm (~6 mW), 4 = 11dBm (~12 mW), 5 = 14dBm (25 mW), 6 = 17dBm (50 mW), 7 = 20dBm (100 mW)
 
+/* APRS Operation Mode:
+  1 - Standard RS41-NFW tracker telemetry format, where in APRS comment:
+    F - frame
+    S - sats
+    V - batt (mV -> V)
+    C - ascent_rate (cm/s -> m/s)
+    I - temp
+    T - ext_temperature
+    H - ext_humidity
+    P - ext_pressure (daPa (dekaPascal) -> hPa)
+    J - jam_warning (1 or 0)
+    R - PCB revision (determines model string)
+  
+  2 - weather station format, sends APRS WX weather reports */
+int aprsOperationMode = 1;
 
-// RTTY (Franek's original code was modified by OM3BC (thanks!)W):
+
+// RTTY (Franek's original code was modified by OM3BC (thanks!)):
 #define CALLSIGN "N0CALL"             // Callsign used for morse and rtty
 bool rttyEnable = false;              // Enable rtty tx mode, compliant with UKHAS format
 float rttyFrequencyMhz = 434.6;       // RTTY tx frequency
@@ -708,8 +723,7 @@ int extHeaterTarget = 0;
 
 // APRS - misc.
 bool aprsTone = 0;
-#define MAX_STATUS_LENGTH 100
-char statusMessage[MAX_STATUS_LENGTH];  // Status message
+char statusMessage[320];  // Status message
 char aprsLocationMsg[32];
 char aprsOthersMsg[256];
 char aprsWxMsg[256];
@@ -851,7 +865,6 @@ struct HorusBinaryPacketV2 {
 // Buffers and counters.
 char rawbuffer[128];    // Buffer to temporarily store a raw binary packet.
 char codedbuffer[128];  // Buffer to store an encoded binary packet
-char debugbuffer[256];  // Buffer to store debug strings
 
 uint32_t fsk4_base = 0, fsk4_baseHz = 0;
 uint32_t fsk4_shift = 0, fsk4_shiftHz = 0;
@@ -2698,23 +2711,23 @@ void aprsHabFormat(char* aprsMessage) {
   // Convert gpsAlt from meters to feet
   int gpsAltFeet = static_cast<int>(gpsAlt * 3.28084);
 
-  // Convert battery voltage to integer (e.g., 3.75V -> 3750mV)
-  int wxVoltageFormatted = static_cast<int>(readBatteryVoltage() * 1000);
-
-  int aprsTemperature;
-
-  if (sensorBoomFault || !sensorBoomEnable) {
-    aprsTemperature = readAvgIntTemp();
-  } else {
-    aprsTemperature = mainTemperatureValue;
+  int aprsBoardRev = 0;
+  if(rsm4x4) {
+    aprsBoardRev = 4;
+  }
+  else if(rsm4x2) {
+    aprsBoardRev = 2;
   }
 
-  int aprsClimb = static_cast<int>(vVCalc * 100);  //cm/s
-
-  // Format the string into the provided aprsMessage buffer
+  /* OLD RS41ng APRS FORMAT Format the string into the provided aprsMessage buffer
   snprintf(aprsMessage, 256,
            "/A=%06d/P%dS%dT%dV%04dC%d %s",
-           gpsAltFeet, aprsPacketNum, gpsSats, aprsTemperature, wxVoltageFormatted, aprsClimb, aprsComment.c_str());
+           gpsAltFeet, aprsPacketNum, gpsSats, aprsTemperature, static_cast<int>(readBatteryVoltage() * 1000), aprsClimb, aprsComment.c_str());*/
+
+  // New RS41-NFW format
+  snprintf(aprsMessage, 320,
+           "/A=%06d/F%dS%dV%04dC%dI%dT%dH%dP%dJ%dR%d %s",
+           gpsAltFeet, aprsPacketNum, gpsSats, static_cast<int>(readBatteryVoltage() * 1000), static_cast<int>(vVCalc * 100), readAvgIntTemp(), static_cast<int>(mainTemperatureValue), static_cast<int>(humidityValue), static_cast<int>(pressureValue * 10), gpsJamWarning, aprsBoardRev, aprsComment.c_str());
 }
 
 void aprsWxFormat(float latitude, float longitude, char* aprsMessage) {
@@ -2772,7 +2785,7 @@ void aprsWxFormat(float latitude, float longitude, char* aprsMessage) {
 
   // Combine Latitude, Longitude, WX data, and additional information into APRS WX format
   // Example: !DDMM.ssN/DDDMM.ssE_tXXX PSTV
-  snprintf(aprsMessage, 200,
+  snprintf(aprsMessage, 320,
            "!%s/%s_c%03ds%03dg%03dt%03dh%02d U=%dmV %s",   //NOTE!: if You want to report pressure, add 'b&05d' after humidity tag and a wxPressure variable after wxHumidity variable
            latBuffer,                                      // Formatted Latitude buffer
            lonBuffer,                                      // Formatted Longitude buffer
@@ -2826,7 +2839,7 @@ void aprsRecorderFormat(char* aprsMessage) {
 
   // Format the string into the provided aprsMessage buffer (with a 55 character comment)
   snprintf(
-    aprsMessage, 200,
+    aprsMessage, 320,
     " NFW;%d;%d;%d;%d;%d;%d;%d;%d;%d;%d;%d;%d;%d;%d;%d;%d;%d;%d;%d;%d;%d;%d;%d;%d;%d %s",
     maxAlt,
     maxSpeed,
