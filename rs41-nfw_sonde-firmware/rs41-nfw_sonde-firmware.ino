@@ -47,8 +47,8 @@ TinyGPSPlus gps;
 //===== Device revision definitions
 // CHANGE-ME! Select Your sonde version by uncommenting right definition below:
 
-// #define RSM4x4 //New PCB versions, RSM4x4 AND RSM4x5 (based on MCU STM32L412RBT6 LQFP64)
-// #define RSM4x2  //Old PCB versions, RSM4x2 and RSM4x1 (based on MCU STM32F100C8T6B LQFP48)
+// #define RSM4x4 // New PCB versions, RSM4x4 AND RSM4x5 (based on MCU STM32L412RBT6 LQFP64)
+// #define RSM4x2  // Old PCB versions, RSM4x2 and RSM4x1 (based on MCU STM32F100C8T6B LQFP48)
 
 
 
@@ -228,8 +228,6 @@ char aprsDigi[] = "WIDE2";            // Digipeater callsign
 char aprsDigiSsid = 1;                // Digipeater SSID
 char aprsSymbolOverlay = 'O';         // Symbol overlay - 'O' for balloon icon, '_' for WX station icon
 char aprsSymTable = 'a';              // Symbol table (e.g., 'a' for standard symbol)
-int aprsRadioPower = 7;               // TX power, 0 = -1dBm (~0.8mW), 1 = 2dBm (~1.6mW), 2 = 5dBm (~3 mW), 3 = 8dBm (~6 mW), 4 = 11dBm (~12 mW), 5 = 14dBm (25 mW), 6 = 17dBm (50 mW), 7 = 20dBm (100 mW)
-
 /* APRS Operation Mode:
   1 - Standard RS41-NFW tracker telemetry format, where in APRS comment:
     F - frame
@@ -245,6 +243,7 @@ int aprsRadioPower = 7;               // TX power, 0 = -1dBm (~0.8mW), 1 = 2dBm 
   
   2 - weather station format, sends APRS WX weather reports */
 int aprsOperationMode = 1;
+int aprsRadioPower = 7;               // TX power, 0 = -1dBm (~0.8mW), 1 = 2dBm (~1.6mW), 2 = 5dBm (~3 mW), 3 = 8dBm (~6 mW), 4 = 11dBm (~12 mW), 5 = 14dBm (25 mW), 6 = 17dBm (50 mW), 7 = 20dBm (100 mW)
 
 
 // RTTY (Franek's original code was modified by OM3BC (thanks!)):
@@ -2173,7 +2172,7 @@ float getSensorBoomPeriod(int sensorNum) {
 #define READ_PIN() (GPIOA->IDR & (1 << 1))  // PA1 corresponds to bit 1 in GPIOA IDR
 
   selectSensorBoom(sensorNum, 1);
-  delay(80);
+  delay(75);
 
   unsigned long long measStartTime = micros();      // Start time for the timeout
   unsigned long long measTimeoutDuration = 500000;  // 500000 = .5 seconds in microseconds
@@ -4132,14 +4131,14 @@ void scheduler() {
   if (rttyEnable) updateGap(rttyTimeSyncSeconds, rttyTimeSyncOffsetSeconds);
   if (horusEnable) updateGap(horusTimeSyncSeconds, horusTimeSyncOffsetSeconds);
 
-  if (min_gap >= sensorReadMinimumTime && (millis() - last_sensor_update_timestamp > sensorMinimumUpdate)) {
-    sensorBoomHandler();
-    last_sensor_update_timestamp = millis();
-  }
-
   if (min_gap >= gpsReadMinimumTime && (millis() - last_gps_update_timestamp > gpsMinimumUpdate)) {
     gpsHandler();
     last_gps_update_timestamp = millis();
+  }
+  
+  if (min_gap >= sensorReadMinimumTime && (millis() - last_sensor_update_timestamp > sensorMinimumUpdate)) {
+    sensorBoomHandler();
+    last_sensor_update_timestamp = millis();
   }
 
   // --- 6. AUXILIARY ---
