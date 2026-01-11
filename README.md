@@ -23,7 +23,7 @@ Vaisala some time ago began launching new RS41 sonde revisions, with new interna
     * [**Horus Binary 4FSK v3**](https://github.com/xssfox/horusbinaryv3)
         * One of the most efficient radio modes for HAB and other simple telemetry designs, allows for decoding of very weak signals
         * Multi-QRG operation (ability to specify second Horus one, user can modify the code easily to get as much QRGs as wanted on every mode)
-        * User can specify any payload callsign without requesting for ID number, additional sensor fields can be sent easily.
+        * User can specify any payload callsign without requesting for ID number, additional sensor fields can be sent easily. Decoder provided by Mark VK5QI.
     * [**Horus Binary 4FSK v2**](https://github.com/projecthorus/horusdemodlib/wiki)
         * One of the most efficient radio modes for HAB and other simple telemetry designs, allows for decoding of very weak signals
         * Multi-QRG operation (ability to specify second Horus one, user can modify the code easily to get as much QRGs as wanted on every mode)
@@ -156,7 +156,7 @@ Incoming features:
 * Contributors - speical thanks to:
   * My dad, for his help in catching the radiosondes and suggestions
   * Erik PA0ESH - helped with lots of issues
-  * Mark VK5QI - for help with GPS settings, Horus and sensors
+  * Mark VK5QI - for help with GPS settings, Horus and sensors. New Horus v3 decoder.
   * zanco PE2BZ - for a test flight and other notes
   * Ludwik SP6MPL - for a few flights and big help in development
   * Mateusz SP3WRO - for test flights, kind words and help in development, and also his team
