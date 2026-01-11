@@ -18,7 +18,7 @@ Vaisala some time ago began launching new RS41 sonde revisions, with new interna
 
 ## RS41-NFW Firmware features
 * **Full support for ALL** RS41 versions (eg. `RSM421`, `RSM412`, `RSM414`, `RSM424`, `RSM425`), including the old and new ones with the '4' at the end of the PCB model
-* **For current, up-to-date list of featurse, please refer to the [firmware project file configuration options](./rs41-nfw_sonde-firmware/rs41-nfw_sonde-firmware.ino), where all features are available with thorough comments and guides.
+* **For current, up-to-date list of featurse, please refer to the [firmware project file configuration options](./rs41-nfw_sonde-firmware/rs41-nfw_sonde-firmware.ino), where all features are available with thorough comments and guides.**
 * Multiple, customizable transmission modes
     * [**Horus Binary 4FSK v3**](https://github.com/xssfox/horusbinaryv3)
         * One of the most efficient radio modes for HAB and other simple telemetry designs, allows for decoding of very weak signals
@@ -163,7 +163,7 @@ Incoming features:
   * [radioszynka blog](https://radioszynka.pl/) team - for article about this project
   * Mark PC9DB - TX formats etc.
   * KB8RCO - big thread about APRS (also code to fix coordinate issue), WX use and others
-  * whallman DF7PN - much help in discussions
+  * whallman DF7PN - much help in discussions, frameCounter fix
   * Damian SQ2DEF and his team - SQ6KXY, Paweł, Lechu, McXander, wprzyb, Michał, Hubert...
   * obi7zik - thread about GPS power mode issue
   * OM3BC - big help in getting the RTTY to finally have a proper format and timings
