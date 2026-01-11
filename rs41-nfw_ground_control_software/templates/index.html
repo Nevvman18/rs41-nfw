@@ -181,7 +181,7 @@ Released on GPL-3.0 license. Authors: Franek Łada (nevvman, SP5FRA)
             </div>
 
             <div class="data-card border-l-2 border-green-500">
-                <h3 class="section-header text-green-400">Horus Mode</h3>
+                <h3 class="section-header text-green-400">Horus V2 Mode</h3>
                 <div class="space-y-1 text-[10px]">
                     <div class="flex justify-between"><span>Enabled:</span><span id="horusEnable" class="bool-val"></span></div>
                     <div class="flex justify-between"><span>TX Frequency (MHz):</span><span id="horusFrequencyMhz" class="val-mono"></span></div>
@@ -190,6 +190,19 @@ Released on GPL-3.0 license. Authors: Franek Łada (nevvman, SP5FRA)
                     <div class="flex justify-between"><span class="text-slate-500 italic text-[9px]" id="horusRadioPower-dbm"></span></div>
                     <div class="flex justify-between"><span>Time Sync (s):</span><span id="horusTimeSyncSeconds" class="val-mono"></span></div>
                     <div class="flex justify-between"><span>Sync Offset (s):</span><span id="horusTimeSyncOffsetSeconds" class="val-mono"></span></div>
+                </div>
+            </div>
+            
+            <div class="data-card border-l-2 border-cyan-500">
+                <h3 class="section-header text-cyan-400">Horus V3 Mode</h3>
+                <div class="space-y-1 text-[10px]">
+                    <div class="flex justify-between"><span>Enabled:</span><span id="horusV3Enable" class="bool-val"></span></div>
+                    <div class="flex justify-between"><span>TX Frequency (MHz):</span><span id="horusV3FrequencyMhz" class="val-mono"></span></div>
+                    <div class="flex justify-between"><span>Payload ID:</span><span id="horus_v3_callsign" class="val-mono"></span></div>
+                    <div class="flex justify-between"><span>TX Power (0-7):</span><span id="horusV3RadioPower" class="val-mono"></span></div>
+                    <div class="flex justify-between"><span class="text-slate-500 italic text-[9px]" id="horusV3RadioPower-dbm"></span></div>
+                    <div class="flex justify-between"><span>Time Sync (s):</span><span id="horusV3TimeSyncSeconds" class="val-mono"></span></div>
+                    <div class="flex justify-between"><span>Sync Offset (s):</span><span id="horusV3TimeSyncOffsetSeconds" class="val-mono"></span></div>
                 </div>
             </div>
 
@@ -217,8 +230,8 @@ Released on GPL-3.0 license. Authors: Franek Łada (nevvman, SP5FRA)
                 </div>
             </div>
 
-            <div class="data-card border-b-2 border-slate-700">
-                <h3 class="section-header text-sky-400">PIP Mode</h3>
+            <div class="data-card border-b-2 border-pink-500">
+                <h3 class="section-header text-pink-400">PIP Mode</h3>
                 <div class="space-y-1 text-[10px]">
                     <div class="flex justify-between"><span>Enabled:</span><span id="pipEnable" class="bool-val"></span></div>
                     <div class="flex justify-between"><span>TX Frequency (MHz):</span><span id="pipFrequencyMhz" class="val-mono"></span></div>
@@ -550,6 +563,7 @@ Released on GPL-3.0 license. Authors: Franek Łada (nevvman, SP5FRA)
             };
             mapPwr('pipRadioPower', 'pipRadioPower-dbm', 'pip-pwr-bar');
             mapPwr('horusRadioPower', 'horusRadioPower-dbm', 'horus-pwr-bar');
+            mapPwr('horusV3RadioPower', 'horusV3RadioPower-dbm', 'horusv3-pwr-bar');
             mapPwr('aprsRadioPower', 'aprsRadioPower-dbm', 'aprs-pwr-bar');
             mapPwr('rttyRadioPower', 'rttyRadioPower-dbm', 'rtty-pwr-bar');
             mapPwr('morseRadioPower', 'morseRadioPower-dbm', 'morse-pwr-bar');

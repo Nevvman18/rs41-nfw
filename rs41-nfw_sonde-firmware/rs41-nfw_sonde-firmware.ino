@@ -3,7 +3,7 @@ RS41-NFW - versatile, feature-rich and user-friendly custom firmware for ALL rev
 Released on GPL-3.0 license.
 Authors: Franek Łada (nevvman, SP5FRA)
 
-Version 57 (public, stable)
+Version 58 (public, stable)
 
 All code and dependencies used or modified here that don't origin from me are described in code comments and repo details.
 https://github.com/Nevvman18/rs41-nfw
@@ -34,6 +34,8 @@ Author of RS41-NFW
 //#include "horus_l2.cpp"
 #include <SPI.h>
 #include <TinyGPSPlus.h>
+#include "HorusBinaryV3.h"
+
 TinyGPSPlus gps;
 
 
@@ -45,14 +47,37 @@ TinyGPSPlus gps;
 
 
 //===== Device revision definitions
-// CHANGE-ME! Select Your sonde version by uncommenting right definition below:
-
+/* CHANGE-ME! SELECT YOUR BOARD REVISION BY UNCOMMENTING THE RIGHT DEFINITION BELOW (model can be found written on the PCB at the bottom part, see compilation manual for more info)*/
+ 
 // #define RSM4x4 // New PCB versions, RSM4x4 AND RSM4x5 (based on MCU STM32L412RBT6 LQFP64)
 // #define RSM4x2  // Old PCB versions, RSM4x2 and RSM4x1 (based on MCU STM32F100C8T6B LQFP48)
 
 
 
+
+/* FOR RSM4x2 USERS - the old revision uses older MCU, which has only 64K of flash. Because of that, the latest functions, such as Horus V3 encoding protocol, don't fit in the flash anymore.
+To enable the latest features (currently only Horus V3), uncomment the definition below.
+
+WARNING! To make space in flash memory, this option DISABLES: Morse, RTTY, fox-hunting mode and RS41-NFW Ground Control Software communication protocol!!!
+Decide what's best for you - I recommend to put this board on your shelf and search for the latest sonde revision. The RSM4x4 and 4x5 revisions perform much better in-flight, with a lot better GPS and power efficiency, and a better MCU supporting all the features. */
+
+// #define RSM4x2_UNLOCK_HORUSV3
+
+
+
+
+
+
+
+
+
 //==== Firmware-internal definitions:
+
+#ifdef RSM4x2_UNLOCK_HORUSV3
+bool lowMemoryCode = true;
+#else
+bool lowMemoryCode = false;
+#endif
 
 #ifdef RSM4x4
 bool rsm4x2 = false;
@@ -151,7 +176,7 @@ HardwareSerial xdataSerial(PB11, PB10);
 
 
 
-#define NFW_VERSION "RS41-NFW v57, GPL-3.0 Franek Lada (nevvman, SP5FRA)"  //This is the firmware version You are running
+#define NFW_VERSION "RS41-NFW v58, GPL-3.0 Franek Lada (nevvman, SP5FRA)"  //This is the firmware version You are running
 
 
 
@@ -173,27 +198,32 @@ Offset however (example: offset 2 means 2 seconds after set interval time, so 10
 */
 
 // Pip:
-unsigned int pipTimeSyncSeconds = 10;
+unsigned int pipTimeSyncSeconds = 15;
 unsigned int pipTimeSyncOffsetSeconds = 0;
 
 
-// Horus v2:
-unsigned int horusTimeSyncSeconds = 10;
+// Horus V3:
+unsigned int horusV3TimeSyncSeconds = 15;
+unsigned int horusV3TimeSyncOffsetSeconds = 0;
+
+
+// Horus V2:
+unsigned int horusTimeSyncSeconds = 15;
 unsigned int horusTimeSyncOffsetSeconds = 0;
 
 
 // APRS:
-unsigned int aprsTimeSyncSeconds = 10;
+unsigned int aprsTimeSyncSeconds = 15;
 unsigned int aprsTimeSyncOffsetSeconds = 0;
 
 
 // RTTY:
-unsigned int rttyTimeSyncSeconds = 10;
+unsigned int rttyTimeSyncSeconds = 15;
 unsigned int rttyTimeSyncOffsetSeconds = 0;
 
 
 // Morse:
-unsigned int morseTimeSyncSeconds = 10;
+unsigned int morseTimeSyncSeconds = 15;
 unsigned int morseTimeSyncOffsetSeconds = 0;
 
 
@@ -206,7 +236,7 @@ bool pipEnable = false;               // Enable pip tx mode (carrier)
 float pipFrequencyMhz = 432.5;        // Pip tx frequency
 int pipLengthMs = 1000;               // Pip signal length in ms
 int pipRepeat = 3;                    // Pip signal repeat count in 1 transmit window
-int pipRadioPower = 6;                // TX power, 0 = -1dBm (~0.8mW), 1 = 2dBm (~1.6mW), 2 = 5dBm (~3 mW), 3 = 8dBm (~6 mW), 4 = 11dBm (~12 mW), 5 = 14dBm (25 mW), 6 = 17dBm (50 mW), 7 = 20dBm (100 mW)
+int pipRadioPower = 7;                // TX power, 0 = -1dBm (~0.8mW), 1 = 2dBm (~1.6mW), 2 = 5dBm (~3 mW), 3 = 8dBm (~6 mW), 4 = 11dBm (~12 mW), 5 = 14dBm (25 mW), 6 = 17dBm (50 mW), 7 = 20dBm (100 mW)
 
 
 // Horus v2:
@@ -214,7 +244,31 @@ bool horusEnable = true;              // Enable horus v2 tx mode
 float horusFreqTable[] = {437.6};     // Specify all horus frequencies You want (example {437.6, 434.714, 433.8};), the sonde will cycle through all of them one-by-one during a transmit cycle. Useful when flying long flights in different places of the world (Poland 437.6Mhz, most of the europe 434.714Mhz) Note - lowAltitudeFasTxMode will only use primary frequency - the first one specified.
 unsigned int horusPayloadId = 256;    // Horus v2 (v1 is outdated and NFW only sends extedned v2 format, v1 IDs seem to work with v2 too) payload ID. Please obtain Yours by creating an issue at https://github.com/projecthorus/horusdemodlib/issues
 int horusBdr = 100;                   // Transmission baudrate, default 100
-int horusRadioPower = 5;              // TX power, 0 = -1dBm (~0.8mW), 1 = 2dBm (~1.6mW), 2 = 5dBm (~3 mW), 3 = 8dBm (~6 mW), 4 = 11dBm (~12 mW), 5 = 14dBm (25 mW), 6 = 17dBm (50 mW), 7 = 20dBm (100 mW)
+int horusRadioPower = 7;              // TX power, 0 = -1dBm (~0.8mW), 1 = 2dBm (~1.6mW), 2 = 5dBm (~3 mW), 3 = 8dBm (~6 mW), 4 = 11dBm (~12 mW), 5 = 14dBm (25 mW), 6 = 17dBm (50 mW), 7 = 20dBm (100 mW)
+const int horusPreambleLength = 8;   // Horus V2/V3 preamble length in bits - default at 16. Allows receivers to lock on the carriers etc.
+
+/* Horus V3 transmission mode - encoder provided by Mark VK5QI
+Lately released 3rd generation of Horus 4FSK modem and protocol - read more about experimental releases at: https://github.com/xssfox/horusbinaryv3, and soon at: https://github.com/projecthorus/horusdemodlib/wiki/6-TBA-Horus-Binary-V3 and all other official sources.
+The biggest change is ASN.1 encoding. Thanks to it, you no longer need to request a payload ID nor a custom packet format anymore. From now, you can specify the callsign below in the definition, and it will be sent in the packet itself.
+Also, the new additional sensor data can be easily sent now.
+
+horusV3LongerPacket - Enabling longer packet adds:
+temperatures:
+  custom1 - humidity module temperature sensor
+
+extraSensors:
+  gps [a, b] - GPS status, where: a = gpsHdop (horizontal precision in meters), b = gpsJamWarning - 0 when OK, 1 when GPS jam algorithm has detected abnormaities and issued a warning currently
+  heat [a, b] - heaters status, where: a = reference resistors heater status (0-3 power), b = humidity module defrost heater status (0-500 PWM power).
+
+, leaving the horusV3LongerPacket at false will transmit using V3 the same telemetry as with V2.
+
+For more information of encoding, refer to documentation and horus v3 function in code. RSM4x2 users - refer to RSM4x2_HORUSV3_UNLOCK option above.*/
+bool horusV3Enable = true;              // Enable horus v3 tx mode
+float horusV3FreqTable[] = {437.6};     // Specify all horus frequencies You want (example {437.6, 434.714, 433.8};), the sonde will cycle through all of them one-by-one during a transmit cycle. Useful when flying long flights in different places of the world (Poland 437.6Mhz, most of the europe 434.714Mhz) Note - lowAltitudeFasTxMode will only use primary frequency - the first one specified.
+#define HORUS_V3_CALLSIGN "4FSKTEST-V3"      // Payload callsign for Horus V3 mode. Note that adding every single character increases your packet size by 6 bits.
+int horusV3Bdr = 100;                   // Transmission baudrate, default 100
+int horusV3RadioPower = 7;              // TX power, 0 = -1dBm (~0.8mW), 1 = 2dBm (~1.6mW), 2 = 5dBm (~3 mW), 3 = 8dBm (~6 mW), 4 = 11dBm (~12 mW), 5 = 14dBm (25 mW), 6 = 17dBm (50 mW), 7 = 20dBm (100 mW)
+bool horusV3LongerPacket = true;        // See explanation above.
 
 
 // APRS:
@@ -512,7 +566,7 @@ The pressureValue is sent via Horus v2 and APRS
 NOTE:
 Change 'seaLevelPressure' [Pa] value to the correct Mean Sea Level Pressure (pressure reduced to the level of sea) in the region of launch.
 If launching in the near future, please look at Your weather forecast and weather models. */
-bool enablePressureEstimation = false;
+bool enablePressureEstimation = true;
 unsigned long seaLevelPressure = 101325;                  // Sea level pressure in Pascals, used to correctly estimate the pressure in the upper layers
 
 
@@ -616,6 +670,7 @@ bool dataRecorderFlightNoiseFiltering = true;             // Filter out noisy da
 
 
 
+
 //Support of ability to heat up the radio/gps oscillator by reference heating resistors has ENDED. This is due to the decision, that RTTY (especially 75 baud) is not used widely, so the heating isn't needed, and also that the heating of them at max power is very power hungry. Also, they are used for temperature calibration and now have been implemented to correct the readings properly. This can be configured in the sensorBoom area
 /*
 //Oscillator heating system (don't activate unless You plan to use fast RTTY in extremely small temperatures and fly with large batteries)
@@ -660,6 +715,7 @@ bool vBatWarn = false;
 bool gpsFixWarn = false;
 bool sensorBoomFault = false;
 int horusPacketCount;
+int horusV3PacketCount;
 int xdataInstrumentType = 0;
 int xdataInstrumentNumber = 0;
 float xdataOzonePumpTemperature = 0;
@@ -741,6 +797,7 @@ unsigned long sys_last_tick_millis = 0;  // Tracks the last time we incremented 
 // State Tracking: When was the last time (in seconds from midnight) we transmitted?
 // We initialize these to -1 so we transmit immediately if a slot matches at startup.
 long last_tx_pip = -1;
+long last_tx_horusV3 = -1;
 long last_tx_horus = -1;
 long last_tx_aprs = -1;
 long last_tx_rtty = -1;
@@ -791,50 +848,6 @@ uint8_t ubxCfgNav5_powerSave[] = {
 };
 
 
-
-
-struct uBloxChecksum {
-  uint8_t ck_a;
-  uint8_t ck_b;
-};
-
-struct uBloxHeader {
-  uint8_t sync1;
-  uint8_t sync2;
-  uint8_t messageClass;
-  uint8_t messageId;
-  uint16_t payloadSize;
-};
-
-struct uBloxCFGNAV5Payload {
-  uint16_t mask;
-  uint8_t dynModel;
-  uint8_t fixMode;
-  int32_t fixedAlt;
-  uint32_t fixedAltVar;
-  int8_t minElev;
-  uint8_t drLimit;
-  uint16_t pDop;
-  uint16_t tDop;
-  uint16_t pAcc;
-  uint16_t tAcc;
-  uint8_t staticHoldThresh;
-  uint8_t dgpsTimeOut;
-  uint32_t reserved2;
-  uint32_t reserved3;
-  uint32_t reserved4;
-};
-
-struct uBloxPacket {
-  uBloxHeader header;
-  union {
-    uBloxCFGNAV5Payload cfgnav5;
-  } data;
-};
-
-
-
-
 //===== Horus mode deifinitions
 // Horus v2 Mode 1 (32-byte) Binary Packet
 //== FOR MORE INFO SEE int build_horus_binary_packet_v2(char *buffer) function around line 600
@@ -862,8 +875,14 @@ struct HorusBinaryPacketV2 {
 } __attribute__((packed));
 
 // Buffers and counters.
-char rawbuffer[128];    // Buffer to temporarily store a raw binary packet.
-char codedbuffer[128];  // Buffer to store an encoded binary packet
+// QI - Horus v2 - 32 bytes uncoded -> 65 bytes coded.
+// QI - Horus v3 48 bytes -> 94 bytes coded
+#define HORUS_UNCODED_BUFFER_SIZE 128
+#define HORUS_CODED_BUFFER_SIZE 256
+char rawbuffer[HORUS_UNCODED_BUFFER_SIZE];    // Buffer to temporarily store a raw binary packet.
+// QI - Expanded to 256 bytes to fit the big 128 byte (Coded) v3 packet
+char codedbuffer[HORUS_CODED_BUFFER_SIZE];  // Buffer to store an encoded binary packet
+char debugbuffer[256];  // Buffer to store debug strings
 
 uint32_t fsk4_base = 0, fsk4_baseHz = 0;
 uint32_t fsk4_shift = 0, fsk4_shiftHz = 0;
@@ -871,8 +890,7 @@ uint32_t fsk4_bitDuration;
 uint32_t fsk4_tones[4];
 uint32_t fsk4_tonesHz[4];
 
-
-
+#ifndef RSM4x2_UNLOCK_HORUSV3
 //===== Morse mode definitions
 // Morse code mapping for letters A-Z, digits 0-9, and space
 const char* MorseTable[37] = {
@@ -914,7 +932,7 @@ const char* MorseTable[37] = {
   "----.",  // 9
   " "       // Space (7 dot lengths)
 };
-
+#endif
 
 
 
@@ -1079,6 +1097,7 @@ void setRadioModulation(int modulationNumber) {
 
 //===== Radio modes functions
 
+#ifndef RSM4x2_UNLOCK_HORUSV3
 //rtty
 void sendRTTYPacket(const char* message) {
   rttySendBit(1);
@@ -1162,6 +1181,7 @@ void transmitMorseString(const char* str, int unitTime) {
     delay(3 * unitTime);
   }
 }
+#endif
 
 
 //4fsk implementation for horus
@@ -1223,7 +1243,7 @@ size_t fsk4_write(char* buff, size_t len) {
 
 
 //===== Radio payload creation
-
+#ifndef RSM4x2_UNLOCK_HORUSV3
 String createRttyMorsePayload() {
   // Start with the payload string
   String payload, payloada;
@@ -1267,7 +1287,223 @@ String createRttyMorsePayload() {
 
   return payloada;
 }
+#endif
 
+
+// Horus V3 mode - protocol and code provided by Mark VK5QI - big thanks for awesome work on code and the protocol!!!
+int build_horus_binary_packet_v3(char* uncoded_buffer){
+  #if defined(RSM4x4) || (defined(RSM4x2) && defined(RSM4x2_UNLOCK_HORUSV3))
+  // Horus v3 packets are encoded using ASN1, and are encapsulated in packets
+  // of sizes 32, 48, 64, 96 or 128 bytes (before coding)
+  // The CRC16 for these packets is located at the *start* of the packet, still little-endian encoded
+
+  // Erase the uncoded buffer
+  // This has the effect of padding out the unused bytes in the packet with zeros
+  memset(uncoded_buffer, 0, HORUS_UNCODED_BUFFER_SIZE);
+
+  // Increment packet count
+  horusV3PacketCount++;
+
+  // Should check how this is allocated in memory.
+
+  // Hardcoded dummy test packet. 
+  // Need to check how this is allocated in memory. how much it uses.
+  // .. also does it get cleared?
+
+
+  horusTelemetry asnMessage = {
+        .payloadCallsign  = HORUS_V3_CALLSIGN,
+        .sequenceNumber = horusV3PacketCount,
+        .timeOfDaySeconds  = gpsHours*3600 + gpsMinutes*60 + gpsSeconds,
+        .latitude = (int)(gpsLat*100000),
+        .longitude = (int)(gpsLong*100000),
+        .altitudeMeters = gpsAlt,
+        // Example of adding some custom fields.
+        .extraSensors = {
+          .nCount=2, // Number of custom fields.
+          .arr = {
+            // Example of an array of integers 
+            {
+                .name = "gps", // This is transmitted in the packet if .exist/name is true
+                .values = {
+                    .kind = horusInt_PRESENT,
+                    .u = {
+                        .horusInt = {
+                          .nCount = 2,
+                            .arr = {gpsHdop, gpsJamWarning},
+                        }
+                    }
+                },
+                .exist = {
+                    .name = true,
+                    .values = true,
+                },
+                
+                
+            },
+            {
+                .name = "heat", // This is transmitted in the packet if .exist/name is true
+                .values = {
+                    .kind = horusInt_PRESENT,
+                    .u = {
+                        .horusInt = {
+                          .nCount = 2,
+                            .arr = {referenceHeaterStatus, extHeaterPwmStatus},
+                        }
+                    }
+                },
+                .exist = {
+                    .name = true,
+                    .values = true,
+                },
+                
+                
+            }
+          },
+        },
+        .velocityHorizontalKilometersPerHour = gpsSpeedKph,
+        .gnssSatellitesVisible = gpsSats,
+        .ascentRateCentimetersPerSecond = vVCalc * 100, // m/s -> cm/s
+        .pressurehPa_x10 = (int)(pressureValue*10),
+        .temperatureCelsius_x10 = {
+            .internal = readAvgIntTemp()*10,
+            .external = mainTemperatureValue*10,
+            .custom1 = extHeaterTemperatureValue*10,
+            // I'm not sure we need to explicitly indicate which of these fields exist, but just to be safe...
+            .exist = {
+                .internal = true,
+                .external = true,
+                .custom1 = true,
+                .custom2 = false
+            }
+        },
+        .humidityPercentage = humidityValue,
+        .milliVolts = {
+            .battery = (int)(readBatteryVoltage()*1000),
+            // I'm not sure we need to explicitly indicate which of these fields exist, but just to be safe...
+            .exist = {
+                .battery = true,
+                .solar = false,
+                .custom1 = false,
+                .custom2 = false
+            }
+        },
+        // We need to explicitly specify which optional fields we want to include in the packet
+        .exist = {
+            .extraSensors = true,
+            .velocityHorizontalKilometersPerHour = true,
+            .gnssSatellitesVisible = true,
+            .ascentRateCentimetersPerSecond = true,
+            .pressurehPa_x10 = true,
+            .temperatureCelsius_x10 = true,
+            .humidityPercentage = true,
+            .milliVolts = true
+        }
+    };
+
+    if(!horusV3LongerPacket) {
+      asnMessage.temperatureCelsius_x10.exist.custom1 = false;
+      // Disable the extraSensors array
+      asnMessage.exist.extraSensors = false;
+    }
+
+    // Conditionally disable some of the fields if we have no valid data source for them
+
+    // Don't send pressure data if it's just 0. This is either a failed sensor or no data
+    if (pressureValue == 0){
+      asnMessage.exist.pressurehPa_x10 = false;
+    }
+
+    // Don't send external temp and humidity data if the sensor boom isn't in use
+    if (sensorBoomEnable == false){
+      asnMessage.temperatureCelsius_x10.exist.external = false;
+      asnMessage.exist.humidityPercentage = false;
+      asnMessage.temperatureCelsius_x10.exist.custom1 = false;
+    }
+
+    // The encoder needs a data structure for the serialization
+    // Again - how much memory is allocated here?
+    BitStream encodedMessage;
+
+    // The Encoder may fail and update an error code
+    int errCode;
+
+    // Initialization associates the buffer to the bit stream
+    // We want to write the uncoded message starting at 2 bytes into the message.
+
+    BitStream_Init (&encodedMessage,
+                    (unsigned char*)(uncoded_buffer+2),
+                    HORUS_UNCODED_BUFFER_SIZE-1
+    );
+    // Originally this function call used a MUCH larger value for count
+    //horusTelemetry_REQUIRED_BYTES_FOR_ENCODING);
+    
+    // Encode the message using uPER encoding rule
+
+    // We patch in assert functionality in assert_override.h
+    // Before running encode we set assert_value = 0
+    // Then check the value in assert_value
+    assert_value = 0;
+
+    if (!horusTelemetry_Encode(&asnMessage,
+                        &encodedMessage,
+                        &errCode,
+                        true) || assert_value != 0)
+    {  
+        // Not at this error helps that much in a flight, but it helps
+        // us when debugging!   
+        if (xdataPortMode == 1) {
+          if(errCode > 0){
+            xdataSerial.print("[error]: HORUS v3 Encoding Failed: ");
+            xdataSerial.println(errCode);
+          }
+          if(assert_value != 0){
+            xdataSerial.println("[error]: HORUS v3 Assert Failure, maybe hit buffer size limit");
+          }
+        }
+        // Need to check what happens here.
+        return 0;
+    }
+    else 
+    {
+        // Encoding was successful!
+        // Now we need to figure out the required frame size, and add the CRC.
+        int encodedSize = BitStream_GetLength(&encodedMessage);
+
+        // Determine the required frame size.
+        // Probably should do this from a list of valid sizes in a neater manner
+        int frameSize = 128;
+        if (encodedSize <= 30){
+          frameSize = 32;
+        } else if (encodedSize <= 46){
+          frameSize = 48;
+        } else if (encodedSize <= 62){
+          frameSize = 64;
+        } else if (encodedSize <= 94){
+          frameSize = 96;
+        } else if (encodedSize <= 126){
+          frameSize = 128;
+        }
+
+        // Calculate CRC16 over the frame, starting at byte 2
+        uint16_t packetCrc = (uint16_t)crc16((unsigned char *)(uncoded_buffer + 2),
+                                     frameSize - 2);
+        // Write CRC into bytes 0–1 of the packet
+        memcpy(uncoded_buffer, &packetCrc, sizeof(packetCrc));  // little‑endian on STM32
+
+        if (xdataPortMode == 1) {
+          xdataSerial.print("[info]: HORUS v3 ASN1: ");
+          xdataSerial.print(encodedSize);
+          xdataSerial.print(" Frame: ");
+          xdataSerial.println(frameSize);
+        }
+
+        return frameSize;
+    }
+
+    #endif
+    return 0;
+}
 
 
 int build_horus_binary_packet_v2(char* buffer) {
@@ -1332,7 +1568,7 @@ unsigned int crc16(unsigned char* string, unsigned int len) {
   return crc;
 }
 
-
+#ifndef RSM4x2_UNLOCK_HORUSV3
 uint16_t rttyCrc16Checksum(unsigned char* string, unsigned int len) {
   uint16_t crc = 0xffff;
   char i;
@@ -1350,6 +1586,7 @@ uint16_t rttyCrc16Checksum(unsigned char* string, unsigned int len) {
   }
   return crc;
 }
+#endif
 
 void PrintHex(char* data, uint8_t length, char* tmp) {
   // Print char data as hex
@@ -2018,7 +2255,7 @@ void powerHandler() {
   }
 }
 
-
+/* TO BE CONTINUED... will implement better in the future
 void xdataInstrumentHandler() {
   unsigned long start = millis();
   String serialData = "";
@@ -2071,31 +2308,9 @@ void decodeXdataOif411(String xdataString) {
     // Extract and decode ozone pump current
     xdataOzonePumpCurrent = strtol(data.substring(15, 18).c_str(), NULL, 16);
   }
-}
-
-// Based on: https://github.com/cturvey/RandomNinjaChef/blob/main/uBloxChecksum.c and others from this repo, big thanks!
-void uBloxM10Checksum(uint8_t* data)  // Assumes buffer is large enough and modifyable
-{
-  int i, length;
-  uint8_t a, b;
-
-  a = 0;  // Clear initial checksum bytes
-  b = 0;
-
-  length = data[4] + (data[5] << 8);  // 16-bit Payload Length
-
-  for (i = 2; i < (length + 6); i++)  // Sum over body
-  {
-    a += data[i];
-    b += a;
-  }
-
-  data[i + 0] = a;  // Write checksum bytes into tail
-  data[i + 1] = b;
-}
+}*/
 
 void sendUblox(int Size, uint8_t* Buffer) {
-  //uBloxM10Checksum(Buffer); // Add/compute checksum bytes for packet | not needed because they are hardcoded now!!!
   gpsSerial.write(Buffer, Size);  // Arduino style byte send
 }
 
@@ -2983,9 +3198,26 @@ void lowAltitudeFastTxMode() {
 
       radioEnableTx();
 
-      fsk4_idle();
-      delay(100);
-      fsk4_preamble(8);
+      fsk4_preamble(horusPreambleLength);
+      fsk4_write(codedbuffer, coded_len);
+      radioDisableTx();
+    }
+    
+    if (horusV3Enable) {
+      int pkt_len = build_horus_binary_packet_v3(rawbuffer);
+
+      // Bomb out if we can't encode
+      if (pkt_len == 0){
+        return;
+      }
+      int coded_len = horus_l2_encode_tx_packet((unsigned char*)codedbuffer, (unsigned char*)rawbuffer, pkt_len);
+
+      setRadioModulation(0);  // CW modulation
+      setRadioFrequency(horusV3FreqTable[0]);
+
+      radioEnableTx();
+
+      fsk4_preamble(horusPreambleLength);
       fsk4_write(codedbuffer, coded_len);
       radioDisableTx();
     }
@@ -3081,6 +3313,7 @@ void pipTx() {
 }
 
 void morseTx() {
+  #ifndef RSM4x2_UNLOCK_HORUSV3
   if (morseEnable) {
     if (xdataPortMode == 1) {
       xdataSerial.println("[info]: Morse mode enabled");
@@ -3121,9 +3354,11 @@ void morseTx() {
       }
     }
   }
+  #endif
 }
 
 void rttyTx() {
+  #ifndef RSM4x2_UNLOCK_HORUSV3
   if (rttyEnable) {
     if (xdataPortMode == 1) {
       xdataSerial.println("[info]: RTTY mode enabled");
@@ -3166,6 +3401,7 @@ void rttyTx() {
       }
     }
   }
+  #endif
 }
 
 
@@ -3175,7 +3411,7 @@ void horusTx() {
 
   if (horusEnable) {
     if (xdataPortMode == 1) {
-      xdataSerial.println("[info]: HORUS mode enabled");
+      xdataSerial.println("[info]: HORUS V2 mode enabled");
     }
 
     if (radioEnablePA) {
@@ -3184,7 +3420,7 @@ void horusTx() {
       int coded_len = horus_l2_encode_tx_packet((unsigned char*)codedbuffer, (unsigned char*)rawbuffer, pkt_len);
 
       if (xdataPortMode == 1) {
-        xdataSerial.println("[info]: HORUS payload created.");
+        xdataSerial.println("[info]: HORUS V2 payload created.");
       }
 
       // 2. Loop through every frequency in the table
@@ -3204,9 +3440,7 @@ void horusTx() {
         // 3. Physical Transmission
         radioEnableTx();
 
-        fsk4_idle();
-        delay(750);  // Preamble/Sync delay
-        fsk4_preamble(8);
+        fsk4_preamble(horusPreambleLength);
         fsk4_write(codedbuffer, coded_len);
 
         radioDisableTx();
@@ -3218,7 +3452,7 @@ void horusTx() {
       }
 
       if (xdataPortMode == 1) {
-        xdataSerial.println("[info]: All HORUS frequencies transmitted");
+        xdataSerial.println("[info]: All HORUS V2 frequencies transmitted");
       }
 
     } else {
@@ -3228,6 +3462,85 @@ void horusTx() {
     }
   }
 }
+
+void horusV3Tx() {
+  // Calculate the number of frequencies in the table automatically
+  int freqTableSize = sizeof(horusFreqTable) / sizeof(horusFreqTable[0]);
+
+  if (horusV3Enable) {
+    if (xdataPortMode == 1) {
+      xdataSerial.println("[info]: HORUS V3 mode enabled");
+    }
+
+    if (radioEnablePA) {
+      // 1. Prepare the payload once
+      int pkt_len = build_horus_binary_packet_v3(rawbuffer);
+      // Bomb out if we can't encode
+      if (pkt_len == 0){
+        return;
+      }
+
+      int coded_len = horus_l2_encode_tx_packet((unsigned char*)codedbuffer, (unsigned char*)rawbuffer, pkt_len);
+
+      if (xdataPortMode == 1) {
+        xdataSerial.println("[info]: HORUS V3 payload created.");
+      }
+
+      if (xdataPortMode == 1) {
+        xdataSerial.print("[info]: HORUS V3 payload created.");
+
+        xdataSerial.print(F("Uncoded Length (bytes): "));
+        xdataSerial.println(pkt_len);
+        xdataSerial.print("Uncoded: ");
+        PrintHex(rawbuffer, pkt_len, debugbuffer);
+        xdataSerial.println(debugbuffer);
+        xdataSerial.print(F("Encoded Length (bytes): "));
+        xdataSerial.println(coded_len);
+        xdataSerial.print("Coded: ");
+        PrintHex(codedbuffer, coded_len, debugbuffer);
+        xdataSerial.println(debugbuffer);
+      }
+
+      // 2. Loop through every frequency in the table
+      for (int i = 0; i < freqTableSize; i++) {
+        float currentFreq = horusV3FreqTable[i];
+
+        // Configure Radio for this specific hop
+        setRadioPower(horusV3RadioPower);
+        setRadioModulation(0);  // CW modulation
+        setRadioFrequency(currentFreq);
+
+        if (xdataPortMode == 1) {
+          xdataSerial.print("[info]: Transmitting on (MHz): ");
+          xdataSerial.println(currentFreq);
+        }
+
+        // 3. Physical Transmission
+        radioEnableTx();
+
+        fsk4_preamble(horusPreambleLength);
+        fsk4_write(codedbuffer, coded_len);
+
+        radioDisableTx();
+
+        if (xdataPortMode == 1) {
+          xdataSerial.print("[info]: Done on ");
+          xdataSerial.println(currentFreq);
+        }
+      }
+
+      if (xdataPortMode == 1) {
+        xdataSerial.println("[info]: All HORUS V3 frequencies transmitted");
+      }
+
+    } else {
+      if (xdataPortMode == 1) {
+        xdataSerial.println("[info]: radioEnablePA false, won't transmit");
+      }
+    }
+  }
+}
+
 
 void aprsTx() {
   if (aprsEnable) {
@@ -3361,9 +3674,26 @@ void ultraPowerSaveHandler() {
 
           radioEnableTx();
 
-          fsk4_idle();
-          delay(100);
-          fsk4_preamble(8);
+          fsk4_preamble(horusPreambleLength);
+          fsk4_write(codedbuffer, coded_len);
+          radioDisableTx();
+        }
+
+        if (horusV3Enable) {
+          int pkt_len = build_horus_binary_packet_v3(rawbuffer);
+
+          // Bomb out if we can't encode
+          if (pkt_len == 0){
+            return;
+          }
+          int coded_len = horus_l2_encode_tx_packet((unsigned char*)codedbuffer, (unsigned char*)rawbuffer, pkt_len);
+
+          setRadioModulation(0);  // CW modulation
+          setRadioFrequency(horusV3FreqTable[0]);
+
+          radioEnableTx();
+
+          fsk4_preamble(horusPreambleLength);
           fsk4_write(codedbuffer, coded_len);
           radioDisableTx();
         }
@@ -3849,6 +4179,7 @@ void foxHuntMiscHandler() {
 
 
 void foxHuntModeLoop() {
+  #ifndef RSM4x2_UNLOCK_HORUSV3
   setRadioPower(foxHuntRadioPower);
   for (;;) {
     foxHuntMiscHandler();
@@ -3913,6 +4244,7 @@ void foxHuntModeLoop() {
     delay(foxHuntTransmissionDelay);
     foxHuntMiscHandler();
   }
+  #endif
 }
 
 
@@ -3988,7 +4320,7 @@ void scheduler() {
     }
     if (sys_h >= 24) {
       sys_h = 0;
-      last_tx_pip = last_tx_horus = last_tx_aprs = last_tx_rtty = last_tx_morse = -1;
+      last_tx_pip = last_tx_horus = last_tx_horusV3 = last_tx_aprs = last_tx_rtty = last_tx_morse = -1;
     }
     sys_last_tick_millis += 1000;
   }
@@ -4107,7 +4439,17 @@ void scheduler() {
   }
   buttonHandler();
 
-  // Horus
+  // Horus V3
+  if (horusV3Enable && horusV3TimeSyncSeconds > 0) {
+    long current_slot = ((now_sec - horusV3TimeSyncOffsetSeconds) / horusV3TimeSyncSeconds) * horusV3TimeSyncSeconds + horusV3TimeSyncOffsetSeconds;
+    if (now_sec >= horusV3TimeSyncOffsetSeconds && current_slot > last_tx_horusV3) {
+      horusV3Tx();
+      last_tx_horusV3 = current_slot;
+    }
+  }
+  buttonHandler();
+
+  // Horus V2
   if (horusEnable && horusTimeSyncSeconds > 0) {
     long current_slot = ((now_sec - horusTimeSyncOffsetSeconds) / horusTimeSyncSeconds) * horusTimeSyncSeconds + horusTimeSyncOffsetSeconds;
     if (now_sec >= horusTimeSyncOffsetSeconds && current_slot > last_tx_horus) {
@@ -4129,6 +4471,7 @@ void scheduler() {
   if (morseEnable) updateGap(morseTimeSyncSeconds, morseTimeSyncOffsetSeconds);
   if (aprsEnable) updateGap(aprsTimeSyncSeconds, aprsTimeSyncOffsetSeconds);
   if (rttyEnable) updateGap(rttyTimeSyncSeconds, rttyTimeSyncOffsetSeconds);
+  if (horusV3Enable) updateGap(horusV3TimeSyncSeconds, horusV3TimeSyncOffsetSeconds);
   if (horusEnable) updateGap(horusTimeSyncSeconds, horusTimeSyncOffsetSeconds);
 
   if (min_gap >= gpsReadMinimumTime && (millis() - last_gps_update_timestamp > gpsMinimumUpdate)) {
@@ -4153,6 +4496,7 @@ void scheduler() {
 }
 
 void interfaceHandler() {
+  #ifndef RSM4x2_UNLOCK_HORUSV3
   if (xdataPortMode != 4) return;
 
   // --- 1. SYSTEM & HARDWARE ---
@@ -4250,6 +4594,20 @@ void interfaceHandler() {
   xdataSerial.println(horusPayloadId);
   xdataSerial.print("horusRadioPower: ");
   xdataSerial.println(horusRadioPower);
+
+  // --- 5.1. HORUS V3 MODE ---
+  xdataSerial.print("horusV3Enable: ");
+  xdataSerial.println(horusV3Enable);
+  xdataSerial.print("horusV3FrequencyMhz: ");
+  xdataSerial.println(horusFreqTable[0], 3);
+  xdataSerial.print("horusV3TimeSyncSeconds: ");
+  xdataSerial.println(horusTimeSyncSeconds);
+  xdataSerial.print("horusV3TimeSyncOffsetSeconds: ");
+  xdataSerial.println(horusTimeSyncOffsetSeconds);
+  xdataSerial.print("horus_v3_callsign: ");
+  xdataSerial.println(HORUS_V3_CALLSIGN);
+  xdataSerial.print("horusV3RadioPower: ");
+  xdataSerial.println(horusV3RadioPower);
 
   // --- 6. APRS MODE ---
   xdataSerial.print("aprsEnable: ");
@@ -4424,6 +4782,7 @@ void interfaceHandler() {
   xdataSerial.println(warn);
   xdataSerial.print("ok: ");
   xdataSerial.println(ok);
+  #endif
 }
 
 void extHeaterHandler(bool enable, float targetTemp, float currentTemp) {
@@ -4640,6 +4999,15 @@ void setup() {
   }
 
   fsk4_bitDuration = (uint32_t)1000000 / horusBdr;  //horus 100baud delay calculation
+  
+  if(rsm4x2) {
+    horusV3Enable = false; // Because by default the RSM4x2 boards don't support Horus V3 - too small flash memory size
+  }
+
+  if(lowMemoryCode) {
+    morseEnable = false;
+    rttyEnable = false;
+  }
 
   if (xdataPortMode == 4) {
     xdataSerial.println("stage: 03");
@@ -4732,6 +5100,4 @@ void loop() {
 
   ultraPowerSaveHandler();
   autoResetHandler();
-
-  if (xdataPortMode == 3) xdataInstrumentHandler();
 }

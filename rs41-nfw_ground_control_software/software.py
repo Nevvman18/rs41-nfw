@@ -1,4 +1,4 @@
-# RS41-NFW Ground Control Software. Backend, version v11
+# RS41-NFW Ground Control Software. Backend, version v12
 # Released on GPL-3.0 license. Authors: Franek Łada (nevvman, SP5FRA)
 
 import serial
@@ -37,6 +37,10 @@ telemetry = {
     # Horus
     "horusEnable": "1", "horusFrequencyMhz": "437.600", "horusTimeSyncSeconds": "15",
     "horusTimeSyncOffsetSeconds": "0", "horusPayloadId": "737", "horusRadioPower": "0",
+    
+    # Horus
+    "horusV3Enable": "1", "horusV3FrequencyMhz": "437.600", "horusV3TimeSyncSeconds": "15",
+    "horusV3TimeSyncOffsetSeconds": "0", "horus_v3_callsign": "737", "horusV3RadioPower": "0",
     
     # APRS
     "aprsEnable": "1", "aprsFrequencyMhz": "432.500", "aprsTimeSyncSeconds": "40",
