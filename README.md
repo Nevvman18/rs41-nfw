@@ -18,7 +18,12 @@ Vaisala some time ago began launching new RS41 sonde revisions, with new interna
 
 ## RS41-NFW Firmware features
 * **Full support for ALL** RS41 versions (eg. `RSM421`, `RSM412`, `RSM414`, `RSM424`, `RSM425`), including the old and new ones with the '4' at the end of the PCB model
+* **For current, up-to-date list of featurse, please refer to the [firmware project file configuration options](./rs41-nfw_sonde-firmware/rs41-nfw_sonde-firmware.ino), where all features are available with thorough comments and guides.
 * Multiple, customizable transmission modes
+    * [**Horus Binary 4FSK v3**](https://github.com/xssfox/horusbinaryv3)
+        * One of the most efficient radio modes for HAB and other simple telemetry designs, allows for decoding of very weak signals
+        * Multi-QRG operation (ability to specify second Horus one, user can modify the code easily to get as much QRGs as wanted on every mode)
+        * User can specify any payload callsign without requesting for ID number, additional sensor fields can be sent easily.
     * [**Horus Binary 4FSK v2**](https://github.com/projecthorus/horusdemodlib/wiki)
         * One of the most efficient radio modes for HAB and other simple telemetry designs, allows for decoding of very weak signals
         * Multi-QRG operation (ability to specify second Horus one, user can modify the code easily to get as much QRGs as wanted on every mode)
@@ -48,7 +53,7 @@ Vaisala some time ago began launching new RS41 sonde revisions, with new interna
 * Flight controling algorithms. Ability to rapidly send packets when below set altitude. Data analysis and debug sent via APRS extended packets every set interval
 * Automatic calibration modes for temperature and humidity sensors on the silver boom, ground-check procedures, humidity module reconditioning. Ability to further improve accuracy by manually calibrating the readings
 * Dedicated **RS41-NFW Ground Control Software**, for simple and detailed pre-flilght things
-* And many more - mentioned in [changelog](#firmware-changelog) and [manual](./fw/OPERATION_MANUAL.md)
+* And many more
 
 
 ## Terms of Use
@@ -97,8 +102,9 @@ See: [hw/README.md](./hw/README.md)
 
 
 ## Firmware changelog
-* `v57` - New APRS telemetry format and destination call, sending much more data.
-* `v56` - Introducing **Scheduler** - new CPU time management function. Introducing **RS41-NFW Ground Control Software**, which guides you through different ground check stages and lets you inspect a lot(!) of flight parameters and sensor data. Improved sensor readout - much faster, more acurate, and with slightly reduced oscillations. Support for infinite number of cycling Horus and APRS frequencies. Redefined heating algorithms - now based on precise PID control and PWM, also with new in-flight control, allowing for sensor defrosting, while having no impact on the radings. New humidity correction algorithms, based on empirical data from many previous flights. Faster program operation. New LED status messages. Redefined documentation - operation manual markdown file became outdated, but new detailed code comments are here.
+* `v58` - **Horus Binary 4FSK V3** support for **all** revisions of sondes. Horus Binary v2/v3 preamble improvements. Code size optimization for old models. Users aren't now required to download libraries in Library Manager - **libraries are now provided** with the downloaded sonde-firmware directory, and work out of the box! [Issue 37](https://github.com/Nevvman18/rs41-nfw/issues/37).
+* `v57` - New APRS telemetry format and tocall, with much more data sent, bugfixes.
+* `v56` - Introducing **Scheduler** - new CPU time management function. Introducing [**RS41-NFW Ground Control Software**](./rs41-nfw_ground_control_software/README.MD), which guides you through different ground check stages and lets you inspect a lot(!) of flight parameters and sensor data. Improved sensor readout - much faster, more acurate, and with slightly reduced oscillations. Support for infinite number of cycling Horus and APRS frequencies. Redefined heating algorithms - now based on precise PID control and PWM, also with new in-flight contrl, allowing for sensor defrosting, while having no impact on the radings. New humidity correction algorithms, based on empirical data from many previous flights. Faster program operation. New LED status messages. Redefined documentation - operation manual markdown file became outdated, but new detailed code comments are here.
 * `v55` - Si4032 radio now consumes 10-15mA less current than before, due to a misunderstanding of operation stages, allowing now to sleep properly between transmissions. Ability to specify TX power in each mode. Removed power save mode which changed interval and power below a certain altitude, which was a clone of a newer feature called `lowAltitudeFastTx`. Ability yo specify constant altitude when stationary use with no GPS. Others. + support of the newest `RSM425` boards.
 * `v54` - power OFF routine modification, making the procedure status more clear. APRS temperature reporting length improvement.
 * `v53` - timing improvements down to milliseconds, with help of Bernd DL1XH. More talkative UART debug messages.

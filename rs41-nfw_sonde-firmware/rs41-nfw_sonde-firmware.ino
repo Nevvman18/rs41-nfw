@@ -33,7 +33,7 @@ Author of RS41-NFW
 #include "horus_l2.h"
 //#include "horus_l2.cpp"
 #include <SPI.h>
-#include <TinyGPSPlus.h>
+#include "gps.h"
 #include "HorusBinaryV3.h"
 
 TinyGPSPlus gps;
@@ -59,7 +59,7 @@ TinyGPSPlus gps;
 To enable the latest features (currently only Horus V3), uncomment the definition below.
 
 WARNING! To make space in flash memory, this option DISABLES: Morse, RTTY, fox-hunting mode and RS41-NFW Ground Control Software communication protocol!!!
-Decide what's best for you - I recommend to put this board on your shelf and search for the latest sonde revision. The RSM4x4 and 4x5 revisions perform much better in-flight, with a lot better GPS and power efficiency, and a better MCU supporting all the features. */
+Decide what's best for you - I recommend to put this outdated board on your shelf as a souvenir and search for the latest sonde revision. The RSM4x4 and 4x5 revisions perform much better in-flight, with a lot better GPS and power efficiency, and a better MCU supporting all the features. */
 
 // #define RSM4x2_UNLOCK_HORUSV3
 
@@ -1245,6 +1245,7 @@ size_t fsk4_write(char* buff, size_t len) {
 //===== Radio payload creation
 #ifndef RSM4x2_UNLOCK_HORUSV3
 String createRttyMorsePayload() {
+  rttyFrameCounter++;
   // Start with the payload string
   String payload, payloada;
 

@@ -62,7 +62,12 @@ This depends on the PCB version you have. <br>
 
 
 ## Additional libraries
+RS41-NFW does not require additional installation of libraries via Library Manager anymore! All files are included already.
 
+
+---
+
+For pre-v58 releases:
 Besides the compiler configuration, you also have to add necessary libraries to your environment. <br>
 Currently needed libraries for this project (only one):
 * TinyGPS++
