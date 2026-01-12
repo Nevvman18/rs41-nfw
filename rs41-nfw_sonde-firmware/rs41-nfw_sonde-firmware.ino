@@ -3,7 +3,7 @@ RS41-NFW - versatile, feature-rich and user-friendly custom firmware for ALL rev
 Released on GPL-3.0 license.
 Authors: Franek Łada (nevvman, SP5FRA)
 
-Version 58 (public, stable)
+Version 59 (public, stable)
 
 All code and dependencies used or modified here that don't origin from me are described in code comments and repo details.
 https://github.com/Nevvman18/rs41-nfw
@@ -239,14 +239,6 @@ int pipRepeat = 3;                    // Pip signal repeat count in 1 transmit w
 int pipRadioPower = 7;                // TX power, 0 = -1dBm (~0.8mW), 1 = 2dBm (~1.6mW), 2 = 5dBm (~3 mW), 3 = 8dBm (~6 mW), 4 = 11dBm (~12 mW), 5 = 14dBm (25 mW), 6 = 17dBm (50 mW), 7 = 20dBm (100 mW)
 
 
-// Horus v2:
-bool horusEnable = true;              // Enable horus v2 tx mode
-float horusFreqTable[] = {437.6};     // Specify all horus frequencies You want (example {437.6, 434.714, 433.8};), the sonde will cycle through all of them one-by-one during a transmit cycle. Useful when flying long flights in different places of the world (Poland 437.6Mhz, most of the europe 434.714Mhz) Note - lowAltitudeFasTxMode will only use primary frequency - the first one specified.
-unsigned int horusPayloadId = 256;    // Horus v2 (v1 is outdated and NFW only sends extedned v2 format, v1 IDs seem to work with v2 too) payload ID. Please obtain Yours by creating an issue at https://github.com/projecthorus/horusdemodlib/issues
-int horusBdr = 100;                   // Transmission baudrate, default 100
-int horusRadioPower = 7;              // TX power, 0 = -1dBm (~0.8mW), 1 = 2dBm (~1.6mW), 2 = 5dBm (~3 mW), 3 = 8dBm (~6 mW), 4 = 11dBm (~12 mW), 5 = 14dBm (25 mW), 6 = 17dBm (50 mW), 7 = 20dBm (100 mW)
-const int horusPreambleLength = 8;   // Horus V2/V3 preamble length in bits - default at 16. Allows receivers to lock on the carriers etc.
-
 /* Horus V3 transmission mode - encoder provided by Mark VK5QI
 Lately released 3rd generation of Horus 4FSK modem and protocol - read more about experimental releases at: https://github.com/xssfox/horusbinaryv3, and soon at: https://github.com/projecthorus/horusdemodlib/wiki/6-TBA-Horus-Binary-V3 and all other official sources.
 The biggest change is ASN.1 encoding. Thanks to it, you no longer need to request a payload ID nor a custom packet format anymore. From now, you can specify the callsign below in the definition, and it will be sent in the packet itself.
@@ -258,7 +250,7 @@ temperatures:
 
 extraSensors:
   gps [a, b] - GPS status, where: a = gpsHdop (horizontal precision in meters), b = gpsJamWarning - 0 when OK, 1 when GPS jam algorithm has detected abnormaities and issued a warning currently
-  heat [a, b] - heaters status, where: a = reference resistors heater status (0-3 power), b = humidity module defrost heater status (0-500 PWM power).
+  // commented out - quite a long packet when included, with not so necessary data, but you can uncomment it if you want, around line 1345 and change array element count to 2. heat [a, b] - heaters status, where: a = reference resistors heater status (0-3 power), b = humidity module defrost heater status (0-500 PWM power).
 
 , leaving the horusV3LongerPacket at false will transmit using V3 the same telemetry as with V2.
 
@@ -269,6 +261,15 @@ float horusV3FreqTable[] = {437.6};     // Specify all horus frequencies You wan
 int horusV3Bdr = 100;                   // Transmission baudrate, default 100
 int horusV3RadioPower = 7;              // TX power, 0 = -1dBm (~0.8mW), 1 = 2dBm (~1.6mW), 2 = 5dBm (~3 mW), 3 = 8dBm (~6 mW), 4 = 11dBm (~12 mW), 5 = 14dBm (25 mW), 6 = 17dBm (50 mW), 7 = 20dBm (100 mW)
 bool horusV3LongerPacket = true;        // See explanation above.
+int horusBdr = 100;                   // Transmission baudrate, default 100
+const int horusPreambleLength = 8;   // Horus V2/V3 preamble length in bits - default at 16. Allows receivers to lock on the carriers etc.
+
+
+// Horus v2 - NOTE: I HIGHLY! SUGGEST SWITCHING TO V3 MODE, v2 is becoming outdated and v3 is here as a new, much more flexible standard. RX stations should also keep their software updated to the latest releases, which support Horus V3.
+bool horusEnable = false;              // Enable horus v2 tx mode
+float horusFreqTable[] = {437.6};     // Specify all horus frequencies You want (example {437.6, 434.714, 433.8};), the sonde will cycle through all of them one-by-one during a transmit cycle. Useful when flying long flights in different places of the world (Poland 437.6Mhz, most of the europe 434.714Mhz) Note - lowAltitudeFasTxMode will only use primary frequency - the first one specified.
+unsigned int horusPayloadId = 256;    // Horus v2 (v1 is outdated and NFW only sends extedned v2 format, v1 IDs seem to work with v2 too) payload ID. Please obtain Yours by creating an issue at https://github.com/projecthorus/horusdemodlib/issues
+int horusRadioPower = 7;              // TX power, 0 = -1dBm (~0.8mW), 1 = 2dBm (~1.6mW), 2 = 5dBm (~3 mW), 3 = 8dBm (~6 mW), 4 = 11dBm (~12 mW), 5 = 14dBm (25 mW), 6 = 17dBm (50 mW), 7 = 20dBm (100 mW)
 
 
 // APRS:
@@ -1321,7 +1322,7 @@ int build_horus_binary_packet_v3(char* uncoded_buffer){
         .altitudeMeters = gpsAlt,
         // Example of adding some custom fields.
         .extraSensors = {
-          .nCount=2, // Number of custom fields.
+          .nCount=1, // Number of custom fields. CHANGE IT IF YOU WANT TO ADD FOR EXAMPLE HEATERS DATA COMMENTED OUT
           .arr = {
             // Example of an array of integers 
             {
@@ -1341,7 +1342,7 @@ int build_horus_binary_packet_v3(char* uncoded_buffer){
                 },
                 
                 
-            },
+            }/*,
             {
                 .name = "heat", // This is transmitted in the packet if .exist/name is true
                 .values = {
@@ -1359,7 +1360,7 @@ int build_horus_binary_packet_v3(char* uncoded_buffer){
                 },
                 
                 
-            }
+            }*/
           },
         },
         .velocityHorizontalKilometersPerHour = gpsSpeedKph,
@@ -1420,6 +1421,7 @@ int build_horus_binary_packet_v3(char* uncoded_buffer){
       asnMessage.temperatureCelsius_x10.exist.external = false;
       asnMessage.exist.humidityPercentage = false;
       asnMessage.temperatureCelsius_x10.exist.custom1 = false;
+      asnMessage.exist.extraSensors = false;
     }
 
     // The encoder needs a data structure for the serialization
@@ -2987,11 +2989,7 @@ void aprsWxFormat(float latitude, float longitude, char* aprsMessage) {
     wxHumidity = humidityValue;  // wxHumidity as percentage
   }
 
-  // Additional WX tags
-  int wxWindCourse = 0;  // Wind course (angle in degrees)
-  int wxWindSpeed = 0;   // Wind speed in mph or kph
-  int wxWindGust = 0;    // Wind gust speed in mph or kph
-
+  
   int wxPressure = pressureValue * 10;  // Barometric pressure (hPa * 10)
 
   // Read additional values
@@ -3001,12 +2999,9 @@ void aprsWxFormat(float latitude, float longitude, char* aprsMessage) {
   // Combine Latitude, Longitude, WX data, and additional information into APRS WX format
   // Example: !DDMM.ssN/DDDMM.ssE_tXXX PSTV
   snprintf(aprsMessage, 320,
-           "!%s/%s_c%03ds%03dg%03dt%03dh%02d U=%dmV %s",   //NOTE!: if You want to report pressure, add 'b&05d' after humidity tag and a wxPressure variable after wxHumidity variable
+           "!%s/%s_.../...g...t%03dh%02d U=%dmV %s",   //NOTE!: if You want to report pressure, add 'b&05d' after humidity tag and a wxPressure variable after wxHumidity variable
            latBuffer,                                      // Formatted Latitude buffer
            lonBuffer,                                      // Formatted Longitude buffer
-           wxWindCourse,                                   // Wind direction in degrees (0 - 359)
-           wxWindSpeed,                                    // Wind speed in mph
-           wxWindGust,                                     // Wind gust speed in mph
            wxTemperatureF,                                 // Temperature in Fahrenheit
            wxHumidity,                                     // Humidity
            static_cast<int>(readBatteryVoltage() * 1000),  // Battery voltage (mV)
@@ -5001,7 +4996,7 @@ void setup() {
 
   fsk4_bitDuration = (uint32_t)1000000 / horusBdr;  //horus 100baud delay calculation
   
-  if(rsm4x2) {
+  if(rsm4x2 && !lowMemoryCode) {
     horusV3Enable = false; // Because by default the RSM4x2 boards don't support Horus V3 - too small flash memory size
   }
 
