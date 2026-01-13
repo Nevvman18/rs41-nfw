@@ -102,6 +102,7 @@ See: [hw/README.md](./hw/README.md)
 
 
 ## Firmware changelog
+* `v60` - Improved APRS timings and baud rate consistency, with help of Wolfgang DF7PN and Ayar HB9EVW.
 * `v59` - Horus Binary V3 bugfix for RSM4x2 revisions, APRS WX wind reporting correction, docs.
 * `v58` - **Horus Binary 4FSK V3** support for **all** revisions of sondes. Horus Binary v2/v3 preamble improvements. Code size optimization for old models. Users aren't now required to download libraries in Library Manager - **libraries are now provided** with the downloaded sonde-firmware directory, and work out of the box! [Issue 37](https://github.com/Nevvman18/rs41-nfw/issues/37).
 * `v57` - New APRS telemetry format and tocall, with much more data sent, bugfixes.

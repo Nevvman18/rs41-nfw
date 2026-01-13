@@ -3,7 +3,7 @@ RS41-NFW - versatile, feature-rich and user-friendly custom firmware for ALL rev
 Released on GPL-3.0 license.
 Authors: Franek Łada (nevvman, SP5FRA)
 
-Version 59 (public, stable)
+Version 60 (public, stable)
 
 All code and dependencies used or modified here that don't origin from me are described in code comments and repo details.
 https://github.com/Nevvman18/rs41-nfw
@@ -113,7 +113,7 @@ bool heaterPinControlAvail = true;
 
 #define SI4032_CLOCK 26.0
 
-#define aprsSpaceTime 206
+#define aprsSpaceTime 201
 #define aprsMarkTime 400
 
 //===== Interfaces
@@ -157,8 +157,8 @@ bool heaterPinControlAvail = false;
 
 #define SI4032_CLOCK 26.0
 
-#define aprsSpaceTime 196
-#define aprsMarkTime 390
+#define aprsSpaceTime 190
+#define aprsMarkTime 394
 
 //===== Interfaces
 //SPI_2 interface class (radio communication etc.)
@@ -176,7 +176,7 @@ HardwareSerial xdataSerial(PB11, PB10);
 
 
 
-#define NFW_VERSION "RS41-NFW v58, GPL-3.0 Franek Lada (nevvman, SP5FRA)"  //This is the firmware version You are running
+#define NFW_VERSION "RS41-NFW v60, GPL-3.0 Franek Lada (nevvman, SP5FRA)"  //This is the firmware version You are running
 
 
 
