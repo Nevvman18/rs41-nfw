@@ -3,7 +3,7 @@ RS41-NFW - versatile, feature-rich and user-friendly custom firmware for ALL rev
 Released on GPL-3.0 license.
 Authors: Franek Łada (nevvman, SP5FRA)
 
-Version 60 (public, stable)
+Version 61 (public, stable)
 
 All code and dependencies used or modified here that don't origin from me are described in code comments and repo details.
 https://github.com/Nevvman18/rs41-nfw
@@ -110,6 +110,7 @@ bool heaterPinControlAvail = true;
 #define HEAT_HUM1 PA7
 #define HEAT_HUM2 PB8
 #define GPS_RESET_PIN PB9
+#define CS_SPI PB2
 
 #define SI4032_CLOCK 26.0
 
@@ -154,6 +155,7 @@ bool heaterPinControlAvail = false;
 #define HEAT_HUM1 PA7
 #define HEAT_HUM2 PB9
 #define GPS_RESET_PIN PA15
+#define CS_SPI PB2
 
 #define SI4032_CLOCK 26.0
 
@@ -176,7 +178,7 @@ HardwareSerial xdataSerial(PB11, PB10);
 
 
 
-#define NFW_VERSION "RS41-NFW v60, GPL-3.0 Franek Lada (nevvman, SP5FRA)"  //This is the firmware version You are running
+#define NFW_VERSION "RS41-NFW v61, GPL-3.0 Franek Lada (nevvman, SP5FRA)"  //This is the firmware version You are running
 
 
 
@@ -276,7 +278,7 @@ int horusRadioPower = 7;              // TX power, 0 = -1dBm (~0.8mW), 1 = 2dBm 
 bool aprsEnable = true;               // Enable APRS tx mode
 float aprsFreqTable[] = {432.5};      // APRS frequency table (same format as Horus table). Same as for horus frequency table. Note - dataRecorder will only use primary frequency (first specified). Note - lowAltitudeFasTxMode will only use primary frequency - the first one specified.
 char aprsCall[] = "N0CALL";           // Callsign
-String aprsComment = " @RS41-NFW";    // APRS message comment, leaving the nfw comment would help identify the usage of this firmware :), if You don't mind, please leave this comment, thanks!
+String aprsComment = " NFW";    // APRS message comment, leaving the nfw comment would help identify the usage of this firmware :)
 char aprsSsid = 11;                   // SSID for the call sign
 char aprsDest[] = "APRNFW";           // Destination address for APRS
 char aprsDigi[] = "WIDE2";            // Digipeater callsign
@@ -559,15 +561,20 @@ int humidityCalibrationMeasurementTemperature = 130;      // Minimum sensor temp
 
 
 
-/* Pressure */
-/* 'enablePressureEstimation' option enables an algorithm that estimates the pressure of dry air, based on altitude, temperature and humidity.
-It is NOT read from any pressure sensor, like an RPM411 board (now!), but can give You a fair enough reading, more of an 'order of magnitude'.
-The pressureValue is sent via Horus v2 and APRS 
+/* pressureMode - determines pressure measurement method:
+  0 - pressure measurement disabled, reported value is 0.#
+  
+  1 - Vaisala RPM411 pressure sensor measurement method. Simply plug the sensor on the back side of the board (note - it must be an RS41-SGP model) and configure this option. You'll now heave extremely precise pressure, measured with an official, factory-calibrated BARO-CAP sensor.
+      You do not need to calibrate anything, nor specify any values (don' change the sea level pressure as it will do nothing).
+  
+  2 - pressure estimation - works like in RS41-SG models, with a pressure model, which expects user's input of `seaLevelPressure`. Estimates the pressure of dry air based on altitude, temperature and humidity. Not so precise, more of an 'order of magnitude'.
+      Change 'seaLevelPressure' [Pa] value to the correct Mean Sea Level Pressure (pressure reduced to the level of sea) in the region of launch.
+      If launching in the near future, please look at Your weather forecast and weather models.
 
-NOTE:
-Change 'seaLevelPressure' [Pa] value to the correct Mean Sea Level Pressure (pressure reduced to the level of sea) in the region of launch.
-If launching in the near future, please look at Your weather forecast and weather models. */
-bool enablePressureEstimation = true;
+The pressureValue is sent via Horus v2, Horus v3 and APRS .
+
+Suggested option - 1, using the RPM411 pressure sensor.*/
+bool pressureMode = 1;
 unsigned long seaLevelPressure = 101325;                  // Sea level pressure in Pascals, used to correctly estimate the pressure in the upper layers
 
 
@@ -934,6 +941,49 @@ const char* MorseTable[37] = {
   " "       // Space (7 dot lengths)
 };
 #endif
+
+
+
+
+
+
+char RPM411SerialNumber[9];
+
+//1 byte uint8_t-stored configuration frame for rpm411 (captured by nevvman's logic analyzer)
+const uint8_t RPM411InitFrame[21][7] = {
+  {0x03, 0x02, 0x1E, 0x00, 0x00, 0x51, 0x00},
+  {0x03, 0x02, 0x28, 0x00, 0x33, 0xFE, 0x00},
+  {0x03, 0x02, 0x0A, 0x00, 0xB7, 0x9E, 0x00},
+  {0x03, 0x02, 0x64, 0x00, 0x92, 0xB6, 0x00},
+  {0x03, 0x02, 0x6E, 0x00, 0x59, 0x59, 0x00},
+  {0x03, 0x02, 0x78, 0x00, 0x8c, 0xF0, 0x00},
+  {0x03, 0x02, 0x82, 0x00, 0x86, 0x0C, 0x00},
+  {0x03, 0x02, 0x8C, 0x00, 0x89, 0x2F, 0x00},
+  {0x03, 0x02, 0x96, 0x00, 0x31, 0xC3, 0x00},
+  {0x03, 0x02, 0xA0, 0x00, 0x02, 0x6C, 0x00},
+  {0x03, 0x02, 0xAA, 0x00, 0xC9, 0x83, 0x00},
+  {0x03, 0x02, 0xB4, 0x00, 0xB5, 0xA3, 0x00},
+  {0x03, 0x02, 0xBE, 0x00, 0x7E, 0x4C, 0x00},
+  {0x03, 0x02, 0xC8, 0x00, 0x81, 0xEE, 0x00},
+  {0x03, 0x02, 0xD2, 0x00, 0x39, 0x02, 0x00},
+  {0x03, 0x02, 0xDC, 0x00, 0x36, 0x21, 0x00},
+  {0x03, 0x02, 0xE6, 0x00, 0x68, 0xCB, 0x00},
+  {0x03, 0x02, 0xF0, 0x00, 0xBD, 0x62, 0x00},
+  {0x03, 0x02, 0xFA, 0x00, 0x76, 0x8D, 0x00},
+  {0x03, 0x02, 0x04, 0x01, 0x99, 0xAD, 0x00},
+  {0x03, 0x02, 0x0E, 0x01, 0x52, 0x42, 0x00}
+};
+
+const uint8_t RPM411PreReadoutFrame[] = {0x01,0x00,0x3E,0x2E,0x00};
+const uint8_t RPM411TriggerReadoutFrame[] = {0x02,0x00,0x6D,0x7B,0x00};
+
+//lets hope it wont run out of RAM
+uint8_t RPM411ConfigData[21][33];
+
+bool rpm411Error = false;
+float rpm411Pressure = 0.0;
+float rpm411InternalTemperature = 0.0;
+uint8_t RPM411ReadingsData[33];
 
 
 
@@ -2996,9 +3046,20 @@ void aprsWxFormat(float latitude, float longitude, char* aprsMessage) {
   int wxPacketNumber = 0;      // Packet number, here as 0, because it could potentially overflow when used as a weather station
   int wxSatellites = gpsSats;  // GPS satellites
 
-  // Combine Latitude, Longitude, WX data, and additional information into APRS WX format
-  // Example: !DDMM.ssN/DDDMM.ssE_tXXX PSTV
-  snprintf(aprsMessage, 320,
+  if(pressureMode == 1) {
+    snprintf(aprsMessage, 320,
+           "!%s/%s_.../...g...t%03dh%02db&05d U=%dmV %s",   
+           latBuffer,                                      // Formatted Latitude buffer
+           lonBuffer,                                      // Formatted Longitude buffer
+           wxTemperatureF,                                 // Temperature in Fahrenheit
+           wxHumidity,                                     // Humidity
+           wxPressure,                                     // Pressure
+           static_cast<int>(readBatteryVoltage() * 1000),  // Battery voltage (mV)
+           aprsComment.c_str()                             // APRS comment
+    );    
+  }
+  else {
+    snprintf(aprsMessage, 320,
            "!%s/%s_.../...g...t%03dh%02d U=%dmV %s",   //NOTE!: if You want to report pressure, add 'b&05d' after humidity tag and a wxPressure variable after wxHumidity variable
            latBuffer,                                      // Formatted Latitude buffer
            lonBuffer,                                      // Formatted Longitude buffer
@@ -3007,6 +3068,8 @@ void aprsWxFormat(float latitude, float longitude, char* aprsMessage) {
            static_cast<int>(readBatteryVoltage() * 1000),  // Battery voltage (mV)
            aprsComment.c_str()                             // APRS comment
   );
+  }
+
 }
 
 
@@ -3100,14 +3163,6 @@ void bothLedOff() {
   digitalWrite(GREEN_LED_PIN, HIGH);
 }
 
-void pressureEstimation() {
-  if (enablePressureEstimation) {
-    pressureValue = ((seaLevelPressure * pow(1 - ((0.0065 * gpsAlt) / (mainTemperatureValue + 273.15)), (9.80665 * 0.0289644) / (8.3144598 * 0.0065))) - (6.112 * exp((17.67 * mainTemperatureValue) / (mainTemperatureValue + 243.5)) * (humidityValue / 100))) / 100;
-  } else {
-    pressureValue = 0;
-  }
-}
-
 void flightComputing() {
   if (dataRecorderFlightNoiseFiltering && beganFlying) {
     if (static_cast<int>(gpsAlt) > maxAlt) {
@@ -3163,8 +3218,6 @@ void flightComputing() {
     cancelGpsImprovement = true;
   }
 
-  pressureEstimation();
-
   if (beganFlying && burstDetected) {
     if (lowAltitudeFastTxThreshold != 0 && gpsAlt < lowAltitudeFastTxThreshold) {
       if (horusEnable) {
@@ -3182,8 +3235,7 @@ void lowAltitudeFastTxMode() {
   while (millis() - lowAltitudeFastTxModeBeginTime < lowAltitudeFastTxDuration && !lowAltitudeFastTxModeEnd) {
     gpsHandler();
     sensorBoomHandler();
-
-    pressureEstimation();
+    pressureHandler();
 
     if (horusEnable) {
       int pkt_len = build_horus_binary_packet_v2(rawbuffer);
@@ -4128,14 +4180,18 @@ int readAvgIntTemp() {
   int thermistorTemp = static_cast<int>(readThermistorTemp());
 
   if (abs(radioTemp) > 120) {  //in case of error
-    return thermistorTemp;
-  } else if (abs(thermistorTemp) > 120) {
-    return radioTemp;
+    radioTemp = thermistorTemp;
+  } else if (abs(thermistorTemp) > 150) {
+    thermistorTemp = radioTemp;
   }
 
-  return static_cast<int>((radioTemp + thermistorTemp) / 2);
+  if(pressureMode == 1 && !rpm411Error) {
+    return static_cast<int>( (radioTemp + thermistorTemp + static_cast<int>(rpm411InternalTemperature) ) / 3);
+  }
+  else {
+    return static_cast<int>( (radioTemp + thermistorTemp) / 2);
+  }
 }
-
 
 void generateSi4032FmTone(unsigned int toneFrequency, unsigned int lengthMs) {
   // Calculate the tone period in microseconds
@@ -4477,6 +4533,7 @@ void scheduler() {
   
   if (min_gap >= sensorReadMinimumTime && (millis() - last_sensor_update_timestamp > sensorMinimumUpdate)) {
     sensorBoomHandler();
+    pressureHandler();
     last_sensor_update_timestamp = millis();
   }
 
@@ -4700,10 +4757,6 @@ void interfaceHandler() {
   xdataSerial.println(humidityValue);
   xdataSerial.print("pressureValue: ");
   xdataSerial.println(pressureValue);
-  xdataSerial.print("enablePressureEstimation: ");
-  xdataSerial.println(enablePressureEstimation);
-  xdataSerial.print("seaLevelPressure: ");
-  xdataSerial.println(seaLevelPressure);
   xdataSerial.print("mainTemperatureCorrectionC: ");
   xdataSerial.println(mainTemperatureCorrectionC);
   xdataSerial.print("extHeaterTemperatureCorrectionC: ");
@@ -4740,6 +4793,18 @@ void interfaceHandler() {
   xdataSerial.println(sensorBoomMainTempError);
   xdataSerial.print("sensorBoomHumidityModuleError: ");
   xdataSerial.println(sensorBoomHumidityModuleError);
+  xdataSerial.print("pressureMode: ");
+  xdataSerial.println(pressureMode);
+  xdataSerial.print("pressureValue: ");
+  xdataSerial.println(pressureValue);
+  xdataSerial.print("rpm411InternalTemperature: ");
+  xdataSerial.println(rpm411InternalTemperature);
+  xdataSerial.print("RPM411SerialNumber: ");
+  xdataSerial.println(RPM411SerialNumber);
+  xdataSerial.print("rpm411Error: ");
+  xdataSerial.println(RPM411SerialNumber);
+  xdataSerial.print("seaLevelPressure: ");
+  xdataSerial.println(seaLevelPressure);
 
   // --- 11. RAW SENSOR DATA & CONSTANTS ---
   xdataSerial.print("mainTemperatureFrequency: ");
@@ -4887,12 +4952,185 @@ void humidityDeltaCalibrationDebug() {
 
 
 
+void initRPM411() {
+  bool isDataReceived = false;
+  delay(50);
+
+  for (int i = 0; i < 21; i++) {
+
+    for (int j = 0; j < 7; j++) {
+      digitalWrite(CS_SPI, LOW);
+      delayMicroseconds(70);
+
+      RPM411ConfigData[i][j] = SPI_2.transfer(RPM411InitFrame[i][j]);
+
+      if (RPM411ConfigData[i][j] != 0xFF) {
+        isDataReceived = true;
+      }
+
+      digitalWrite(CS_SPI, HIGH);
+      delayMicroseconds(90);
+    }
+
+    delayMicroseconds(450);
+
+    for (int k = 7; k < 33; k++) {
+      digitalWrite(CS_SPI, LOW);
+      delayMicroseconds(70);
+
+      RPM411ConfigData[i][k] = SPI_2.transfer(0x00);
+
+      if (RPM411ConfigData[i][k] != 0xFF) {
+        isDataReceived = true;
+      }
+
+      digitalWrite(CS_SPI, HIGH);
+      delayMicroseconds(90);
+    }
+
+    delay(10);
+  }
+
+
+  if (!isDataReceived) {
+    rpm411Error = true;
+  }
+  else {
+    rpm411Error = false;
+    RPM411ParseConfigData();
+  }
+}
+
+void readRPM411() {
+  bool isDataReceived = false;
+
+  for (int j = 0; j < 5; j++) {
+    digitalWrite(CS_SPI, LOW);
+    delayMicroseconds(100);
+
+    SPI_2.transfer(RPM411PreReadoutFrame[j]);
+
+    digitalWrite(CS_SPI, HIGH);
+    delayMicroseconds(100);
+  }
+
+  delay(250);
+
+
+  for (int j = 0; j < 5; j++) {
+    digitalWrite(CS_SPI, LOW);
+    delayMicroseconds(100);
+
+    RPM411ReadingsData[j] = SPI_2.transfer(RPM411TriggerReadoutFrame[j]);
+
+    if (RPM411ReadingsData[j] != 0xFF) {
+      isDataReceived = true;
+    }
+
+    digitalWrite(CS_SPI, HIGH);
+    delayMicroseconds(100);
+  }
+
+  delayMicroseconds(450);
+
+  for (int k = 5; k < 33; k++) {
+    digitalWrite(CS_SPI, LOW);
+    delayMicroseconds(100);
+
+    RPM411ReadingsData[k] = SPI_2.transfer(0x00);
+
+    if (RPM411ReadingsData[k] != 0xFF) {
+      isDataReceived = true;
+    }
+
+    digitalWrite(CS_SPI, HIGH);
+    delayMicroseconds(100);
+  }
+
+
+  if (!isDataReceived) {
+    rpm411Error = true;
+  }
+  else {
+    rpm411Error = false;
+    RPM411ParseReadings();
+  }
+}
+
+
+void RPM411ParseConfigData() {
+  for (int i = 0; i < 8; i++) {
+    RPM411SerialNumber[i] = (char)RPM411ConfigData[1][(41 + i) % 33];
+  }
+
+  RPM411SerialNumber[8] = '\0';
+}
+
+
+void RPM411ParseReadings() {
+  if(!rpm411Error) {
+    int totalLength = 33; 
+  
+    // Adjusted offsets based on your hex dump
+    int tempStart = totalLength - 13;     // Index 20
+    int pressureStart = totalLength - 9;  // Index 24
+
+    uint8_t tempBytes[4];
+    tempBytes[0] = RPM411ReadingsData[tempStart];
+    tempBytes[1] = RPM411ReadingsData[tempStart + 1];
+    tempBytes[2] = RPM411ReadingsData[tempStart + 2];
+    tempBytes[3] = RPM411ReadingsData[tempStart + 3];
+    memcpy(&rpm411InternalTemperature, tempBytes, 4);
+
+    uint8_t pressureBytes[4];
+    pressureBytes[0] = RPM411ReadingsData[pressureStart];
+    pressureBytes[1] = RPM411ReadingsData[pressureStart + 1];
+    pressureBytes[2] = RPM411ReadingsData[pressureStart + 2];
+    pressureBytes[3] = RPM411ReadingsData[pressureStart + 3];
+    memcpy(&rpm411Pressure, pressureBytes, 4);
+  }
+}
+
+
+void pressureHandler() {
+  if(pressureMode == 1) {
+    if (rpm411Error) {
+      initRPM411();
+      initRPM411();
+      
+      if(!rpm411Error) {
+        readRPM411();
+      }
+
+    }
+    else {
+      readRPM411();
+
+      if(rpm411Pressure < 1200 && rpm411Pressure > 0) {
+        pressureValue = rpm411Pressure;
+      }
+
+    }
+
+  }
+  else if(pressureMode == 2) {
+    pressureValue = ((seaLevelPressure * pow(1 - ((0.0065 * gpsAlt) / (mainTemperatureValue + 273.15)), (9.80665 * 0.0289644) / (8.3144598 * 0.0065))) - (6.112 * exp((17.67 * mainTemperatureValue) / (mainTemperatureValue + 243.5)) * (humidityValue / 100))) / 100;
+  }
+  else {
+    pressureValue = 0;
+  }
+
+}
+
+
+
 
 void setup() {
   pinMode(RED_LED_PIN, OUTPUT);
   pinMode(GREEN_LED_PIN, OUTPUT);
   pinMode(PSU_SHUTDOWN_PIN, OUTPUT);
   pinMode(CS_RADIO_SPI, OUTPUT);
+  pinMode(CS_SPI, OUTPUT);
   if (heaterPinControlAvail) {
     pinMode(HEAT_REF, OUTPUT);
   }
@@ -4918,6 +5156,8 @@ void setup() {
   digitalWrite(SPST2, LOW);
   digitalWrite(SPST3, LOW);
   digitalWrite(SPST4, LOW);
+  digitalWrite(CS_SPI, HIGH);
+  digitalWrite(CS_RADIO_SPI, HIGH);
 
   redLed();
 
@@ -4956,9 +5196,13 @@ void setup() {
     xdataSerial.println("[info]: PWM timer initialized - 8bit, 1kHz");
   }
 
+  HAL_RCC_MCOConfig(RCC_MCO1, RCC_MCO1SOURCE_HSI, RCC_MCODIV_1); // MCO1 with divider 1 from HSI clock source, output on PA8
 
   SPI_2.begin();
   digitalWrite(CS_RADIO_SPI, HIGH);  // Deselect the SI4432 CS pin
+  digitalWrite(CS_SPI, HIGH);
+
+
   if (xdataPortMode == 1) {
     xdataSerial.println("[info]: SPI_2 interface initialized");
   }
@@ -4980,7 +5224,6 @@ void setup() {
   if (xdataPortMode == 1) {
     xdataSerial.println("[info]: Si4032 radio register initialization complete");
   }
-  //digitalWrite(CS_RADIO_SPI, HIGH); //no need to disable cs because no other spi devices on the bus
 
   setRadioPower(6);
   if (xdataPortMode == 1) {
@@ -5012,6 +5255,12 @@ void setup() {
   selectReferencesHeater(0);  //turn off reference heating
   extHeaterHandler(false, 0, 0);
   selectSensorBoom(0, 0);  //turn off all sensor boom measurement circuits
+
+  if(pressureMode == 1) {
+    initRPM411();
+    readRPM411();
+  }
+  pressureHandler();
 
   orangeLed();
 

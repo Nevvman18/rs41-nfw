@@ -15,17 +15,17 @@ socketio = SocketIO(app, cors_allowed_origins="*", async_mode='threading')
 # Initialize ALL variables to default values to prevent UI errors on startup
 telemetry = {
     # System
-    "isRSM4x2": "1", "isRSM4x4": "0", "fwVer": "NFW, wait...", "millis": "0",
-    "sys_h": "0", "sys_m": "0", "sys_s": "0", "autoResetEnable": "1",
-    "buttonMode": "1", "ledStatusEnable": "1", "ledAutoDisableHeight": "1000",
+    "isRSM4x2": "0", "isRSM4x4": "0", "fwVer": "NFW, wait...", "millis": "0",
+    "sys_h": "0", "sys_m": "0", "sys_s": "0", "autoResetEnable": "0",
+    "buttonMode": "0", "ledStatusEnable": "0", "ledAutoDisableHeight": "0",
     
     # GPS
-    "gpsBaudRate": "9600", "ubloxGpsAirborneMode": "1", "gpsTimeoutWatchdog": "1800000",
-    "improvedGpsPerformance": "1", "disableGpsImprovementInFlight": "1", "gpsOperationMode": "1",
+    "gpsBaudRate": "9600", "ubloxGpsAirborneMode": "0", "gpsTimeoutWatchdog": "1800000",
+    "improvedGpsPerformance": "1", "disableGpsImprovementInFlight": "0", "gpsOperationMode": "0",
     "gpsLat": "0.000000", "gpsLong": "0.000000", "gpsAlt": "0.00", "gpsSats": "0",
     "gpsHours": "0", "gpsMinutes": "0", "gpsSeconds": "0",
     "gpsSpeedKph": "0.00", "gpsHdop": "99.99", "vVCalc": "0.00",
-    "currentGPSPowerMode": "1", "gpsTimerBegin": "0", "gpsResetCounter": "0", "gpsJamWarning": "0",
+    "currentGPSPowerMode": "0", "gpsTimerBegin": "0", "gpsResetCounter": "0", "gpsJamWarning": "0",
     
     # Radio General
     "radioEnablePA": "1", "callsign": "N0CALL", "radioTemp": "0.00", "currentRadioPwrSetting": "0",
@@ -35,15 +35,15 @@ telemetry = {
     "pipTimeSyncOffsetSeconds": "0", "pipRadioPower": "6",
     
     # Horus
-    "horusEnable": "1", "horusFrequencyMhz": "437.600", "horusTimeSyncSeconds": "15",
+    "horusEnable": "0", "horusFrequencyMhz": "437.600", "horusTimeSyncSeconds": "15",
     "horusTimeSyncOffsetSeconds": "0", "horusPayloadId": "737", "horusRadioPower": "0",
     
-    # Horus
-    "horusV3Enable": "1", "horusV3FrequencyMhz": "437.600", "horusV3TimeSyncSeconds": "15",
+    # Horus v3
+    "horusV3Enable": "0", "horusV3FrequencyMhz": "437.600", "horusV3TimeSyncSeconds": "15",
     "horusV3TimeSyncOffsetSeconds": "0", "horus_v3_callsign": "737", "horusV3RadioPower": "0",
     
     # APRS
-    "aprsEnable": "1", "aprsFrequencyMhz": "432.500", "aprsTimeSyncSeconds": "40",
+    "aprsEnable": "0", "aprsFrequencyMhz": "432.500", "aprsTimeSyncSeconds": "40",
     "aprsTimeSyncOffsetSeconds": "0", "aprsCall": "N0CALL", "aprsComment": "",
     "aprsSsid": "11", "aprsOperationMode": "1", "aprsRadioPower": "0", "aprsToneCalibrationMode": "0",
     
@@ -71,7 +71,7 @@ telemetry = {
     "zeroHumidityCalibration": "1", "humidityRangeDelta": "1100", "zeroHumidityFrequency": "0",
     
     # Sensors - Pressure
-    "pressureValue": "0", "enablePressureEstimation": "0", "seaLevelPressure": "101325", 
+    "pressureValue": "0", "pressureMode": "0", "seaLevelPressure": "101325", "RPM411SerialNumber": "0", "rpm411InternalTemperature": "0", "rpm411Error": "0",
     
     # Sensors - Internal Temps
     "thermistorTemp": "0.00", "THERMISTOR_R25": "10400", "THERMISTOR_B": "4100",

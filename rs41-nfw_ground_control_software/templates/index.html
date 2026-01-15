@@ -196,7 +196,7 @@ Released on GPL-3.0 license. Authors: Franek Łada (nevvman, SP5FRA)
             <div class="data-card border-l-2 border-cyan-500">
                 <h3 class="section-header text-cyan-400">Horus V3 Mode</h3>
                 <div class="space-y-1 text-[10px]">
-                    <div class="flex justify-between"><span>Enabled:</span><span id="horusV3Enable" class="bool-val"></span></div>
+                    <div class="flex justify-between"><span>Enabled:</span><span id="horusV3Enable" class="text-white"></span></div>
                     <div class="flex justify-between"><span>TX Frequency (MHz):</span><span id="horusV3FrequencyMhz" class="val-mono"></span></div>
                     <div class="flex justify-between"><span>Payload ID:</span><span id="horus_v3_callsign" class="val-mono"></span></div>
                     <div class="flex justify-between"><span>TX Power (0-7):</span><span id="horusV3RadioPower" class="val-mono"></span></div>
@@ -358,10 +358,13 @@ Released on GPL-3.0 license. Authors: Franek Łada (nevvman, SP5FRA)
             </div>
 
             <div class="data-card border-t-2 border-emerald-500">
-                <h3 class="section-header">Estimated Pressure</h3>
+                <h3 class="section-header">Pressure</h3>
                 <p id="pressureValue" class="val-hero">0 hPa</p>
                 <div class="mt-4 space-y-1 text-[10px] text-slate-300 bg-slate-950 p-2 rounded">
-                    <div class="flex justify-between"><span>Pressure Estimation Algorithm Enabled:</span><span id="enablePressureEstimation" class="bool-val"></span></div>
+                    <div class="flex justify-between"><span>Pressure mode:</span><span id="pressureMode" class="bool-val"></span></div>
+                    <div class="flex justify-between"><span>RPM411 Sensor Serial Number:</span><span id="RPM411SerialNumber" class="text-white"></span></div>
+                    <div class="flex justify-between"><span>RPM411 Sensor Internal Temperature(C):</span><span id="rpm411InternalTemperature" class="text-white"></span></div>
+                    <div class="flex justify-between"><span>RPM411 Error:</span><span id="rpm411Error" class="bool-val"></span></div>
                     <div class="flex justify-between"><span>Mean Sea Level Pressure Constant (Pa):</span><span id="seaLevelPressure" class="val-mono"></span></div>
                 </div>
             </div>
@@ -467,11 +470,11 @@ Released on GPL-3.0 license. Authors: Franek Łada (nevvman, SP5FRA)
             "improvedGpsPerformance", "disableGpsImprovementInFlight", "gpsJamWarning",
             "radioEnablePA", "pipEnable", "horusEnable", "aprsEnable", "aprsToneCalibrationMode",
             "rttyEnable", "morseEnable", "ultraPowerSaveAfterLanding", "beganFlying",
-            "burstDetected", "hasLanded", "zeroHumidityCalibration", "enablePressureEstimation",
+            "burstDetected", "hasLanded", "zeroHumidityCalibration",
              "humidityModuleHeating", "dataRecorderEnable", 
             "dataRecorderFlightNoiseFiltering", "recorderInitialized", "sensorBoomEnable",
             "humidityModuleEnable", "autoTemperatureCalibration", "autoHumidityModuleTemperatureCorrection",
-            "calibrationError", "sensorBoomMainTempError", "sensorBoomHumidityModuleError"
+            "calibrationError", "sensorBoomMainTempError", "sensorBoomHumidityModuleError", "rpm411Error"
         ];
 
         function openTab(evt, tabName) {

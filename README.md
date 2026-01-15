@@ -10,6 +10,7 @@ Vaisala some time ago began launching new RS41 sonde revisions, with new interna
 * [Firmware flashing](#firmware-flashing)
 * [Firmware compilation](#firmware-compilation)
 * [Firmware and device operation](#firmware-and-device-operation)
+* [RS41-NFW Ground Control Software](#rs41-nfw-ground-control-software)
 * [RSM414 hardware](#rsm414-hardware)
 * [Firmware changelog](#firmware-changelog)
 * [Authors and contributors to this branch](#authors-and-contributors-to-this-branch)
@@ -41,7 +42,8 @@ Vaisala some time ago began launching new RS41 sonde revisions, with new interna
     * PIP
         * Beacon operation, transmitting short beep with a specified interval, which could be used as a foxhunting TX device
 * Thorough support of RS41 hardware, including GPS, radio, power circuitry, heaters etc. ...and:
-* Support for **onboard boom sensors**, including **temperature and humidity** sensors. Pressure *estimation* (like SG models)
+* Support for **onboard boom sensors**, including **temperature and humidity** sensors!
+* Apart from the sensor boom, also Vaisala **RPM411** pressure sensor add-on board measurement support!
 * Detailed in-built **debugging** features via LED status and serial messages
 * Onboard **button** allowing user to shutdown the sonde and change different operation modes
 * **Safety features**, including GPS watchdog and position improvement (these two nicely improve flights in environments with interference/noise), battery voltage protection, sensors defrosting and condensation prevention, system reset watchdog
@@ -102,6 +104,7 @@ See: [hw/README.md](./hw/README.md)
 
 
 ## Firmware changelog
+* `v61` - Full support for original Vaisala **RPM411** pressure sensor add-on board.
 * `v60` - Improved APRS timings and baud rate consistency, with help of Wolfgang DF7PN and Ayar HB9EVW.
 * `v59` - Horus Binary V3 bugfix for RSM4x2 revisions, APRS WX wind reporting correction, docs.
 * `v58` - **Horus Binary 4FSK V3** support for **all** revisions of sondes. Horus Binary v2/v3 preamble improvements. Code size optimization for old models. Users aren't now required to download libraries in Library Manager - **libraries are now provided** with the downloaded sonde-firmware directory, and work out of the box! [Issue 37](https://github.com/Nevvman18/rs41-nfw/issues/37).
@@ -148,8 +151,7 @@ See: [hw/README.md](./hw/README.md)
 <br>
 
 Incoming features:
-* Document the hardware of `RSM425` revision - it works flawlessly with the RS41-NFW, however, I don't have one yet that I can study on. If you have one, please contact me.
-* Somehow get the RPM411 to work
+* Document the hardware of `RSM425` revision - it works flawlessly with the RS41-NFW, however, I don't have one yet that I can study on. **If you have one, please contact me.**
 
 
 ## People responsible for this project
