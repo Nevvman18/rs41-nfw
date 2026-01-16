@@ -5071,7 +5071,6 @@ void RPM411ParseReadings() {
   if(!rpm411Error) {
     int totalLength = 33; 
   
-    // Adjusted offsets based on your hex dump
     int tempStart = totalLength - 13;     // Index 20
     int pressureStart = totalLength - 9;  // Index 24
 
