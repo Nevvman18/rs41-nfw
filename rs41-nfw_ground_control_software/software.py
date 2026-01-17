@@ -1,5 +1,8 @@
-# RS41-NFW Ground Control Software. Backend, version v12
+# RS41-NFW Ground Control Software. Backend, version v13
 # Released on GPL-3.0 license. Authors: Franek Łada (nevvman, SP5FRA)
+
+# Supports RS41-NFW_sonde-firmware - version v62
+
 
 import serial
 import threading
@@ -67,8 +70,8 @@ telemetry = {
     "mainTemperaturePeriod": "0", "mainTemperatureResistance": "0", "tempSensorBoomCalibrationFactor": "0",
     
     # Sensors - Humidity
-    "humidityValue": "0", "humidityFrequency": "0", "maxHumidityFrequency": "0",
-    "zeroHumidityCalibration": "1", "humidityRangeDelta": "1100", "zeroHumidityFrequency": "0",
+    "humidityValue": "0", "humidityCapacitance": "0", "maxHumidityCapacitance": "0",
+    "zeroHumidityCalibration": "1", "humidityCapacitanceRangeDelta": "0", "zeroHumidityCapacitance": "0",
     
     # Sensors - Pressure
     "pressureValue": "0", "pressureMode": "0", "seaLevelPressure": "101325", "RPM411SerialNumber": "0", "rpm411InternalTemperature": "0", "rpm411Error": "0",
@@ -117,8 +120,8 @@ STAGE_MAP = {
     "20": ("Reconditioning Phase", "Reconditining phase is in progress now! The glass-ceramic humidity module located on the sensor boom will now get very hot for a short period of time (~135*C!), to remove any contaminants. Don't touch it or place any objects close nearby, both to not get burned and to not leave any contaminants."),
     "21": ("Zero Humidity Check", "Zero humidity check is in progress now! The glass-ceramic humidity module located on the sensor boom will now get very hot for a short while (~135*C)! Don't touch it or place any objects close nearby. The sonde will take a few measurements and in under a minute finish the calibration process. Make sure the environment is stable, with little to no wind, and in a suitable temperature and humidity range (0-30*C, 0-60%RH). After the calibration, please do not touch the sensor, it may still be hot and you could leave contaminants on it."),
     "25": ("Humidity Delta Calibration: Starting...", "Entering high-precision humidity calibration, please wait..."),
-    "26": ("Humidity Delta Calibration: Ready", "humidityRangeDelta calibration process has started. For the successful calibration, please switch now to the 'Sensors' tab in this software and observe the 'humidityRangeDelta' value. While looking at it, place the sensor boom in a simulated 100%RH environment and observe the 'humidityRangeDelta' readings. Look around for the (by average) highest number, write it down, add +25 to it and power off the sonde. Recompile the firmware with this mode disabled and manually entered 'humidityRangeDelta' value for your sensor boom readings."),
-    "27": ("Humidity Delta Calibration: Complete, power OFF", "Sonde turning OFF. Please reprogram with debug mode disabled and manually entered 'humidityRangeDelta' value for your sensor boom readings."),
+    "26": ("Humidity Delta Calibration: Ready", "humidityCapacitanceRangeDelta calibration process has started. For the successful calibration, please switch now to the 'Sensors' tab in this software and observe the 'humidityCapacitanceRangeDelta' value. While looking at it, place the sensor boom in a simulated 100%RH environment and observe the 'humidityCapacitanceRangeDelta' readings. Look around for the (by average) highest number, write it down, add +0.3 to it and power off the sonde. Recompile the firmware with this mode disabled and manually entered 'humidityCapacitanceRangeDelta' value for your sensor boom readings."),
+    "27": ("Humidity Delta Calibration: Complete, power OFF", "Sonde turning OFF. Please reprogram with debug mode disabled and manually entered 'humidityCapacitanceRangeDelta' value for your sensor boom readings."),
     "31": ("GPS Performance Improvement - waiting for fix", "Radio silence, transmissions halted. The 'Improved GPS Performance' mode is working on quickly gathering a stable fix. Radio transmitter is quiet while there is no fix. Place the sonde outside, with a clear, unobstructed view of the sky.  Searching for GPS satellites..."),
     "32": ("GPS Performance Improvement - GPS fix acquired", "Sonde GPS has a stable position fix, will exit soon and begin transmitting..."),
     "50": ("Sonde ready, waiting for fix...", "Sonde ready, place the sonde outside with a clear, unobstructed view of sky and wait for GPS fix...  If this process takes longer than expected, consider enabling 'improvedGpsPerformance'."),

@@ -3,7 +3,7 @@ RS41-NFW - versatile, feature-rich and user-friendly custom firmware for ALL rev
 Released on GPL-3.0 license.
 Authors: Franek Łada (nevvman, SP5FRA)
 
-Version 61 (public, stable)
+Version 62 (public, stable)
 
 All code and dependencies used or modified here that don't origin from me are described in code comments and repo details.
 https://github.com/Nevvman18/rs41-nfw
@@ -23,13 +23,14 @@ I wish You high, successful flights with a lot of data gathered with this firmwa
 Franek,
 Author of RS41-NFW
 */
-
+#define NFW_VERSION "RS41-NFW v62, GPL-3.0 Franek Lada (nevvman, SP5FRA)"  //This is the firmware version You are running
+#define NFW_VERSION_SHORT "v62"
 
 
 
 
 //===== Libraries and lib-dependant definitions (nothing to modify)
-/* Only required library for You to install in the Arduino IDE is TinyGPSPlus, the rest is provided with included files and code. */
+/* No libraries are required to be installed, all dependencies are shipped within the project folder. */
 #include "horus_l2.h"
 //#include "horus_l2.cpp"
 #include <SPI.h>
@@ -38,6 +39,7 @@ Author of RS41-NFW
 
 TinyGPSPlus gps;
 
+#include <HardwareTimer.h>
 
 
 
@@ -178,9 +180,6 @@ HardwareSerial xdataSerial(PB11, PB10);
 
 
 
-#define NFW_VERSION "RS41-NFW v61, GPL-3.0 Franek Lada (nevvman, SP5FRA)"  //This is the firmware version You are running
-
-
 
 
 //===== Radio signals config
@@ -215,7 +214,7 @@ unsigned int horusTimeSyncOffsetSeconds = 0;
 
 
 // APRS:
-unsigned int aprsTimeSyncSeconds = 15;
+unsigned int aprsTimeSyncSeconds = 30;
 unsigned int aprsTimeSyncOffsetSeconds = 0;
 
 
@@ -235,8 +234,8 @@ unsigned int morseTimeSyncOffsetSeconds = 0;
 
 // Pip:
 bool pipEnable = false;               // Enable pip tx mode (carrier)
-float pipFrequencyMhz = 432.5;        // Pip tx frequency
-int pipLengthMs = 1000;               // Pip signal length in ms
+float pipFrequencyMhz = 432.7;        // Pip tx frequency
+int pipLengthMs = 100;               // Pip signal length in ms
 int pipRepeat = 3;                    // Pip signal repeat count in 1 transmit window
 int pipRadioPower = 7;                // TX power, 0 = -1dBm (~0.8mW), 1 = 2dBm (~1.6mW), 2 = 5dBm (~3 mW), 3 = 8dBm (~6 mW), 4 = 11dBm (~12 mW), 5 = 14dBm (25 mW), 6 = 17dBm (50 mW), 7 = 20dBm (100 mW)
 
@@ -251,10 +250,12 @@ temperatures:
   custom1 - humidity module temperature sensor
 
 extraSensors:
-  gps [a, b] - GPS status, where: a = gpsHdop (horizontal precision in meters), b = gpsJamWarning - 0 when OK, 1 when GPS jam algorithm has detected abnormaities and issued a warning currently
+  gps_0_0 - gpsHdop (horizontal precision in meters)
+  gps_0_1 - gpsJamWarning - 0 when OK, 1 when GPS jam algorithm has detected abnormaities and issued a warning currently
   // commented out - quite a long packet when included, with not so necessary data, but you can uncomment it if you want, around line 1345 and change array element count to 2. heat [a, b] - heaters status, where: a = reference resistors heater status (0-3 power), b = humidity module defrost heater status (0-500 PWM power).
 
 , leaving the horusV3LongerPacket at false will transmit using V3 the same telemetry as with V2.
+For even more telemetry using horus V3, please refer a few lines below down to the section 'dataRecorder'
 
 For more information of encoding, refer to documentation and horus v3 function in code. RSM4x2 users - refer to RSM4x2_HORUSV3_UNLOCK option above.*/
 bool horusV3Enable = true;              // Enable horus v3 tx mode
@@ -278,8 +279,8 @@ int horusRadioPower = 7;              // TX power, 0 = -1dBm (~0.8mW), 1 = 2dBm 
 bool aprsEnable = true;               // Enable APRS tx mode
 float aprsFreqTable[] = {432.5};      // APRS frequency table (same format as Horus table). Same as for horus frequency table. Note - dataRecorder will only use primary frequency (first specified). Note - lowAltitudeFasTxMode will only use primary frequency - the first one specified.
 char aprsCall[] = "N0CALL";           // Callsign
-String aprsComment = " NFW";    // APRS message comment, leaving the nfw comment would help identify the usage of this firmware :)
-char aprsSsid = 11;                   // SSID for the call sign
+String aprsComment = " NFW";          // APRS message comment
+char aprsSsid = 12;                   // SSID for the call sign
 char aprsDest[] = "APRNFW";           // Destination address for APRS
 char aprsDigi[] = "WIDE2";            // Digipeater callsign
 char aprsDigiSsid = 1;                // Digipeater SSID
@@ -305,6 +306,7 @@ int aprsRadioPower = 7;               // TX power, 0 = -1dBm (~0.8mW), 1 = 2dBm 
 
 // RTTY (Franek's original code was modified by OM3BC (thanks!)):
 #define CALLSIGN "N0CALL"             // Callsign used for morse and rtty
+
 bool rttyEnable = false;              // Enable rtty tx mode, compliant with UKHAS format
 float rttyFrequencyMhz = 434.6;       // RTTY tx frequency
 int rttyBitDelay = 10000;             // RTTY delay between transmitted bits - 22000 ~= 45bdrate, 13333 ~= 75bdr, 10000 ~= 100bdr
@@ -346,7 +348,7 @@ int foxHuntRadioPower = 7;                                         // TX power, 
 You can enable them and set an altitude at which they automatically turn OFF.
 
 LED status description during operation:
-- Constant Red - important error, such as sensor boom error or sensor calibration error
+- Constant Red - important error, such as sensor boom error, initial sensor calibration error, RPM411 connection error (if configured)
 - Constant Orange - warning, like no GPS fix or battery voltage below 'vBatWarnValue'
 - Blinking Orange - improved GPS performance mode enabled and sonde is still searching for satelliltes
 - Blinking Green - improved GPS performance mode enabled and sonde successfully found many satellites and soon will return to ready-to-flight mode
@@ -399,8 +401,8 @@ bool ubloxGpsAirborneMode = true;
 
 /* gpsTimeoutWatchdog - In milliseconds, the time after which the GPS chip resets if the position is not valid (no fix), kind of a watchdog.
 Also helps to regain the fix quicker, default 30 minutes (1800000 ms), set to 0 to disable.
-Suggested setting - 1800000 ms (reset every 30 minutes of no valid fix) */
-unsigned long gpsTimeoutWatchdog = 1800000;
+Suggested setting - 900000 ms (reset every 15 minutes of no valid fix) */
+unsigned long gpsTimeoutWatchdog = 900000;
 
 
 /* improvedGpsPerformance - If true, the device improves the gps fix achieving performance.
@@ -492,12 +494,8 @@ bool autoTemperatureCalibration = true;
 
 Automatic temperature calibration is indicated by orange LED during startup, for more status information, read about LED status above or launch RS41-NFW Ground Control Software. */
 int autoTemperatureCalibrationMethod = 1;
-float environmentStartupAirTemperature = 23.1;
+float environmentStartupAirTemperature = 24;
 
-
-/* Additional constant empirical calibration data */
-float lowTempCorrectionFactor = 1.06;
-float lowTempCorrectionFactorLimit = -30;
 
 
 
@@ -528,15 +526,15 @@ As with temperature calibration, there are 2 paths to choose (no suggestion, cho
 
   2. Zero humidity calibration and manual config
   Before turing ON the sonde, launch RS41-NFW Ground Control Software (or serial terminal and xdataPortMode=1).
-  Turn ON the sonde, wait for the calibration to end and look in the Sensors tab for a "zero humidity frequency". Copy it and paste here in "zeroHumidityFrequency".
+  Turn ON the sonde, wait for the calibration to end and look in the Sensors tab for a "zero humidity capacitance". Copy it and paste here in "zeroHumidityCapacitance".
   Now Your sonde will remember the calibration data for this sensor boom. */
 bool zeroHumidityCalibration = true;
-float zeroHumidityFrequency = 0;
+float zeroHumidityCapacitance = 0;
 
 
 /* humidityRangeDelta
 Default value should be okay, as it is an average from many different sensor booms.
-However some are different, and if You notice that Your humidity readings are off by up to 30%, this is 100% always the cause, as some humicaps react differently to humidity.
+However some are different, and if You notice that Your humidity readings are of%, this is the cause, as some humicaps react differently to humidity.
 
 As always, two methods to choose from (for beginners suggested option 1, if You have 10 minutes time more today check out option 2 :D):
   1.
@@ -546,18 +544,18 @@ As always, two methods to choose from (for beginners suggested option 1, if You 
   Before turning ON the sonde prepare 100%RH environment. Well working home options:
     - Boiling water (kettle, pot) or very hot water (big cup, bowl, keep in mind it should release water fog).
     When later placing the sensor boom, hold it sensor-side upwards in the boiling fog about 5-8cm above the water.
-    - Your mouth, but it isn't as accurate. Do a warm, humid whoooh on the sensor for a period of time. If using this method, consider adding +50 to the final value.
+    - Your mouth, but it isn't as accurate. Do a warm, humid whoooh on the sensor for a period of time. If using this method, consider adding +0.3 to the value.
   It doesn't need to be a lab environment, just wet environment close to 100%RH.
 
   If You want the most accurate humidity readings, enable 'humidityCalibrationDebug' below and connect Your sonde through a serial port:
     - Using RS41-NFW Ground Control Software: after turning ON the sonde and waiting for zero humidity calibration to pass, the sonde will enter 'humidityCalibrationDebug' mode.
       From there, switch to the Sensors tab, look around for the humidity range delta number (it should be changing a bit) and place the sensor in a 100%RH environment.
       Observe the value and the sensor. Write down the highest number You have seen, BUT keep the sensor without condensation (in boiling fog with the sensor upwards and look at it to be clear of water).
-  The observed max delta value change below in 'humidityRangeDelta' and disable 'humidityCalibrationDebug'. */
-unsigned int humidityRangeDelta = 980;                    // Empirical tests average
+  The observed max delta value change below in 'humidityCapacitanceRangeDelta' and disable 'humidityCalibrationDebug'. */
+float humidityCapacitanceRangeDelta = 6;         // Empirical tests average
 bool humidityCalibrationDebug = false;                    // (Bla bla bla after calibration the sonde enters special mode that prints out on serial port or RS41-NFW Ground Control Software the frequencies and a suggested humidityRangeDelta value. After it enters this mode, place the sensor in a 100%RH environment (for example close over a boiling water) and read the rangeDelta. This will give You a higher accuracy of the readings for each sensor boom.)
 unsigned long humidityCalibrationTimeout = 300000;        // Zero humidity calibration timeouts if it can't finish in (by default) 5 minutes (300000 milliseconds)
-int humidityCalibrationMeasurementTemperature = 130;      // Minimum sensor temperature, at which the calibration function takes measurements. Must be over 120 for reliable calibration, suggested 130
+int humidityCalibrationMeasurementTemperature = 115;      // Minimum sensor temperature, at which the calibration function takes measurements. Must be over 110 for reliable calibration, suggested 115
 
 
 
@@ -575,7 +573,7 @@ The pressureValue is sent via Horus v2, Horus v3 and APRS .
 
 Suggested option - 1, using the RPM411 pressure sensor.*/
 bool pressureMode = 1;
-unsigned long seaLevelPressure = 101325;                  // Sea level pressure in Pascals, used to correctly estimate the pressure in the upper layers
+unsigned long seaLevelPressure = 1013.25;                  // Sea level pressure in hPa, used to correctly estimate the pressure in the upper layers
 
 
 
@@ -587,10 +585,10 @@ This function works with the same method as the Vaisala firmware - maintaing tem
 When enabled, warm resistors give a notable improvement in temperature readings accuracy, while also increasing the power consumption a bit.
 Suggested setting: when sensor boom is present and You're flying with 2xAA batteries - set to true if You are doing a flight lasting up to 18h. With either 1xAA or no sensor boom - definitely false.
 
-referenceAreaTargetTemperature - suggested values:
+referenceAreaTargetTemperature - suggested values (temperature in degrees celcius):
   - 18, if flying with original styrofoam box (Vaisala default is 20C and with good thermal isolation NFW maintains 1.5C above target)
-  - 12, if flying without original box, but with some form of wind cover like a few wraps of tape or foil or a small foil bag with a few layers.
-  - 10, if flying with raw PCB. Raw PCB heating will consume much more power, so beware of it when planning the flight. */
+  - 8, if flying without original box, but with some form of wind cover like a few wraps of tape or foil or a small foil bag with a few layers.
+  - 0, if flying with raw PCB. Raw PCB heating will consume much (I mean very much) more power, so beware of it when planning the flight. */
 bool referenceHeating = true;                             // Enable option for reference area heating
 int referenceAreaTargetTemperature = 18;                  // Target temperature of reference area heating.
 
@@ -602,18 +600,13 @@ Above 'humicapMinimumTemperature', the sensor is kept 'defrostingOffset' degrees
 
 Suggested values:
   - humidityModuleHeating = true when flying with the sensor boom (unless You do really long flights above 18h, then false).
-  - defrostingOffset = 5, default for Vaisala algorithm too. Works very well to keep the sensor free of frost and condensation. Values higher than 10 shouldn't be used as they could affect the readings too much.
+  - defrostingOffset = 3, default for Vaisala algorithm is 5. Works very well to keep the sensor free of frost and condensation. Values higher than 5 shouldn't be used as they could affect the readings too much.
   - humicaMinimumTemperature = -44, below this value humicap's performance degrades much.
 */
 bool humidityModuleHeating = true;
 int defrostingOffset = 5;                                 // This is the positive offset added to the sensor target temperature to prevent sensor frosting in icing conditions
 int humicapMinimumTemperature = -44;                      // Humicap sensor minimum operating temperature (below this value the sensor gets significantly less accurate and responsive)
-
-
-/* PID values for heater control*/
-float extHeaterProportionalK = 2.32;                      // proportional gain
-float extHeaterIntegralK = 0.35;                          // integral gain
-float extHeaterDerivativeK = 0.85;                        // derivative gain
+int humidityModuleHeatingTemperatureThreshold = 35;    // NFW will activate the heating only when the sensor's temperature is < this threshold. Vaisala heats at all times.
 
 
 
@@ -638,12 +631,12 @@ unsigned int burstDetectionThreshold = 800;               // Threshold value, wh
 bool autoResetEnable = true;                              // Automatically reset the CPU after specified time below, useful in stationary continuous use, to prevent from overflowing some variables and improving overall stability.
 #define SYSTEM_RESET_PERIOD (7UL * 24 * 60 * 60 * 1000)   // 7 days in milliseconds
 bool aprsToneCalibrationMode = false;                     // DON'T use for flight! transmits tones at 1200 and 2200 hz to calibrate the APRS delays for perfect sound frequencies, development mode, not for use
-const unsigned int gpsReadMinimumTime = 2;                // Scheduler safety margin (seconds) for GPS readout
-const unsigned int sensorReadMinimumTime = 2;             // Scheduler safety margin (seconds) for sensors readout
+const unsigned int gpsReadMinimumTime = 1.5;                // Scheduler safety margin (seconds) for GPS readout
+const unsigned int sensorReadMinimumTime = 1.8;             // Scheduler safety margin (seconds) for sensors readout
 const unsigned int gpsMinimumUpdate = 3500;               // Minimum GPS update interval
 const unsigned int sensorMinimumUpdate = 10000;           // Minium sensor update inerval
-#define THERMISTOR_R25 10400                              // Onboard thermistor R value at 25C
-#define THERMISTOR_B 4100                                 // Onboard thermistor Beta factor
+#define THERMISTOR_R25 10000                              // Onboard thermistor R value at 25C
+#define THERMISTOR_B 3900                                 // Onboard thermistor Beta factor
 
 
 
@@ -663,13 +656,48 @@ int buttonMode = 1;
 
 /* dataRecorder
 Set 'dataRecorderEnable' to true to enable this mode.
-If active, the sonde transmits recorded, computed and debugging data to the ground via additional APRS comments (described in repo). Frame decoder is available in a simple separate Python decoder */
+If active, the sonde transmits recorded, computed and debugging data to the ground via additional APRS comments (described in repo) and Horus V3 extraSensors. APRS comment frame decoder is available in a simple separate Python decoder.
+
+Horus V3 extraSensors format in dataRecorder packet (128 bytes long):
+  * Slot 0: [String] "status" 
+    - Format: "HEALTH VERSION SERIAL"   [status]  (Space separated)
+    - Contents: healthStatusStr, NFW_VERSION_SHORT, RPM411SerialNumber
+  * Slot 1: [Ints] "gps"
+    - arr[0]: gpsHdop                   [gps_1_0] (Horizontal Dilution of Precision value from GPS, m)
+    - arr[1]: gpsJamWarning             [gps_1_1] (GPS signal anomalies/jamming warning status, 0=false, 1=true)
+    - arr[2]: gpsResetCounter           [gps_1_2] (Number of GPS restarts due to jamming in-air)
+    - arr[3]: currentGPSPowerMode       [gps_1_3] (Current GPS power mode. 0=disabled, 1=max performance, 2=powersave)
+  * Slot 2: [Ints] "stats"
+    - arr[0]: maxAlt                    [stats_2_0] (Maximum altitude reached in meters)
+    - arr[1]: maxSpeed                  [stats_2_1] (Maximum horizontal speed in kph)
+    - arr[2]: burstDetected             [stats_2_2] (Balloon burst detected. 0=false, 1=true)
+  * Slot 3: [Ints] "temps-heat"
+    - arr[0]: extHeaterPwmStatus        [temps-heat_3_0] (Humidity module heating power x/500)
+    - arr[1]: referenceHeaterStatus     [temps-heat_3_1] ((Reference area heating power. 0=off, 1=low, 2=medium, 3=high)
+    - arr[2]: readRadioTemp()           [temps-heat_3_2] ((Current radio chip temp)
+    - arr[3]: rpm411InternalTemperature [temps-heat_3_3] ((RPM411 pressure sensor module temperature)
+*/
 bool dataRecorderEnable = true;
 unsigned int dataRecorderInterval = 600000;               // 10 minutes frame interval by default (600000 milliseconds)
 bool dataRecorderFlightNoiseFiltering = true;             // Filter out noisy data on ground and during position gathering, include in the measurements only the data captured in flight
 
 
 
+
+// Data Kalman filter constants, no need to modify
+float pressureKalmanError = 3;
+float pressureKalmanQ = 2;
+float humidityKalmanError = 2;
+float humidityKalmanQ = 5;
+float pressureKalmanEst = 1013.25; 
+float pressureKalmanErrorEst = pressureKalmanError;
+float humidityKalmanEst = 5;
+float humidityKalmanErrorEst = humidityKalmanError;
+
+/* PID values for heater control*/
+float extHeaterProportionalK = 2.32;                      // proportional gain
+float extHeaterIntegralK = 0.35;                          // integral gain
+float extHeaterDerivativeK = 0.85;                        // derivative gain
 
 
 /* ===== END OF THE RS41-NFW CONFIGURATION SECTION ===== */
@@ -721,7 +749,6 @@ bool ok = true;
 ;  //green light, status state
 bool vBatWarn = false;
 bool gpsFixWarn = false;
-bool sensorBoomFault = false;
 int horusPacketCount;
 int horusV3PacketCount;
 int xdataInstrumentType = 0;
@@ -770,14 +797,20 @@ float extHeaterTemperaturePeriod;
 float extHeaterTemperatureResistance;
 float extHeaterTemperatureValue;
 float humidityFrequency;
+float zeroHumidityFrequency;
 float maxHumidityFrequency;
+int humidityRangeDelta = 850; //old humidity measurement method, depreciated
+float refCapHighFrequency;
+float refCapLowFrequency;
+float humidityCapacitance;
+float maxHumidityCapacitance;
 int humidityValue;
 float pressureValue;
 uint32_t measFirstEdgeTime = 0;
 float tempSensorBoomCalibrationFactor = 0;
 bool sensorBoomMainTempError = false;
 bool sensorBoomHumidityModuleError = false;
-bool sensorBoomGeneralError = false;
+bool sensorBoomFault = false;
 bool calibrationError = false;
 int extHeaterPwmStatus = 0;
 int referenceHeaterStatus = 0;
@@ -796,24 +829,19 @@ unsigned int aprsPacketNum = 0;
 
 
 // Scheduler:
-// Internal System Clock
-int sys_h = 0;
-int sys_m = 0;
-int sys_s = 0;
-unsigned long sys_last_tick_millis = 0;  // Tracks the last time we incremented a second
+// Time tracking variables
+unsigned long systemTimeMillis = 0;        // System clock in milliseconds
+unsigned long lastMillisUpdate = 0;        // Last millis() reading
+bool gpsTimeSynced = false;                // Whether we have GPS time sync
 
-// State Tracking: When was the last time (in seconds from midnight) we transmitted?
-// We initialize these to -1 so we transmit immediately if a slot matches at startup.
-long last_tx_pip = -1;
-long last_tx_horusV3 = -1;
-long last_tx_horus = -1;
-long last_tx_aprs = -1;
-long last_tx_rtty = -1;
-long last_tx_morse = -1;
+// Transmission tracking - stores next scheduled transmission time in seconds
+unsigned long nextPipTxTime = 0;
+unsigned long nextHorusV3TxTime = 0;
+unsigned long nextHorusTxTime = 0;
+unsigned long nextAprsTxTime = 0;
+unsigned long nextRttyTxTime = 0;
+unsigned long nextMorseTxTime = 0;
 
-// Sensor Scheduling
-unsigned long last_gps_update_timestamp = 0;  // timestamp of last update
-unsigned long last_sensor_update_timestamp = 0;
 
 
 
@@ -984,6 +1012,8 @@ bool rpm411Error = false;
 float rpm411Pressure = 0.0;
 float rpm411InternalTemperature = 0.0;
 uint8_t RPM411ReadingsData[33];
+
+
 
 
 
@@ -1329,6 +1359,8 @@ String createRttyMorsePayload() {
   // Build the payload following the UKHAS format
   payload = String(CALLSIGN) + "," + String(rttyFrameCounter) + "," + formattedTimeStr + "," + formattedLat + "," + formattedLong + "," + String(intAlt) + "," + String(gpsSats) + "," + String(readBatteryVoltage(), 2) + "," + formattedTempStr;
 
+  payload.toUpperCase();
+
   // Calculate CRC16 checksum
   unsigned int crcValue = rttyCrc16Checksum((unsigned char*)payload.c_str(), payload.length());
   char crcBuffer[5];
@@ -1343,7 +1375,7 @@ String createRttyMorsePayload() {
 
 
 // Horus V3 mode - protocol and code provided by Mark VK5QI - big thanks for awesome work on code and the protocol!!!
-int build_horus_binary_packet_v3(char* uncoded_buffer){
+int buildHorusV3Packet(char* uncoded_buffer){
   #if defined(RSM4x4) || (defined(RSM4x2) && defined(RSM4x2_UNLOCK_HORUSV3))
   // Horus v3 packets are encoded using ASN1, and are encapsulated in packets
   // of sizes 32, 48, 64, 96 or 128 bytes (before coding)
@@ -1473,6 +1505,211 @@ int build_horus_binary_packet_v3(char* uncoded_buffer){
       asnMessage.temperatureCelsius_x10.exist.custom1 = false;
       asnMessage.exist.extraSensors = false;
     }
+
+    // The encoder needs a data structure for the serialization
+    // Again - how much memory is allocated here?
+    BitStream encodedMessage;
+
+    // The Encoder may fail and update an error code
+    int errCode;
+
+    // Initialization associates the buffer to the bit stream
+    // We want to write the uncoded message starting at 2 bytes into the message.
+
+    BitStream_Init (&encodedMessage,
+                    (unsigned char*)(uncoded_buffer+2),
+                    HORUS_UNCODED_BUFFER_SIZE-1
+    );
+    // Originally this function call used a MUCH larger value for count
+    //horusTelemetry_REQUIRED_BYTES_FOR_ENCODING);
+    
+    // Encode the message using uPER encoding rule
+
+    // We patch in assert functionality in assert_override.h
+    // Before running encode we set assert_value = 0
+    // Then check the value in assert_value
+    assert_value = 0;
+
+    if (!horusTelemetry_Encode(&asnMessage,
+                        &encodedMessage,
+                        &errCode,
+                        true) || assert_value != 0)
+    {  
+        // Not at this error helps that much in a flight, but it helps
+        // us when debugging!   
+        if (xdataPortMode == 1) {
+          if(errCode > 0){
+            xdataSerial.print("[ERR]: HORUS v3 Encoding Failed: ");
+            xdataSerial.println(errCode);
+          }
+          if(assert_value != 0){
+            xdataSerial.println("[ERR]: HORUS v3 Assert Failure, maybe hit buffer size limit");
+          }
+        }
+        // Need to check what happens here.
+        return 0;
+    }
+    else 
+    {
+        // Encoding was successful!
+        // Now we need to figure out the required frame size, and add the CRC.
+        int encodedSize = BitStream_GetLength(&encodedMessage);
+
+        // Determine the required frame size.
+        // Probably should do this from a list of valid sizes in a neater manner
+        int frameSize = 128;
+        if (encodedSize <= 30){
+          frameSize = 32;
+        } else if (encodedSize <= 46){
+          frameSize = 48;
+        } else if (encodedSize <= 62){
+          frameSize = 64;
+        } else if (encodedSize <= 94){
+          frameSize = 96;
+        } else if (encodedSize <= 126){
+          frameSize = 128;
+        }
+
+        // Calculate CRC16 over the frame, starting at byte 2
+        uint16_t packetCrc = (uint16_t)crc16((unsigned char *)(uncoded_buffer + 2),
+                                     frameSize - 2);
+        // Write CRC into bytes 0–1 of the packet
+        memcpy(uncoded_buffer, &packetCrc, sizeof(packetCrc));  // little‑endian on STM32
+
+        if (xdataPortMode == 1) {
+          xdataSerial.print("[info]: HORUS v3 ASN1: ");
+          xdataSerial.print(encodedSize);
+          xdataSerial.print(" Frame: ");
+          xdataSerial.println(frameSize);
+        }
+
+        return frameSize;
+    }
+
+    #endif
+    return 0;
+}
+
+
+
+int buildHorusV3PacketDataRecorder(char* uncoded_buffer){
+  #if defined(RSM4x4) || (defined(RSM4x2) && defined(RSM4x2_UNLOCK_HORUSV3))
+  // Horus v3 packets are encoded using ASN1, and are encapsulated in packets
+  // of sizes 32, 48, 64, 96 or 128 bytes (before coding)
+  // The CRC16 for these packets is located at the *start* of the packet, still little-endian encoded
+
+  // Erase the uncoded buffer
+  // This has the effect of padding out the unused bytes in the packet with zeros
+  memset(uncoded_buffer, 0, HORUS_UNCODED_BUFFER_SIZE);
+
+  // Increment packet count
+  horusV3PacketCount++;
+
+  char healthStatusStr[5];
+  if (err) { 
+      strcpy(healthStatusStr, "err"); 
+  } else if (warn) { 
+      strcpy(healthStatusStr, "warn"); 
+  } else { 
+      strcpy(healthStatusStr, "ok"); 
+  }
+
+  char combinedStatus[64]; 
+  snprintf(combinedStatus, sizeof(combinedStatus), "%s %s %s", 
+        healthStatusStr, NFW_VERSION_SHORT, RPM411SerialNumber);
+
+
+  horusTelemetry asnMessage = {
+      .payloadCallsign = HORUS_V3_CALLSIGN,
+      .sequenceNumber = horusV3PacketCount,
+      .timeOfDaySeconds = gpsHours * 3600 + gpsMinutes * 60 + gpsSeconds,
+      .latitude = (int)(gpsLat * 100000),
+      .longitude = (int)(gpsLong * 100000),
+      .altitudeMeters = gpsAlt,
+      
+      .extraSensors = {
+          .nCount = 4,
+          .arr = {
+              {
+                  .name = "status",
+                  .values = { .kind = horusStr_PRESENT },
+                  .exist = { .name = true, .values = true }
+              },
+              {
+                  .name = "gps",
+                  .values = {
+                      .kind = horusInt_PRESENT,
+                      .u = {
+                          .horusInt = {
+                              .nCount = 4,
+                              .arr = {gpsHdop, gpsJamWarning, gpsResetCounter, currentGPSPowerMode}
+                          }
+                      }
+                  },
+                  .exist = { .name = true, .values = true }
+              },
+              {
+                  .name = "stats",
+                  .values = {
+                      .kind = horusInt_PRESENT,
+                      .u = {
+                          .horusInt = {
+                              .nCount = 3,
+                              .arr = {maxAlt, maxSpeed, burstDetected}
+                          }
+                      }
+                  },
+                  .exist = { .name = true, .values = true }
+              },
+              {
+                  .name = "temps-heat",
+                  .values = {
+                      .kind = horusInt_PRESENT,
+                      .u = {
+                          .horusInt = {
+                              .nCount = 4,
+                              .arr = { (int)extHeaterPwmStatus, (int)referenceHeaterStatus, (int)readRadioTemp(), (int)rpm411InternalTemperature }
+                          }
+                      }
+                  },
+                  .exist = { .name = true, .values = true }
+              }
+          }
+      },
+      
+      .velocityHorizontalKilometersPerHour = gpsSpeedKph,
+      .gnssSatellitesVisible = gpsSats,
+      .ascentRateCentimetersPerSecond = vVCalc * 100,
+      .pressurehPa_x10 = (int)(pressureValue * 10),
+      
+      .temperatureCelsius_x10 = {
+          .internal = readAvgIntTemp() * 10,
+          .external = mainTemperatureValue * 10,
+          .custom1 = extHeaterTemperatureValue * 10,
+          .custom2 = readThermistorTemp() * 10,
+          .exist = { .internal = true, .external = true, .custom1 = true, .custom2 = true }
+      },
+      
+      .humidityPercentage = humidityValue,
+      
+      .milliVolts = {
+          .battery = (int)(readBatteryVoltage() * 1000),
+          .exist = { .battery = true, .solar = false, .custom1 = false, .custom2 = false }
+      },
+      
+      .exist = {
+          .extraSensors = true,
+          .velocityHorizontalKilometersPerHour = true,
+          .gnssSatellitesVisible = true,
+          .ascentRateCentimetersPerSecond = true,
+          .pressurehPa_x10 = true,
+          .temperatureCelsius_x10 = true,
+          .humidityPercentage = true,
+          .milliVolts = true
+      }
+  };
+
+  strncpy(asnMessage.extraSensors.arr[0].values.u.horusStr, combinedStatus, 255);
 
     // The encoder needs a data structure for the serialization
     // Again - how much memory is allocated here?
@@ -1792,11 +2029,8 @@ void deviceStatusHandler() {
     }
   }
 
-  // Evaluate sensor boom errors
-  sensorBoomFault = sensorBoomMainTempError || sensorBoomHumidityModuleError;
-
   // Combine the results to determine the final state
-  if (sensorBoomFault || calibrationError) {
+  if (sensorBoomFault || calibrationError || rpm411Error) {
     err = true;
     ok = false;
   } else if (vBatWarn || gpsFixWarn) {
@@ -2436,65 +2670,117 @@ void selectSensorBoom(int sensorNum, int state) {
   }
 }
 
-float getSensorBoomPeriod(int sensorNum) {
-#define READ_PIN() (GPIOA->IDR & (1 << 1))  // PA1 corresponds to bit 1 in GPIOA IDR
-
-  selectSensorBoom(sensorNum, 1);
-  delay(75);
-
-  unsigned long long measStartTime = micros();      // Start time for the timeout
-  unsigned long long measTimeoutDuration = 500000;  // 500000 = .5 seconds in microseconds
-
-  // Wait for the signal to go low
-  while (READ_PIN() != 0) {
-    if (micros() - measStartTime > measTimeoutDuration) {  // Check for timeout
-      selectSensorBoom(sensorNum, 0);                      // Ensure sensor is deselected
-      return -1;                                           // Return an error value (can be adjusted as needed)
-    }
-  }
-
-  // Wait for the signal to go high
-  while (READ_PIN() == 0) {
-    if (micros() - measStartTime > measTimeoutDuration) {  // Check for timeout
-      selectSensorBoom(sensorNum, 0);                      // Ensure sensor is deselected
-      return -1;                                           // Return an error value (can be adjusted as needed)
-    }
-  }
-
-  unsigned long long measFirstEdgeTime = micros();
-
-  for (int i = 0; i < 4800; i++) {  // 4800 measurements averaged
-    // Wait for the signal to go low (falling edge)
-    while (READ_PIN() != 0) {
-      if (micros() - measStartTime > measTimeoutDuration) {  // Check for timeout
-        selectSensorBoom(sensorNum, 0);                      // Ensure sensor is deselected
-        return -1;                                           // Return an error value (can be adjusted as needed)
-      }
-    }
-
-    // Wait for the signal to go high (rising edge)
-    while (READ_PIN() == 0) {
-      if (micros() - measStartTime > measTimeoutDuration) {  // Check for timeout
-        selectSensorBoom(sensorNum, 0);                      // Ensure sensor is deselected
-        return -1;                                           // Return an error value (can be adjusted as needed)
-      }
-    }
-  }
-
-  unsigned long long measLastEdgeTime = micros();
-
-  selectSensorBoom(sensorNum, 0);
-
-  return ((measLastEdgeTime - measFirstEdgeTime) / 4800.0);
-}
 
 float getSensorBoomFreq(int sensorNum) {
-  float period = getSensorBoomPeriod(sensorNum);
-  if (period > 0) {
-    return 1000000 / period;
-  } else {
-    return 0;
+  static uint32_t firstEdge, lastEdge, prevCapture, currentCapture;
+  static uint64_t totalTicks;
+  static uint32_t timFreq, timeoutCounter;
+  static float freq;
+  
+  static uint32_t original_gpio_cfg;
+  static uint32_t original_uart_cr1;
+
+  const uint32_t targetSamples = 2400; // Samples count
+  const uint32_t CYCLE_TIMEOUT = 1000000; 
+  
+  totalTicks = 0;
+  freq = 0.0f;
+
+  selectSensorBoom(sensorNum, 1);
+  delay(18); 
+
+  // --- 1. Clock Enable & GPIO Setup ---
+#if defined(RSM4x4) // L412
+  RCC->AHB2ENR  |= RCC_AHB2ENR_GPIOAEN | RCC_AHB2ENR_GPIOBEN;
+  RCC->APB1ENR1 |= RCC_APB1ENR1_TIM2EN;
+  GPIOA->MODER = (GPIOA->MODER & ~GPIO_MODER_MODE1) | GPIO_MODER_MODE1_1; 
+  GPIOA->AFR[0] = (GPIOA->AFR[0] & ~(0xF << 4)) | (0x1 << 4); // AF1 = TIM2
+#elif defined(RSM4x2) // F100
+  RCC->APB2ENR |= RCC_APB2ENR_IOPAEN | RCC_APB2ENR_IOPBEN;
+  RCC->APB1ENR |= RCC_APB1ENR_TIM2EN;
+  GPIOA->CRL = (GPIOA->CRL & ~(0xF << 4)) | (0x4 << 4); // Input Floating
+#endif
+
+  // --- 2. Timer Setup ---
+  TIM2->CR1 = 0;
+  TIM2->PSC = 0; 
+  TIM2->ARR = 0xFFFFFFFF; // L4 is 32-bit native, F1 uses 16-bit
+  TIM2->CCMR1 = TIM_CCMR1_CC2S_0 | (0x4 << 12); 
+  TIM2->CCER = TIM_CCER_CC2E; 
+  TIM2->SR = 0;                
+  TIM2->EGR = TIM_EGR_UG;      
+  TIM2->CR1 |= TIM_CR1_CEN;    
+
+  // --- 3. TOTAL SYSTEM LOCKDOWN () ---
+  // GPS UART seems to cause jitter
+#if defined(RSM4x2)
+  original_gpio_cfg = GPIOB->CRH;
+  GPIOB->CRH &= ~(0xF << 12); // Disconnect PB11 RX
+  original_uart_cr1 = USART3->CR1;
+  USART3->CR1 &= ~USART_CR1_UE; 
+#endif
+
+  __disable_irq();
+
+  // Wait for FIRST edge
+  TIM2->SR = ~TIM_SR_CC2IF;
+  timeoutCounter = 0;
+  while (!(TIM2->SR & TIM_SR_CC2IF)) {
+    if (++timeoutCounter > CYCLE_TIMEOUT) goto capture_error;
   }
+  firstEdge = TIM2->CCR2;
+  prevCapture = firstEdge;
+
+  // 4. Capture loop
+  for (uint32_t i = 0; i < targetSamples; i++) {
+    timeoutCounter = 0;
+    while (!(TIM2->SR & TIM_SR_CC2IF)) {
+      if (++timeoutCounter > CYCLE_TIMEOUT) goto capture_error;
+    }
+    
+    currentCapture = TIM2->CCR2;
+    TIM2->SR = ~TIM_SR_CC2IF; 
+    
+#if defined(RSM4x2)
+    totalTicks += (uint16_t)(currentCapture - prevCapture); // Accumulate 16-bit
+#else
+    // On L412 (32-bit), we can just subtract at the end, 
+    // but accumulation is safer for extremely long samples.
+    totalTicks += (uint32_t)(currentCapture - prevCapture); 
+#endif
+    prevCapture = currentCapture;
+  }
+  lastEdge = currentCapture;
+
+  __enable_irq();
+  goto cleanup;
+
+capture_error: 
+  __enable_irq();
+  totalTicks = 0; 
+
+cleanup:
+#if defined(RSM4x2)
+  USART3->CR1 = original_uart_cr1;
+  GPIOB->CRH = original_gpio_cfg; 
+#endif
+
+  TIM2->CR1 &= ~TIM_CR1_CEN;
+  selectSensorBoom(sensorNum, 0);
+
+  // --- 5. Final Calculation ---
+  if (totalTicks > 0) {
+    timFreq = HAL_RCC_GetPCLK1Freq();
+    // Timer clock is 2x PCLK if APB1 divider > 1
+    if ((RCC->CFGR & RCC_CFGR_PPRE1) != RCC_CFGR_PPRE1_DIV1) timFreq *= 2;
+    
+    freq = (float)((double)timFreq * (double)targetSamples / (double)totalTicks);
+    
+  } else {
+    freq = 0.0f;
+  }
+
+  return freq;
 }
 
 // Function to calibrate the sensor using the two calibration resistors
@@ -2502,12 +2788,12 @@ float calibrateTempSensorBoom() {
   // Get the frequencies for calibration resistors
   float freq750 = getSensorBoomFreq(1);  // Get frequency for 750Ω resistor
   selectSensorBoom(0, 0);
-  float freq1010 = getSensorBoomFreq(2);  // Get frequency for 1010Ω resistor
+  float freq1100 = getSensorBoomFreq(2);  // Get frequency for 1100Ω resistor
   selectSensorBoom(0, 0);
 
   // Calibration constant k: R * f (frequency-to-resistance ratio)
   // We use an average to balance between the two calibration resistors.
-  float k = (750.0 * freq750 + 1010.0 * freq1010) / 2.0;
+  float k = (750.0 * freq750 + 1100.0 * freq1100) / 2.0;
 
   return k;  // Return the calibration constant
 }
@@ -2522,7 +2808,7 @@ float convertPt1000ResToTemp(float resistance) {
   const float alpha = 0.00385;  // Temperature coefficient of resistance
 
   // Calculate temperature using the formula
-  float temperature = (resistance - R0) / (R0 * alpha);
+  float temperature = (resistance * 0.945 - R0) / (R0 * alpha); // Vaisala uses sensors that have a slight offset from original PT1000 sensors, thats why *0.945 - thanks for this observation Petya!
 
   return temperature;
 }
@@ -2552,15 +2838,6 @@ void sensorBoomHandler() {
       mainTemperatureResistance = calculateSensorBoomResistance(mainTemperatureFrequency, tempSensorBoomCalibrationFactor);
       mainTemperatureValue = convertPt1000ResToTemp(mainTemperatureResistance) + mainTemperatureCorrectionC;
 
-      tempCorrectionFactor = 1.0;
-      if (mainTemperatureValue < 0) {
-        if (mainTemperatureValue >= lowTempCorrectionFactorLimit) {
-          tempCorrectionFactor = 1.0 + ((lowTempCorrectionFactor - 1) / -(lowTempCorrectionFactorLimit)) * (-mainTemperatureValue);
-          mainTemperatureValue *= tempCorrectionFactor;
-        } else {
-          mainTemperatureValue -= lowTempCorrectionFactorLimit * (1 - lowTempCorrectionFactor);
-        }
-      }
     }
 
     selectSensorBoom(0, 0);
@@ -2578,42 +2855,65 @@ void sensorBoomHandler() {
       sensorBoomHumidityModuleError = false;  // No error
       extHeaterTemperatureResistance = calculateSensorBoomResistance(extHeaterTemperatureFrequency, tempSensorBoomCalibrationFactor);
       extHeaterTemperatureValue = convertPt1000ResToTemp(extHeaterTemperatureResistance) + extHeaterTemperatureCorrectionC;
-
-      tempCorrectionFactor = 1.0;
-      if (extHeaterTemperatureValue < 0) {
-        if (extHeaterTemperatureValue >= lowTempCorrectionFactorLimit) {
-          tempCorrectionFactor = 1.0 + ((lowTempCorrectionFactor - 1) / -(lowTempCorrectionFactorLimit)) * (-extHeaterTemperatureValue);
-          extHeaterTemperatureValue *= tempCorrectionFactor;
-        } else {
-          extHeaterTemperatureValue -= lowTempCorrectionFactorLimit * (1 - lowTempCorrectionFactor);
-        }
-      }
     }
 
     selectSensorBoom(0, 0);
 
-    // Get humidity sensor frequency (measurement here is the easiest possible and not accurate, the reference capacitors aren't measured here, just the sensor's frequency)
-    humidityFrequency = getSensorBoomFreq(5);
 
 
-    humidityValue = static_cast<int>(((zeroHumidityFrequency - humidityFrequency) / (zeroHumidityFrequency - maxHumidityFrequency)) * 100.0);
+  humidityFrequency = getSensorBoomFreq(5);
+  refCapHighFrequency = getSensorBoomFreq(6); // 47pF Ref (Lower Frequency)
+  refCapLowFrequency = getSensorBoomFreq(7);  // 0pF Ref (Higher Frequency)
 
-    if (mainTemperatureValue < 0) {
-      humidityValue *= 1.0 - (mainTemperatureValue * mainTemperatureValue * 0.00133) / (1.0 + (mainTemperatureValue * mainTemperatureValue * 0.002185));
-    }
+  // 1. Calculate raw capacitance
+  humidityCapacitance = 47.0 * (float)(refCapLowFrequency - humidityFrequency) / (refCapLowFrequency - refCapHighFrequency);
 
+  // 2. Initial % calculation
+  humidityValue = ((humidityCapacitance - zeroHumidityCapacitance) / (maxHumidityCapacitance - zeroHumidityCapacitance)) * 100.0;
 
-    if (humidityValue > 105.0) {
-      humidityValue -= 5;
-    } else if (humidityValue > 100) {
-      humidityValue = 100.0;
-    } else if (humidityValue < 0.0) {
-      humidityValue = 0.0;
-    }
+  // FIX: Clamp rawRH here before the complex math transformations
+  // This prevents the exponential and polynomial corrections from exploding
+  if (humidityValue > 115.0) humidityValue = 115.0; 
+  if (humidityValue < 0) humidityValue = 0;
+
+  // Module heating RH correction
+  if (extHeaterPwmStatus > 0) {
+    humidityValue *= expf(0.045f * (extHeaterTemperatureValue - mainTemperatureValue));
+  }
+  
+  // Low-end capacitive sensor correction
+  humidityValue += (100 - humidityValue) * humidityValue * 75 / 10000;
+
+  // Base reduction at temperatures < 0°C
+  humidityValue += (0 - extHeaterTemperatureValue) / 11.1;
+
+  // Very low temperature corrections
+  if (extHeaterTemperatureValue < -20) {
+      humidityValue = humidityValue * (100 + (-20 - extHeaterTemperatureValue)) / 140;
+  }
+  if (extHeaterTemperatureValue < -40) {
+      humidityValue = humidityValue * (150 + (-40 - extHeaterTemperatureValue)) / 280;
+  }
+
+  humidityValue = kalmanFilter(humidityValue, humidityKalmanEst, humidityKalmanErrorEst, humidityKalmanError, humidityKalmanQ); 
+
+  if (humidityValue < 0.0) {
+    humidityValue = 0.0;
+  }
+  else if (humidityValue > 100.0 && humidityValue <= 105.0) {
+    humidityValue = 100.0;
+  }
+  else if (humidityValue > 105.0 && humidityValue <= 110) {
+    humidityValue -= 5.0;
+  }
+  else if(humidityValue > 110.0) {
+    humidityValue = 110;
+  }
+
 
 
     // Check overall sensor status
-    sensorBoomGeneralError = sensorBoomMainTempError || sensorBoomHumidityModuleError;
+    sensorBoomFault = sensorBoomMainTempError || sensorBoomHumidityModuleError;
 
     if (sensorBoomMainTempError && sensorBoomHumidityModuleError) {
       if (xdataPortMode == 1) {
@@ -3096,7 +3396,6 @@ void aprsRecorderFormat(char* aprsMessage) {
   int beganFlyingInt = static_cast<int>(beganFlying ? 1 : 0);
   int burstDetectedInt = static_cast<int>(burstDetected ? 1 : 0);
   int radioTemp = static_cast<int>(readRadioTemp());
-  int zeroHumidityFrequencyInt = static_cast<int>(zeroHumidityFrequency);
   int mvBatUInt = static_cast<int>(readBatteryVoltage() * 1000);
   int thermistorTempInt = static_cast<int>(readThermistorTemp());
   int gpsJamWarningInt = static_cast<int>(gpsJamWarning ? 1 : 0);
@@ -3131,8 +3430,8 @@ void aprsRecorderFormat(char* aprsMessage) {
     gpsCurrentModeInt,
     radioTemp,
     sensorBoomFaultInt,
-    zeroHumidityFrequencyInt,
-    humidityRangeDelta,
+    zeroHumidityCapacitance,
+    humidityCapacitanceRangeDelta,
     extHeaterPwmStatus,
     referenceHeaterStatus,
     mvBatUInt,
@@ -3252,7 +3551,7 @@ void lowAltitudeFastTxMode() {
     }
     
     if (horusV3Enable) {
-      int pkt_len = build_horus_binary_packet_v3(rawbuffer);
+      int pkt_len = buildHorusV3Packet(rawbuffer);
 
       // Bomb out if we can't encode
       if (pkt_len == 0){
@@ -3522,7 +3821,7 @@ void horusV3Tx() {
 
     if (radioEnablePA) {
       // 1. Prepare the payload once
-      int pkt_len = build_horus_binary_packet_v3(rawbuffer);
+      int pkt_len = buildHorusV3Packet(rawbuffer);
       // Bomb out if we can't encode
       if (pkt_len == 0){
         return;
@@ -3653,7 +3952,7 @@ void aprsTx() {
   }
 }
 
-void aprsDataRecorderTx() {
+void dataRecorderTx() {
   if (dataRecorderEnable && millis() - lastDataRecorderTransmission > dataRecorderInterval) {
     if (aprsEnable) {
       // Calculate size locally (even if just to check if table is empty)
@@ -3700,6 +3999,75 @@ void aprsDataRecorderTx() {
         }
       }
     }
+
+    if (horusV3Enable) {
+    if (xdataPortMode == 1) {
+      xdataSerial.println("[info]: HORUS V3 mode enabled");
+    }
+
+    if (radioEnablePA) {
+      // 1. Prepare the payload once
+      int pkt_len = buildHorusV3PacketDataRecorder(rawbuffer);
+      // Bomb out if we can't encode
+      if (pkt_len == 0){
+        return;
+      }
+
+      int coded_len = horus_l2_encode_tx_packet((unsigned char*)codedbuffer, (unsigned char*)rawbuffer, pkt_len);
+
+      if (xdataPortMode == 1) {
+        xdataSerial.println("[info]: HORUS V3 payload created.");
+      }
+
+      if (xdataPortMode == 1) {
+        xdataSerial.print("[info]: HORUS V3 payload created.");
+
+        xdataSerial.print(F("Uncoded Length (bytes): "));
+        xdataSerial.println(pkt_len);
+        xdataSerial.print("Uncoded: ");
+        PrintHex(rawbuffer, pkt_len, debugbuffer);
+        xdataSerial.println(debugbuffer);
+        xdataSerial.print(F("Encoded Length (bytes): "));
+        xdataSerial.println(coded_len);
+        xdataSerial.print("Coded: ");
+        PrintHex(codedbuffer, coded_len, debugbuffer);
+        xdataSerial.println(debugbuffer);
+      }
+
+
+        // Configure Radio for this specific hop
+        setRadioPower(horusV3RadioPower);
+        setRadioModulation(0);  // CW modulation
+        setRadioFrequency(horusV3FreqTable[0]);
+
+
+        // 3. Physical Transmission
+        radioEnableTx();
+
+        fsk4_preamble(horusPreambleLength);
+        fsk4_write(codedbuffer, coded_len);
+
+        radioDisableTx();
+
+        delay(500);
+
+        radioEnableTx();
+
+        fsk4_preamble(horusPreambleLength);
+        fsk4_write(codedbuffer, coded_len);
+
+        radioDisableTx();
+
+      
+
+      if (xdataPortMode == 1) {
+        xdataSerial.println("[info]: All HORUS V3 frequencies transmitted");
+      }
+
+    } 
+  }
+
+
     lastDataRecorderTransmission = millis();
   }
 }
@@ -3728,7 +4096,7 @@ void ultraPowerSaveHandler() {
         }
 
         if (horusV3Enable) {
-          int pkt_len = build_horus_binary_packet_v3(rawbuffer);
+          int pkt_len = buildHorusV3Packet(rawbuffer);
 
           // Bomb out if we can't encode
           if (pkt_len == 0){
@@ -3929,7 +4297,7 @@ void reconditioningPhase() {
   }
 }
 
-void zeroHumidityFrequencyCalibration() {
+void zeroHumidityCheck() {
   if (xdataPortMode == 1) {
     xdataSerial.println("[info]: Entering zero-humidity calibration...");
     xdataSerial.println("[WARN]: The humidity module WILL GET HOT! During 0-humidity check, please keep the device in a stable environment, with little to no wind, RH < 70%, temperature > 0*C and don't touch, submerge, blow, lick or do anything with the sensor.");
@@ -3941,6 +4309,7 @@ void zeroHumidityFrequencyCalibration() {
 
 
   unsigned long measurement = 0;
+  float capMeasurement = 0;
   unsigned int measurementCount = 0;
   unsigned long measurementBeginMillis;
 
@@ -3991,11 +4360,11 @@ void zeroHumidityFrequencyCalibration() {
 
     return;
   } else {
-    for (int i = 0; i < 5; i++) {
+    for (int i = 0; i < 7; i++) {
       sensorBoomHandler();
       buttonHandlerSimplified();
       interfaceHandler();
-      extHeaterHandler(true, 151, extHeaterTemperatureValue);
+      extHeaterHandler(true, 160, extHeaterTemperatureValue);
 
       orangeLed();
       delay(100);
@@ -4050,12 +4419,13 @@ void zeroHumidityFrequencyCalibration() {
       xdataSerial.println("*C");
     }
 
-    if (extHeaterTemperatureValue > humidityCalibrationMeasurementTemperature - 15 && extHeaterTemperatureValue < humidityCalibrationMeasurementTemperature + 20 && !sensorBoomHumidityModuleError) {
+    if (extHeaterTemperatureValue > humidityCalibrationMeasurementTemperature - 10 && extHeaterTemperatureValue < humidityCalibrationMeasurementTemperature + 20 && !sensorBoomHumidityModuleError) {
       orangeLed();
       delay(50);
       bothLedOff();
 
       measurement += humidityFrequency;
+      capMeasurement += humidityCapacitance;
       measurementCount++;
 
       if (xdataPortMode == 1) {
@@ -4098,8 +4468,8 @@ void zeroHumidityFrequencyCalibration() {
     xdataSerial.println("[info]: Zero humidity calibration complete.");
   }
 
-  calibrationError = false;
   zeroHumidityFrequency = (measurement / measurementCount);
+  zeroHumidityCapacitance = (capMeasurement / measurementCount);
 }
 
 void flightHeatingHandler() {
@@ -4133,44 +4503,13 @@ void flightHeatingHandler() {
   }
 
   //humidity module heating algorithm - above -40C target is equal to air_temp+offset, below -40C ambient temp the module maintains -40C
-  if (humidityModuleHeating && !sensorBoomGeneralError) {
-    int lastReferenceHeaterStatus = referenceHeaterStatus;
-    selectReferencesHeater(0);
-    selectSensorBoom(0, 0);
+  if (humidityModuleHeating && !sensorBoomFault) {
 
-    // Get external heater temperature frequency
-    extHeaterTemperatureFrequency = getSensorBoomFreq(3);
-    if (extHeaterTemperatureFrequency <= 0) {
-      sensorBoomHumidityModuleError = true;  // Error if frequency is invalid
-
-      if (xdataPortMode == 1) {
-        xdataSerial.println("[WARN]: External humidity heater temperature sensor error! MEAS frequency invalid.");
-      }
-
-    } else {
-      sensorBoomHumidityModuleError = false;  // No error
-      extHeaterTemperatureResistance = calculateSensorBoomResistance(extHeaterTemperatureFrequency, tempSensorBoomCalibrationFactor);
-      extHeaterTemperatureValue = convertPt1000ResToTemp(extHeaterTemperatureResistance) + extHeaterTemperatureCorrectionC;
-
-      double tempCorrectionFactor = 1.0;
-      if (extHeaterTemperatureValue < 0) {
-        if (extHeaterTemperatureValue >= lowTempCorrectionFactorLimit) {
-          tempCorrectionFactor = 1.0 + ((lowTempCorrectionFactor - 1) / -(lowTempCorrectionFactorLimit)) * (-extHeaterTemperatureValue);
-          extHeaterTemperatureValue *= tempCorrectionFactor;
-        } else {
-          extHeaterTemperatureValue -= lowTempCorrectionFactorLimit * (1 - lowTempCorrectionFactor);
-        }
-      }
-    }
-
-    selectSensorBoom(0, 0);
-    if (mainTemperatureValue < 0) {
+    if (extHeaterTemperatureValue < humidityModuleHeatingTemperatureThreshold) {
       extHeaterHandler(true, max((float)humicapMinimumTemperature, mainTemperatureValue + defrostingOffset), extHeaterTemperatureValue);
     } else {
       extHeaterHandler(false, 0, 0);
     }
-
-    selectReferencesHeater(lastReferenceHeaterStatus);
   }
 }
 
@@ -4338,215 +4677,240 @@ void humidityModuleHeaterPowerControl(unsigned int heaterPower) {  //0 - OFF, 1-
 }
 
 
-// Returns seconds until the next transmission slot.
-// Returns 9999 if mode is disabled.
-int getSecondsUntilNextTx(long current_total_seconds, int interval, int offset) {
-  if (interval == 0) return 9999;
-
-  // Calculate time remaining in current cycle
-  // Logic: (Interval - ((Current - Offset) % Interval)) % Interval
-  // We handle the case where Current < Offset by adding Interval
-  long relative_time = current_total_seconds - offset;
-
-  // Handle negative relative time (before offset in the first hour)
-  while (relative_time < 0) relative_time += interval;
-
-  int time_into_cycle = relative_time % interval;
-  int time_remaining = interval - time_into_cycle;
-
-  return time_remaining;
+void schedulerInit() {
+  lastMillisUpdate = millis();
+  systemTimeMillis = 0;
+  gpsTimeSynced = false;
+  
+  // Initialize all next transmission times to 0 (will transmit immediately on first run)
+  nextPipTxTime = 0;
+  nextHorusV3TxTime = 0;
+  nextHorusTxTime = 0;
+  nextAprsTxTime = 0;
+  nextRttyTxTime = 0;
+  nextMorseTxTime = 0;
 }
 
-void scheduler() {
-  // --- 1. TIMEKEEPING (Internal Clock) ---
+void schedulerLoop() {
+  // Static variables
+  static unsigned long lastSensorUpdate = 0;
+  static unsigned long lastSyncPrint = 0;
+  const unsigned long SENSOR_UPDATE_INTERVAL = 30000; // 30 seconds
+  
+
   unsigned long currentMillis = millis();
-  while (currentMillis - sys_last_tick_millis >= 1000) {
-    sys_s++;
-    if (sys_s >= 60) {
-      sys_s = 0;
-      sys_m++;
-    }
-    if (sys_m >= 60) {
-      sys_m = 0;
-      sys_h++;
-    }
-    if (sys_h >= 24) {
-      sys_h = 0;
-      last_tx_pip = last_tx_horus = last_tx_horusV3 = last_tx_aprs = last_tx_rtty = last_tx_morse = -1;
-    }
-    sys_last_tick_millis += 1000;
+  unsigned long elapsed = currentMillis - lastMillisUpdate;
+  
+  if (currentMillis < lastMillisUpdate) {
+    elapsed = (0xFFFFFFFF - lastMillisUpdate) + currentMillis;
   }
+  
+  systemTimeMillis += elapsed;
+  lastMillisUpdate = currentMillis;
+  
 
-  // --- 2. GPS IMPROVEMENT (THE "QUIET" BLOCKING MODE) ---
-  if (improvedGpsPerformance && !cancelGpsImprovement && gpsSats < 4) {
-
-    unsigned long startQuietTime = millis();
-
-    while (millis() - startQuietTime < radioSilenceDuration && !cancelGpsImprovement) {
-      // 1. LED Feedback
-      if (gpsSats < 4) {
-        // No fix:
-        bothLedOff();
-        delay(100);
-        orangeLed();
-        delay(100);
-        bothLedOff();
-        delay(100);
-        orangeLed();
-
-        if (xdataPortMode == 4) {
-          xdataSerial.println("stage: 31");
-        }
-
-      } else {
-        // Fix obtained:
-        greenLed();
-        delay(80);
-        bothLedOff();
-        delay(160);
-
-        if (xdataPortMode == 4) {
-          xdataSerial.println("stage: 32");
-        }
+  if (gpsSats >= 4 && gps.time.isValid()) {
+    unsigned long gpsSeconds = (unsigned long)gps.time.hour() * 3600UL + 
+                               (unsigned long)gps.time.minute() * 60UL + 
+                               (unsigned long)gps.time.second();
+    
+    systemTimeMillis = gpsSeconds * 1000UL;
+    lastMillisUpdate = millis();
+    
+    if (!gpsTimeSynced || (millis() - lastSyncPrint >= 1000)) {
+      if (xdataPortMode == 1 && !gpsTimeSynced) {
+        xdataSerial.print("[info]: GPS Time Synced: ");
+        xdataSerial.print(gps.time.hour());
+        xdataSerial.print(":");
+        xdataSerial.print(gps.time.minute());
+        xdataSerial.print(":");
+        xdataSerial.println(gps.time.second());
       }
+      lastSyncPrint = millis();
+    }
+    
+    gpsTimeSynced = true;
+  } else {
+    if (gpsTimeSynced && xdataPortMode == 1) {
+      xdataSerial.println("[info]: GPS sync lost, using system clock");
+    }
+    gpsTimeSynced = false;
+  }
+  
+  unsigned long currentSeconds = systemTimeMillis / 1000UL;
+  
 
+  if (improvedGpsPerformance && !cancelGpsImprovement && gpsSats < 4) {
+    unsigned long startQuietTime = millis();
+    
+    if (xdataPortMode == 1) {
+      xdataSerial.println("[info]: Entering GPS Quiet Mode");
+    }
+    
+    while (millis() - startQuietTime < radioSilenceDuration && !cancelGpsImprovement) {
+      if (gpsSats < 4) {
+        bothLedOff(); 
+        delay(100); 
+        orangeLed(); 
+        delay(100); 
+        bothLedOff(); 
+        delay(100); 
+        orangeLed();
+        if (xdataPortMode == 4) xdataSerial.println("stage: 31");
+      } else {
+        greenLed(); 
+        delay(80); 
+        bothLedOff(); 
+        delay(160);
+        if (xdataPortMode == 4) xdataSerial.println("stage: 32");
+      }
+      
       gpsHandler();
       buttonHandler();
       interfaceHandler();
-
-      // 3. Update internal clock and handle rollover
-      if (millis() - sys_last_tick_millis >= 1000) {
-        sys_s++;
-        if (sys_s >= 60) {
-          sys_s = 0;
-          sys_m++;
-        }
-        if (sys_m >= 60) {
-          sys_m = 0;
-          sys_h++;
-        }
-        if (sys_h >= 24) { sys_h = 0; }
-        sys_last_tick_millis += 1000;
-      }
+      sensorBoomHandler();
+      flightHeatingHandler();
+      pressureHandler();
     }
-    // After 120s is over, the scheduler continues to transmissions
-  }
-
-  // --- 3. GPS SYNC (Normal Flow) ---
-  if (gpsSats >= 4 && gps.time.isUpdated()) {
-    long gps_total = (gpsHours * 3600L) + (gpsMinutes * 60L) + gpsSeconds;
-    long sys_total = (sys_h * 3600L) + (sys_m * 60L) + sys_s;
-    if (abs(gps_total - sys_total) > 1) {
-      sys_h = gpsHours;
-      sys_m = gpsMinutes;
-      sys_s = gpsSeconds;
-      sys_last_tick_millis = millis();
+    
+    if (xdataPortMode == 1) {
+      xdataSerial.println("[info]: Exiting GPS Quiet Mode");
     }
+    
+    // Update time after quiet mode
+    currentMillis = millis();
+    elapsed = currentMillis - lastMillisUpdate;
+    if (currentMillis < lastMillisUpdate) {
+      elapsed = (0xFFFFFFFF - lastMillisUpdate) + currentMillis;
+    }
+    systemTimeMillis += elapsed;
+    lastMillisUpdate = currentMillis;
+    currentSeconds = systemTimeMillis / 1000UL;
   }
-
-  long now_sec = (sys_h * 3600L) + (sys_m * 60L) + sys_s;
-
-  // --- 4. NORMAL TRANSMISSION SCHEDULING ---
-  // Note: Since we are not in "Quiet Mode" anymore, use original intervals
   
-  deviceStatusHandler();
 
+  unsigned long minTimeUntilTx = 0xFFFFFFFF;
+  
+  if (nextPipTxTime > currentSeconds && (nextPipTxTime - currentSeconds) < minTimeUntilTx) {
+    minTimeUntilTx = nextPipTxTime - currentSeconds;
+  }
+  if (nextHorusV3TxTime > currentSeconds && (nextHorusV3TxTime - currentSeconds) < minTimeUntilTx) {
+    minTimeUntilTx = nextHorusV3TxTime - currentSeconds;
+  }
+  if (nextHorusTxTime > currentSeconds && (nextHorusTxTime - currentSeconds) < minTimeUntilTx) {
+    minTimeUntilTx = nextHorusTxTime - currentSeconds;
+  }
+  if (nextAprsTxTime > currentSeconds && (nextAprsTxTime - currentSeconds) < minTimeUntilTx) {
+    minTimeUntilTx = nextAprsTxTime - currentSeconds;
+  }
+  if (nextRttyTxTime > currentSeconds && (nextRttyTxTime - currentSeconds) < minTimeUntilTx) {
+    minTimeUntilTx = nextRttyTxTime - currentSeconds;
+  }
+  if (nextMorseTxTime > currentSeconds && (nextMorseTxTime - currentSeconds) < minTimeUntilTx) {
+    minTimeUntilTx = nextMorseTxTime - currentSeconds;
+  }
+  
+  bool nearTx = (minTimeUntilTx <= 3);
+  
+
+  
   // PIP
-  if (pipEnable && pipTimeSyncSeconds > 0) {
-    long current_slot = ((now_sec - pipTimeSyncOffsetSeconds) / pipTimeSyncSeconds) * pipTimeSyncSeconds + pipTimeSyncOffsetSeconds;
-    if (now_sec >= pipTimeSyncOffsetSeconds && current_slot > last_tx_pip) {
-      pipTx();
-      last_tx_pip = current_slot;
-    }
+  if (nextPipTxTime == 0) {
+    unsigned long secondsInPeriod = (currentSeconds - pipTimeSyncOffsetSeconds) % pipTimeSyncSeconds;
+    nextPipTxTime = currentSeconds - secondsInPeriod + pipTimeSyncSeconds;
   }
-  buttonHandler();
-
-  // Morse
-  if (morseEnable && morseTimeSyncSeconds > 0) {
-    long current_slot = ((now_sec - morseTimeSyncOffsetSeconds) / morseTimeSyncSeconds) * morseTimeSyncSeconds + morseTimeSyncOffsetSeconds;
-    if (now_sec >= morseTimeSyncOffsetSeconds && current_slot > last_tx_morse) {
-      morseTx();
-      last_tx_morse = current_slot;
-    }
-  }
-  buttonHandler();
-
-  // APRS
-  if (aprsEnable && aprsTimeSyncSeconds > 0) {
-    long current_slot = ((now_sec - aprsTimeSyncOffsetSeconds) / aprsTimeSyncSeconds) * aprsTimeSyncSeconds + aprsTimeSyncOffsetSeconds;
-    if (now_sec >= aprsTimeSyncOffsetSeconds && current_slot > last_tx_aprs) {
-      aprsTx();
-      if (dataRecorderEnable) aprsDataRecorderTx();
-      last_tx_aprs = current_slot;
-    }
-  }
-
-  // RTTY
-  if (rttyEnable && rttyTimeSyncSeconds > 0) {
-    long current_slot = ((now_sec - rttyTimeSyncOffsetSeconds) / rttyTimeSyncSeconds) * rttyTimeSyncSeconds + rttyTimeSyncOffsetSeconds;
-    if (now_sec >= rttyTimeSyncOffsetSeconds && current_slot > last_tx_rtty) {
-      rttyTx();
-      last_tx_rtty = current_slot;
-    }
-  }
-  buttonHandler();
-
-  // Horus V3
-  if (horusV3Enable && horusV3TimeSyncSeconds > 0) {
-    long current_slot = ((now_sec - horusV3TimeSyncOffsetSeconds) / horusV3TimeSyncSeconds) * horusV3TimeSyncSeconds + horusV3TimeSyncOffsetSeconds;
-    if (now_sec >= horusV3TimeSyncOffsetSeconds && current_slot > last_tx_horusV3) {
-      horusV3Tx();
-      last_tx_horusV3 = current_slot;
-    }
-  }
-  buttonHandler();
-
-  // Horus V2
-  if (horusEnable && horusTimeSyncSeconds > 0) {
-    long current_slot = ((now_sec - horusTimeSyncOffsetSeconds) / horusTimeSyncSeconds) * horusTimeSyncSeconds + horusTimeSyncOffsetSeconds;
-    if (now_sec >= horusTimeSyncOffsetSeconds && current_slot > last_tx_horus) {
-      horusTx();
-      last_tx_horus = current_slot;
-    }
-  }
-  buttonHandler();
-
-  // --- 5. PREDICTIVE IDLE TASKS ---
-  int min_gap = 9999;
-  auto updateGap = [&](int interval, int offset) {
-    if (interval <= 0) return;
-    int gap = getSecondsUntilNextTx(now_sec, interval, offset);
-    if (gap < min_gap) min_gap = gap;
-  };
-
-  if (pipEnable) updateGap(pipTimeSyncSeconds, pipTimeSyncOffsetSeconds);
-  if (morseEnable) updateGap(morseTimeSyncSeconds, morseTimeSyncOffsetSeconds);
-  if (aprsEnable) updateGap(aprsTimeSyncSeconds, aprsTimeSyncOffsetSeconds);
-  if (rttyEnable) updateGap(rttyTimeSyncSeconds, rttyTimeSyncOffsetSeconds);
-  if (horusV3Enable) updateGap(horusV3TimeSyncSeconds, horusV3TimeSyncOffsetSeconds);
-  if (horusEnable) updateGap(horusTimeSyncSeconds, horusTimeSyncOffsetSeconds);
-
-  if (min_gap >= gpsReadMinimumTime && (millis() - last_gps_update_timestamp > gpsMinimumUpdate)) {
-    gpsHandler();
-    last_gps_update_timestamp = millis();
+  if (currentSeconds >= nextPipTxTime) {
+    pipTx();
+    unsigned long secondsInPeriod = (currentSeconds - pipTimeSyncOffsetSeconds) % pipTimeSyncSeconds;
+    nextPipTxTime = currentSeconds - secondsInPeriod + pipTimeSyncSeconds;
   }
   
-  if (min_gap >= sensorReadMinimumTime && (millis() - last_sensor_update_timestamp > sensorMinimumUpdate)) {
+  // Horus V3
+  if (nextHorusV3TxTime == 0) {
+    unsigned long secondsInPeriod = (currentSeconds - horusV3TimeSyncOffsetSeconds) % horusV3TimeSyncSeconds;
+    nextHorusV3TxTime = currentSeconds - secondsInPeriod + horusV3TimeSyncSeconds;
+  }
+  if (currentSeconds >= nextHorusV3TxTime) {
+    horusV3Tx();
+    unsigned long secondsInPeriod = (currentSeconds - horusV3TimeSyncOffsetSeconds) % horusV3TimeSyncSeconds;
+    nextHorusV3TxTime = currentSeconds - secondsInPeriod + horusV3TimeSyncSeconds;
+  }
+  
+  // Horus V2
+  if (nextHorusTxTime == 0) {
+    unsigned long secondsInPeriod = (currentSeconds - horusTimeSyncOffsetSeconds) % horusTimeSyncSeconds;
+    nextHorusTxTime = currentSeconds - secondsInPeriod + horusTimeSyncSeconds;
+  }
+  if (currentSeconds >= nextHorusTxTime) {
+    horusTx();
+    unsigned long secondsInPeriod = (currentSeconds - horusTimeSyncOffsetSeconds) % horusTimeSyncSeconds;
+    nextHorusTxTime = currentSeconds - secondsInPeriod + horusTimeSyncSeconds;
+  }
+  
+  // APRS
+  if (nextAprsTxTime == 0) {
+    unsigned long secondsInPeriod = (currentSeconds - aprsTimeSyncOffsetSeconds) % aprsTimeSyncSeconds;
+    nextAprsTxTime = currentSeconds - secondsInPeriod + aprsTimeSyncSeconds;
+  }
+  if (currentSeconds >= nextAprsTxTime) {
+    aprsTx();
+    dataRecorderTx();
+    unsigned long secondsInPeriod = (currentSeconds - aprsTimeSyncOffsetSeconds) % aprsTimeSyncSeconds;
+    nextAprsTxTime = currentSeconds - secondsInPeriod + aprsTimeSyncSeconds;
+  }
+  
+  // RTTY
+  if (nextRttyTxTime == 0) {
+    unsigned long secondsInPeriod = (currentSeconds - rttyTimeSyncOffsetSeconds) % rttyTimeSyncSeconds;
+    nextRttyTxTime = currentSeconds - secondsInPeriod + rttyTimeSyncSeconds;
+  }
+  if (currentSeconds >= nextRttyTxTime) {
+    rttyTx();
+    unsigned long secondsInPeriod = (currentSeconds - rttyTimeSyncOffsetSeconds) % rttyTimeSyncSeconds;
+    nextRttyTxTime = currentSeconds - secondsInPeriod + rttyTimeSyncSeconds;
+  }
+  
+  // Morse
+  if (nextMorseTxTime == 0) {
+    unsigned long secondsInPeriod = (currentSeconds - morseTimeSyncOffsetSeconds) % morseTimeSyncSeconds;
+    nextMorseTxTime = currentSeconds - secondsInPeriod + morseTimeSyncSeconds;
+  }
+  if (currentSeconds >= nextMorseTxTime) {
+    morseTx();
+    unsigned long secondsInPeriod = (currentSeconds - morseTimeSyncOffsetSeconds) % morseTimeSyncSeconds;
+    nextMorseTxTime = currentSeconds - secondsInPeriod + morseTimeSyncSeconds;
+  }
+  
+
+  gpsHandler();
+  deviceStatusHandler();
+  flightComputing();
+  buttonHandler();
+  powerHandler();
+  initRecorderData();
+  flightHeatingHandler();
+  ultraPowerSaveHandler();
+  autoResetHandler();
+  
+  // Slow handlers - skip if near TX unless 30s timeout
+  currentMillis = millis();
+  bool forceSensorUpdate = (currentMillis - lastSensorUpdate >= SENSOR_UPDATE_INTERVAL);
+  
+  if (!nearTx || forceSensorUpdate) {
     sensorBoomHandler();
     pressureHandler();
-    last_sensor_update_timestamp = millis();
+    interfaceHandler();
+    lastSensorUpdate = currentMillis;
+
+    if (xdataPortMode == 1) {
+      xdataSerial.println("[info]: Scheduler - not near transmission, updating sensors and interface");
+    }
   }
-
-  // --- 6. AUXILIARY ---
-  flightHeatingHandler();
-  powerHandler();
-  deviceStatusHandler();
-  interfaceHandler();
-
-  //Data Processing
-  flightComputing();
-  initRecorderData();
 }
+
+
+
+
 
 void interfaceHandler() {
   #ifndef RSM4x2_UNLOCK_HORUSV3
@@ -4561,12 +4925,6 @@ void interfaceHandler() {
   xdataSerial.println(NFW_VERSION);
   xdataSerial.print("millis: ");
   xdataSerial.println(millis());
-  xdataSerial.print("sys_h: ");
-  xdataSerial.println(sys_h);
-  xdataSerial.print("sys_m: ");
-  xdataSerial.println(sys_m);
-  xdataSerial.print("sys_s: ");
-  xdataSerial.println(sys_s);
   xdataSerial.print("autoResetEnable: ");
   xdataSerial.println(autoResetEnable);
   xdataSerial.print("buttonMode: ");
@@ -4773,10 +5131,10 @@ void interfaceHandler() {
   xdataSerial.println(humidityModuleEnable);
   xdataSerial.print("zeroHumidityCalibration: ");
   xdataSerial.println(zeroHumidityCalibration);
-  xdataSerial.print("humidityRangeDelta: ");
-  xdataSerial.println(humidityRangeDelta);
-  xdataSerial.print("zeroHumidityFrequency: ");
-  xdataSerial.println(zeroHumidityFrequency);
+  xdataSerial.print("humidityCapacitanceRangeDelta: ");
+  xdataSerial.println(humidityCapacitanceRangeDelta);
+  xdataSerial.print("zeroHumidityCapacitance: ");
+  xdataSerial.println(zeroHumidityCapacitance);
   xdataSerial.print("tempSensorBoomCalibrationFactor: ");
   xdataSerial.println(tempSensorBoomCalibrationFactor);
   xdataSerial.print("calibrationError: ");
@@ -4802,7 +5160,7 @@ void interfaceHandler() {
   xdataSerial.print("RPM411SerialNumber: ");
   xdataSerial.println(RPM411SerialNumber);
   xdataSerial.print("rpm411Error: ");
-  xdataSerial.println(RPM411SerialNumber);
+  xdataSerial.println(rpm411Error);
   xdataSerial.print("seaLevelPressure: ");
   xdataSerial.println(seaLevelPressure);
 
@@ -4817,10 +5175,10 @@ void interfaceHandler() {
   xdataSerial.println(extHeaterTemperatureResistance);
   xdataSerial.print("extHeaterTemperatureValue: ");
   xdataSerial.println(extHeaterTemperatureValue);
-  xdataSerial.print("humidityFrequency: ");
-  xdataSerial.println(humidityFrequency);
-  xdataSerial.print("maxHumidityFrequency: ");
-  xdataSerial.println(maxHumidityFrequency);
+  xdataSerial.print("humidityCapacitance: ");
+  xdataSerial.println(humidityCapacitance);
+  xdataSerial.print("maxHumidityCapacitance: ");
+  xdataSerial.println(maxHumidityCapacitance);
   xdataSerial.print("THERMISTOR_R25: ");
   xdataSerial.println(THERMISTOR_R25);
   xdataSerial.print("THERMISTOR_B: ");
@@ -4852,7 +5210,7 @@ void extHeaterHandler(bool enable, float targetTemp, float currentTemp) {
   static float previousError = 0;
   static unsigned long lastTime = 0;
 
-  if (!enable || sensorBoomGeneralError) {
+  if (!enable || sensorBoomFault) {
     humidityModuleHeaterPowerControl(0);
     integral = 0;
     previousError = 0;
@@ -4923,13 +5281,13 @@ void humidityDeltaCalibrationDebug() {
 
       sensorBoomHandler();
 
-      humidityRangeDelta = zeroHumidityFrequency - humidityFrequency;
+      humidityCapacitanceRangeDelta = (humidityCapacitance - zeroHumidityCapacitance) * 0.9;
 
       if (xdataPortMode == 1) {
-        xdataSerial.print("humidityFrequency = ");
-        xdataSerial.print(humidityFrequency);
-        xdataSerial.print("Hz,  humidityRangeDelta = ");
-        xdataSerial.print(humidityRangeDelta);
+        xdataSerial.print("humidityCapacitance = ");
+        xdataSerial.print(humidityCapacitance);
+        xdataSerial.print("uF,  humidityCapacitanceRangeDelta = ");
+        xdataSerial.print(humidityCapacitanceRangeDelta);
         xdataSerial.println("Hz");
       }
 
@@ -4994,10 +5352,16 @@ void initRPM411() {
 
   if (!isDataReceived) {
     rpm411Error = true;
+    if (xdataPortMode == 1) {
+      xdataSerial.println("[info]: RPM411 connection error");
+    }
   }
   else {
     rpm411Error = false;
     RPM411ParseConfigData();
+    if (xdataPortMode == 1) {
+      xdataSerial.println("[info]: RPM411 OK");
+    }
   }
 }
 
@@ -5050,10 +5414,20 @@ void readRPM411() {
 
   if (!isDataReceived) {
     rpm411Error = true;
+    
+    if (xdataPortMode == 1) {
+      xdataSerial.println("[info]: RPM411 connection error");
+    }
+
   }
   else {
     rpm411Error = false;
     RPM411ParseReadings();
+    
+    if (xdataPortMode == 1) {
+      xdataSerial.println("[info]: RPM411 OK");
+    }
+
   }
 }
 
@@ -5106,19 +5480,68 @@ void pressureHandler() {
       readRPM411();
 
       if(rpm411Pressure < 1200 && rpm411Pressure > 0) {
-        pressureValue = rpm411Pressure;
+        pressureValue = kalmanFilter(rpm411Pressure, pressureKalmanEst, pressureKalmanErrorEst, pressureKalmanError, pressureKalmanQ);
       }
 
     }
 
   }
   else if(pressureMode == 2) {
-    pressureValue = ((seaLevelPressure * pow(1 - ((0.0065 * gpsAlt) / (mainTemperatureValue + 273.15)), (9.80665 * 0.0289644) / (8.3144598 * 0.0065))) - (6.112 * exp((17.67 * mainTemperatureValue) / (mainTemperatureValue + 243.5)) * (humidityValue / 100))) / 100;
+    // Physical constants
+    const float gMR = 0.0341632; 
+    float Pb, Tb, Lb, hb;
+
+    // 1. Calculate the Scaling Factor
+    // This ensures that if it's a high-pressure day at launch (e.g. 1020 hPa), 
+    // the entire atmosphere model shifts up correctly.
+    float scale = seaLevelPressure / 1013.25;
+
+    // 2. Determine layer and set Standard Base Pressures (Pb)
+    if (gpsAlt < 11000.0) {        
+      Pb = 1013.25 * scale;  // Adjusted for your launch site
+      Tb = 288.15; Lb = -0.0065; hb = 0.0;
+    } 
+    else if (gpsAlt < 20000.0) {   
+      Pb = 226.32 * scale;   // Adjusted
+      Tb = 216.65; Lb = 0.0; hb = 11000.0;
+    } 
+    else if (gpsAlt < 32000.0) {   
+      Pb = 54.74 * scale;    // Adjusted
+      Tb = 216.65; Lb = 0.0010; hb = 20000.0;
+    } 
+    else {                         
+      Pb = 8.68 * scale;     // Adjusted
+      Tb = 228.65; Lb = 0.0028; hb = 32000.0;
+    }
+
+    // 3. Final Calculation
+    if (Lb == 0.0) {
+      pressureValue = Pb * exp(-gMR * (gpsAlt - hb) / Tb);
+    }
+    else {
+      pressureValue = Pb * pow(1.0 + Lb * (gpsAlt - hb) / Tb, -gMR / Lb);
+    }
+
+
   }
   else {
     pressureValue = 0;
   }
 
+}
+
+float kalmanFilter(float measurement, float &est, float &err_est, float err_meas, float q) {
+  // 1. Prediction Step
+  err_est = err_est + q;
+
+  // 2. Kalman Gain Calculation
+  float kalman_gain = err_est / (err_est + err_meas);
+
+  // 3. Update Step
+  est = est + kalman_gain * (measurement - est);
+  err_est = (1.0 - kalman_gain) * err_est;
+
+  return est;
 }
 
 
@@ -5142,7 +5565,6 @@ void setup() {
   pinMode(SPDT1, OUTPUT);
   pinMode(SPDT2, OUTPUT);
   pinMode(SPDT3, OUTPUT);
-  pinMode(MEAS_OUT, INPUT);
 
   pinMode(HEAT_HUM1, OUTPUT);
   pinMode(HEAT_HUM2, OUTPUT);
@@ -5195,6 +5617,10 @@ void setup() {
     xdataSerial.println("[info]: PWM timer initialized - 8bit, 1kHz");
   }
 
+  if (xdataPortMode == 1) {
+    xdataSerial.println("[info]: Enabling clock output pins...");
+  }
+
   HAL_RCC_MCOConfig(RCC_MCO1, RCC_MCO1SOURCE_HSI, RCC_MCODIV_1); // MCO1 with divider 1 from HSI clock source, output on PA8
 
   SPI_2.begin();
@@ -5203,7 +5629,7 @@ void setup() {
 
 
   if (xdataPortMode == 1) {
-    xdataSerial.println("[info]: SPI_2 interface initialized");
+    xdataSerial.println("[info]: SPI_2 interface initialized, clock ok");
   }
 
   if (xdataPortMode == 4) {
@@ -5251,6 +5677,10 @@ void setup() {
     xdataSerial.println("stage: 03");
   }
 
+  if (xdataPortMode == 1) {
+    xdataSerial.println("[info]: Sensor boom, heaters, RPM411 initialization...");
+  }
+
   selectReferencesHeater(0);  //turn off reference heating
   extHeaterHandler(false, 0, 0);
   selectSensorBoom(0, 0);  //turn off all sensor boom measurement circuits
@@ -5258,6 +5688,8 @@ void setup() {
   if(pressureMode == 1) {
     initRPM411();
     readRPM411();
+    pressureKalmanEst = pressureValue;
+
   }
   pressureHandler();
 
@@ -5284,19 +5716,20 @@ void setup() {
     if (xdataPortMode == 1) {
       xdataSerial.println("[info]: Starting humidity calibration...");
     }
-    zeroHumidityFrequencyCalibration();
+    zeroHumidityCheck();
     if (xdataPortMode == 1) {
       xdataSerial.println("[info]: Exiting calibration.");
     }
   }
 
-  maxHumidityFrequency = zeroHumidityFrequency - humidityRangeDelta + 100;
+  maxHumidityFrequency = zeroHumidityFrequency - humidityRangeDelta;
+  maxHumidityCapacitance = zeroHumidityCapacitance + humidityCapacitanceRangeDelta;
 
   if (xdataPortMode == 1) {
-    xdataSerial.print("0RH_freq | 100RH_freq => ");
-    xdataSerial.print(zeroHumidityFrequency);
+    xdataSerial.print("0RH_cap | 100RH_cap => ");
+    xdataSerial.print(zeroHumidityCapacitance);
     xdataSerial.print(" | ");
-    xdataSerial.println(maxHumidityFrequency);
+    xdataSerial.println(maxHumidityCapacitance);
   }
 
   humidityDeltaCalibrationDebug();
@@ -5333,15 +5766,15 @@ void setup() {
   }
 
   interfaceHandler();
+  schedulerInit();
+
+  sensorBoomHandler();
+  humidityKalmanEst = humidityValue;
 
   bothLedOff();
 }
 
 
 void loop() {
-  // Scheduler
-  scheduler();
-
-  ultraPowerSaveHandler();
-  autoResetHandler();
+  schedulerLoop();
 }

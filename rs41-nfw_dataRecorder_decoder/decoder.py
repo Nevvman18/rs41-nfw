@@ -27,8 +27,8 @@ def decode_nfw_packet(packet):
         "currentGPSPowerMode (0 - disabled, 1 - max performance, 2 - powersaving)",
         "radioTemp (\u00b0C)",
         "sensorBoomErr (0 - Clear, 1 - ERR)",
-        "zeroHumidityFrequency (Hz)",  # New field
-        "humidityRangeDelta (Hz)",     # New field
+        "zeroHumidityCapacitance (uF)",  # New field
+        "humidityCapacitanceRangeDelta (uF)",     # New field
         "heatingPwmStatus",            # New field
         "referenceHeaterStatus",       # New field
         "mvBatU (mV)",                 # New field

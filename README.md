@@ -41,7 +41,7 @@ Vaisala some time ago began launching new RS41 sonde revisions, with new interna
         * Compliant with UKHAS format
     * PIP
         * Beacon operation, transmitting short beep with a specified interval, which could be used as a foxhunting TX device
-* Thorough support of RS41 hardware, including GPS, radio, power circuitry, heaters etc. ...and:
+* Thorough support of RS41 hardware, including GPS, radio, power circuitry, heaters etc., timers ...and:
 * Support for **onboard boom sensors**, including **temperature and humidity** sensors!
 * Apart from the sensor boom, also Vaisala **RPM411** pressure sensor add-on board measurement support!
 * Detailed in-built **debugging** features via LED status and serial messages
@@ -104,6 +104,7 @@ See: [hw/README.md](./hw/README.md)
 
 
 ## Firmware changelog
+* `v62` - Redefined sensor stalk measurements - now using **hardware timers** and completely new correction algorithms. Much faster and **much more precise** readout, with **measurement noise absent** now. Humidity measurement is now done via actual sensor capacitance measurement, which provides more accurate readings, especially high in the atmosphere. Humidity measurement should now be *somehow accurate* with great claibration (temperature is very accurate), due to new temperature as well as heating correction algorithms. New pressure estimation algorithm, based on the barometric formula. Fixed NTC thermistor R25 and beta values. Rewritten scheduler, addressing non-consistent intervals. Data recorder frames are now send via Horus V3 (apart from APRS), more in the code comments of `dataRecorder`. Pressure readings from RPM411 are now passed through a responsive, light Kalman filter. Device status and fault detection improvements. Fixed morse and RTTY payload creation issue, where comment with lower-case symbols could lock the uC. Quicker zero-humidity check and optimised calibration temperature. Minor fixes. Docs.
 * `v61` - Full support for original Vaisala **RPM411** pressure sensor add-on board.
 * `v60` - Improved APRS timings and baud rate consistency, with help of Wolfgang DF7PN and Ayar HB9EVW.
 * `v59` - Horus Binary V3 bugfix for RSM4x2 revisions, APRS WX wind reporting correction, docs.
