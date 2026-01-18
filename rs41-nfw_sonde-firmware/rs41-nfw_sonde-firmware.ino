@@ -3,7 +3,7 @@ RS41-NFW - versatile, feature-rich and user-friendly custom firmware for ALL rev
 Released on GPL-3.0 license.
 Authors: Franek Łada (nevvman, SP5FRA)
 
-Version 63 (public, stable)
+Version 64 (public, stable)
 
 All code and dependencies used or modified here that don't origin from me are described in code comments and repo details.
 https://github.com/Nevvman18/rs41-nfw
@@ -23,8 +23,8 @@ I wish You high, successful flights with a lot of data gathered with this firmwa
 Franek,
 Author of RS41-NFW
 */
-#define NFW_VERSION "RS41-NFW v63, GPL-3.0 Franek Lada (nevvman, SP5FRA)"  //This is the firmware version You are running
-#define NFW_VERSION_SHORT "v63"
+#define NFW_VERSION "RS41-NFW v64, GPL-3.0 Franek Lada (nevvman, SP5FRA)"  //This is the firmware version You are running
+#define NFW_VERSION_SHORT "v64"
 
 
 
@@ -3348,7 +3348,7 @@ void aprsWxFormat(float latitude, float longitude, char* aprsMessage) {
 
   if(pressureMode == 1) {
     snprintf(aprsMessage, 320,
-           "!%s/%s_.../...g...t%03dh%02db&05d U=%dmV %s",   
+           "!%s/%s_.../...g...t%03dh%02db%05d U%dmV %s",   
            latBuffer,                                      // Formatted Latitude buffer
            lonBuffer,                                      // Formatted Longitude buffer
            wxTemperatureF,                                 // Temperature in Fahrenheit
@@ -3360,7 +3360,7 @@ void aprsWxFormat(float latitude, float longitude, char* aprsMessage) {
   }
   else {
     snprintf(aprsMessage, 320,
-           "!%s/%s_.../...g...t%03dh%02d U=%dmV %s",   //NOTE!: if You want to report pressure, add 'b&05d' after humidity tag and a wxPressure variable after wxHumidity variable
+           "!%s/%s_.../...g...t%03dh%02d U%dmV %s",   //NOTE!: if You want to report pressure, add 'b%05d' after humidity tag and a wxPressure variable after wxHumidity variable
            latBuffer,                                      // Formatted Latitude buffer
            lonBuffer,                                      // Formatted Longitude buffer
            wxTemperatureF,                                 // Temperature in Fahrenheit
