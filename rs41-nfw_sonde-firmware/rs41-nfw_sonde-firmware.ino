@@ -3,7 +3,7 @@ RS41-NFW - versatile, feature-rich and user-friendly custom firmware for ALL rev
 Released on GPL-3.0 license.
 Authors: Franek Łada (nevvman, SP5FRA)
 
-Version 62 (public, stable)
+Version 63 (public, stable)
 
 All code and dependencies used or modified here that don't origin from me are described in code comments and repo details.
 https://github.com/Nevvman18/rs41-nfw
@@ -23,8 +23,8 @@ I wish You high, successful flights with a lot of data gathered with this firmwa
 Franek,
 Author of RS41-NFW
 */
-#define NFW_VERSION "RS41-NFW v62, GPL-3.0 Franek Lada (nevvman, SP5FRA)"  //This is the firmware version You are running
-#define NFW_VERSION_SHORT "v62"
+#define NFW_VERSION "RS41-NFW v63, GPL-3.0 Franek Lada (nevvman, SP5FRA)"  //This is the firmware version You are running
+#define NFW_VERSION_SHORT "v63"
 
 
 
@@ -4692,30 +4692,32 @@ void schedulerInit() {
 }
 
 void schedulerLoop() {
-  // Static variables
   static unsigned long lastSensorUpdate = 0;
   static unsigned long lastSyncPrint = 0;
-  const unsigned long SENSOR_UPDATE_INTERVAL = 30000; // 30 seconds
+  const unsigned long SENSOR_UPDATE_INTERVAL = 30000;
   
-
+  // Update system time ONCE at the start
   unsigned long currentMillis = millis();
-  unsigned long elapsed = currentMillis - lastMillisUpdate;
+  unsigned long elapsed;
   
-  if (currentMillis < lastMillisUpdate) {
-    elapsed = (0xFFFFFFFF - lastMillisUpdate) + currentMillis;
+  if (currentMillis >= lastMillisUpdate) {
+    elapsed = currentMillis - lastMillisUpdate;
+  } else {
+    // Overflow occurred
+    elapsed = (0xFFFFFFFFUL - lastMillisUpdate) + currentMillis + 1UL;
   }
   
   systemTimeMillis += elapsed;
   lastMillisUpdate = currentMillis;
   
-
+  // GPS time sync
   if (gpsSats >= 4 && gps.time.isValid()) {
     unsigned long gpsSeconds = (unsigned long)gps.time.hour() * 3600UL + 
                                (unsigned long)gps.time.minute() * 60UL + 
                                (unsigned long)gps.time.second();
     
     systemTimeMillis = gpsSeconds * 1000UL;
-    lastMillisUpdate = millis();
+    lastMillisUpdate = millis();  // Reset reference point after sync
     
     if (!gpsTimeSynced || (millis() - lastSyncPrint >= 1000)) {
       if (xdataPortMode == 1 && !gpsTimeSynced) {
@@ -4739,15 +4741,29 @@ void schedulerLoop() {
   
   unsigned long currentSeconds = systemTimeMillis / 1000UL;
   
-
+  // GPS Quiet Mode
   if (improvedGpsPerformance && !cancelGpsImprovement && gpsSats < 4) {
     unsigned long startQuietTime = millis();
+    unsigned long lastQuietUpdate = startQuietTime;
     
     if (xdataPortMode == 1) {
       xdataSerial.println("[info]: Entering GPS Quiet Mode");
     }
     
     while (millis() - startQuietTime < radioSilenceDuration && !cancelGpsImprovement) {
+      // Update system time during quiet mode too
+      unsigned long quietMillis = millis();
+      unsigned long quietElapsed;
+      
+      if (quietMillis >= lastQuietUpdate) {
+        quietElapsed = quietMillis - lastQuietUpdate;
+      } else {
+        quietElapsed = (0xFFFFFFFFUL - lastQuietUpdate) + quietMillis + 1UL;
+      }
+      
+      systemTimeMillis += quietElapsed;
+      lastQuietUpdate = quietMillis;
+      
       if (gpsSats < 4) {
         bothLedOff(); 
         delay(100); 
@@ -4777,14 +4793,8 @@ void schedulerLoop() {
       xdataSerial.println("[info]: Exiting GPS Quiet Mode");
     }
     
-    // Update time after quiet mode
-    currentMillis = millis();
-    elapsed = currentMillis - lastMillisUpdate;
-    if (currentMillis < lastMillisUpdate) {
-      elapsed = (0xFFFFFFFF - lastMillisUpdate) + currentMillis;
-    }
-    systemTimeMillis += elapsed;
-    lastMillisUpdate = currentMillis;
+    // Resync lastMillisUpdate after quiet mode
+    lastMillisUpdate = millis();
     currentSeconds = systemTimeMillis / 1000UL;
   }
   

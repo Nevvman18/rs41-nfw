@@ -104,6 +104,7 @@ See: [hw/README.md](./hw/README.md)
 
 
 ## Firmware changelog
+* `v63` - Scheduler overflow issue, now program will happily run infinitely (auto reset is every 7 days). Docs.
 * `v62` - Redefined sensor stalk measurements - now using **hardware timers** and completely new correction algorithms. Much faster and **much more precise** readout, with **measurement noise absent** now. Humidity measurement is now done via actual sensor capacitance measurement, which provides more accurate readings, especially high in the atmosphere. Humidity measurement should now be *somehow accurate* with great claibration (temperature is very accurate), due to new temperature as well as heating correction algorithms. New pressure estimation algorithm, based on the barometric formula. Fixed NTC thermistor R25 and beta values. Rewritten scheduler, addressing non-consistent intervals. Data recorder frames are now send via Horus V3 (apart from APRS), more in the code comments of `dataRecorder`. Pressure readings from RPM411 are now passed through a responsive, light Kalman filter. Device status and fault detection improvements. Fixed morse and RTTY payload creation issue, where comment with lower-case symbols could lock the uC. Quicker zero-humidity check and optimised calibration temperature. Minor fixes. Docs.
 * `v61` - Full support for original Vaisala **RPM411** pressure sensor add-on board.
 * `v60` - Improved APRS timings and baud rate consistency, with help of Wolfgang DF7PN and Ayar HB9EVW.

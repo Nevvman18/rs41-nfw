@@ -46,7 +46,7 @@ After you correctly added the official STM32 core to Arduino IDE board manager, 
     * `C:\Users\USERNAME\AppData\Local\Arduino15\packages\STMicroelectronics\hardware\stm32\2.8.1\variants` - example for Windows based machine with the newest STM32 core version
 * Enter the family name folder, for our case it is a `./STM32L4xx`
     * Here, for our new sonde, you want to locate the `L412RB(I-T)xP` folder, delete it and replace it with [this](./arduino-ide_variant-files/variants/STM32L4xx/L412RB(I-T)xP/) folder, from this repo (`fw/arduino-ide_variant-files/variants/STM32L4xx/L412RB(I-T)xP/`).
-* If you swapped the new variant folder in place, make sure that it contains 8 files and that the folder swapped correctly, then go back to the version folder (`[sources folder]./packages/STMicroelectronics/hardware/stm32/[your STM32 core version]/`), from there open `boards.txt` file in a text editor, search for the `Generic L4` line, and in the alphabetical order (not a must, just looks nicer) add an entry from [`boards.txt` file from this repo](./arduino-ide_variant-files/boards.txt) between other variants. Save the file and close.
+* If you swapped the new variant folder in place, make sure that it contains 8 files and that the folder swapped correctly, then go back to the version folder (`[sources folder]./packages/STMicroelectronics/hardware/stm32/[your STM32 core version]/`), from there open `boards.txt` file in a text editor, search for the `Generic L4` line, and add an entry from [`boards.txt` file from this repo](./arduino-ide_variant-files/boards.txt) between other variants (you could add the entry in the alphabetical order). Save the file and close.
 * **Your IDE should now be good to go**
 
 ## Board selection
