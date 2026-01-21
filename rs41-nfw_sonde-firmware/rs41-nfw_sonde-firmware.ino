@@ -3,7 +3,7 @@ RS41-NFW - versatile, feature-rich and user-friendly custom firmware for ALL rev
 Released on GPL-3.0 license.
 Authors: Franek Łada (nevvman, SP5FRA)
 
-Version 64 (public, stable)
+Version 65 (public, stable)
 
 All code and dependencies used or modified here that don't origin from me are described in code comments and repo details.
 https://github.com/Nevvman18/rs41-nfw
@@ -23,8 +23,7 @@ I wish You high, successful flights with a lot of data gathered with this firmwa
 Franek,
 Author of RS41-NFW
 */
-#define NFW_VERSION "RS41-NFW v64, GPL-3.0 Franek Lada (nevvman, SP5FRA)"  //This is the firmware version You are running
-#define NFW_VERSION_SHORT "v64"
+#define NFW_VERSION "RS41-NFW v65, GPL-3.0 Franek Lada (nevvman, SP5FRA)"  //This is the firmware version You are running
 
 
 
@@ -57,30 +56,12 @@ TinyGPSPlus gps;
 
 
 
-/* FOR RSM4x2 USERS - the old revision uses older MCU, which has only 64K of flash. Because of that, the latest functions, such as Horus V3 encoding protocol, don't fit in the flash anymore.
-To enable the latest features (currently only Horus V3), uncomment the definition below.
-
-WARNING! To make space in flash memory, this option DISABLES: Morse, RTTY, fox-hunting mode and RS41-NFW Ground Control Software communication protocol!!!
-Decide what's best for you - I recommend to put this outdated board on your shelf as a souvenir and search for the latest sonde revision. The RSM4x4 and 4x5 revisions perform much better in-flight, with a lot better GPS and power efficiency, and a better MCU supporting all the features. */
-
-// #define RSM4x2_UNLOCK_HORUSV3
-
-
-
-
 
 
 
 
 
 //==== Firmware-internal definitions:
-
-#ifdef RSM4x2_UNLOCK_HORUSV3
-bool lowMemoryCode = true;
-#else
-bool lowMemoryCode = false;
-#endif
-
 #ifdef RSM4x4
 bool rsm4x2 = false;
 bool rsm4x4 = true;
@@ -199,33 +180,33 @@ Offset however (example: offset 2 means 2 seconds after set interval time, so 10
 */
 
 // Pip:
-unsigned int pipTimeSyncSeconds = 15;
-unsigned int pipTimeSyncOffsetSeconds = 0;
+constexpr uint16_t pipTimeSyncSeconds = 15;
+constexpr uint16_t pipTimeSyncOffsetSeconds = 0;
 
 
 // Horus V3:
-unsigned int horusV3TimeSyncSeconds = 15;
-unsigned int horusV3TimeSyncOffsetSeconds = 0;
+constexpr uint16_t horusV3TimeSyncSeconds = 15;
+constexpr uint16_t horusV3TimeSyncOffsetSeconds = 0;
 
 
 // Horus V2:
-unsigned int horusTimeSyncSeconds = 15;
-unsigned int horusTimeSyncOffsetSeconds = 0;
+constexpr uint16_t horusTimeSyncSeconds = 15;
+constexpr uint16_t horusTimeSyncOffsetSeconds = 0;
 
 
 // APRS:
-unsigned int aprsTimeSyncSeconds = 30;
-unsigned int aprsTimeSyncOffsetSeconds = 0;
+constexpr uint16_t aprsTimeSyncSeconds = 30;
+constexpr uint16_t aprsTimeSyncOffsetSeconds = 0;
 
 
 // RTTY:
-unsigned int rttyTimeSyncSeconds = 15;
-unsigned int rttyTimeSyncOffsetSeconds = 0;
+constexpr uint16_t rttyTimeSyncSeconds = 15;
+constexpr uint16_t rttyTimeSyncOffsetSeconds = 0;
 
 
 // Morse:
-unsigned int morseTimeSyncSeconds = 15;
-unsigned int morseTimeSyncOffsetSeconds = 0;
+constexpr uint16_t morseTimeSyncSeconds = 15;
+constexpr uint16_t morseTimeSyncOffsetSeconds = 0;
 
 
 
@@ -234,10 +215,10 @@ unsigned int morseTimeSyncOffsetSeconds = 0;
 
 // Pip:
 bool pipEnable = false;               // Enable pip tx mode (carrier)
-float pipFrequencyMhz = 432.7;        // Pip tx frequency
-int pipLengthMs = 100;               // Pip signal length in ms
-int pipRepeat = 3;                    // Pip signal repeat count in 1 transmit window
-int pipRadioPower = 7;                // TX power, 0 = -1dBm (~0.8mW), 1 = 2dBm (~1.6mW), 2 = 5dBm (~3 mW), 3 = 8dBm (~6 mW), 4 = 11dBm (~12 mW), 5 = 14dBm (25 mW), 6 = 17dBm (50 mW), 7 = 20dBm (100 mW)
+constexpr float pipFrequencyMhz = 432.7;        // Pip tx frequency
+constexpr uint16_t pipLengthMs = 100;               // Pip signal length in ms
+constexpr uint16_t pipRepeat = 3;                    // Pip signal repeat count in 1 transmit window
+constexpr int8_t pipRadioPower = 7;                // TX power, 0 = -1dBm (~0.8mW), 1 = 2dBm (~1.6mW), 2 = 5dBm (~3 mW), 3 = 8dBm (~6 mW), 4 = 11dBm (~12 mW), 5 = 14dBm (25 mW), 6 = 17dBm (50 mW), 7 = 20dBm (100 mW)
 
 
 /* Horus V3 transmission mode - encoder provided by Mark VK5QI
@@ -250,42 +231,40 @@ temperatures:
   custom1 - humidity module temperature sensor
 
 extraSensors:
-  gps_0_0 - gpsHdop (horizontal precision in meters)
-  gps_0_1 - gpsJamWarning - 0 when OK, 1 when GPS jam algorithm has detected abnormaities and issued a warning currently
-  // commented out - quite a long packet when included, with not so necessary data, but you can uncomment it if you want, around line 1345 and change array element count to 2. heat [a, b] - heaters status, where: a = reference resistors heater status (0-3 power), b = humidity module defrost heater status (0-500 PWM power).
+  gps_0_0 - gpsStatus - Current GPS power mode. If RSM4x2: 0=disabled, 1=max performance, 2=powersave. If RSM4x4: 0=disabled, 1=max performance, 2=max tracking, powersave, 3=efficient tracking, powersave
+  gps_0_1 - gpsHdop   - Horizontal GPS precision value
+  
+, leaving the horusV3LongerPacket at false will transmit using V3 the same telemetry contents as with V2. I suggest leaving the longerPacket true for most cases.
 
-, leaving the horusV3LongerPacket at false will transmit using V3 the same telemetry as with V2.
-For even more telemetry using horus V3, please refer a few lines below down to the section 'dataRecorder'
-
-For more information of encoding, refer to documentation and horus v3 function in code. RSM4x2 users - refer to RSM4x2_HORUSV3_UNLOCK option above.*/
+For more information of encoding, refer to documentation and horus v3 function in code.*/
 bool horusV3Enable = true;              // Enable horus v3 tx mode
-float horusV3FreqTable[] = {437.6};     // Specify all horus frequencies You want (example {437.6, 434.714, 433.8};), the sonde will cycle through all of them one-by-one during a transmit cycle. Useful when flying long flights in different places of the world (Poland 437.6Mhz, most of the europe 434.714Mhz) Note - lowAltitudeFasTxMode will only use primary frequency - the first one specified.
+constexpr float horusV3FreqTable[] = {437.6};     // Specify all horus frequencies You want (example {437.6, 434.714, 433.8};), the sonde will cycle through all of them one-by-one during a transmit cycle. Useful when flying long flights in different places of the world (Poland 437.6Mhz, most of the europe 434.714Mhz) Note - lowAltitudeFasTxMode will only use primary frequency - the first one specified.
 #define HORUS_V3_CALLSIGN "4FSKTEST-V3"      // Payload callsign for Horus V3 mode. Note that adding every single character increases your packet size by 6 bits.
-int horusV3Bdr = 100;                   // Transmission baudrate, default 100
-int horusV3RadioPower = 7;              // TX power, 0 = -1dBm (~0.8mW), 1 = 2dBm (~1.6mW), 2 = 5dBm (~3 mW), 3 = 8dBm (~6 mW), 4 = 11dBm (~12 mW), 5 = 14dBm (25 mW), 6 = 17dBm (50 mW), 7 = 20dBm (100 mW)
+constexpr uint16_t horusV3Bdr = 100;                   // Transmission baudrate, default 100
+constexpr int8_t horusV3RadioPower = 7;              // TX power, 0 = -1dBm (~0.8mW), 1 = 2dBm (~1.6mW), 2 = 5dBm (~3 mW), 3 = 8dBm (~6 mW), 4 = 11dBm (~12 mW), 5 = 14dBm (25 mW), 6 = 17dBm (50 mW), 7 = 20dBm (100 mW)
 bool horusV3LongerPacket = true;        // See explanation above.
-int horusBdr = 100;                   // Transmission baudrate, default 100
-const int horusPreambleLength = 8;   // Horus V2/V3 preamble length in bits - default at 16. Allows receivers to lock on the carriers etc.
+constexpr uint16_t horusBdr = 100;                   // Transmission baudrate, default 100
+constexpr int8_t horusPreambleLength = 8;   // Horus V2/V3 preamble length in bits - default at 16. Allows receivers to lock on the carriers etc.
 
 
 // Horus v2 - NOTE: I HIGHLY! SUGGEST SWITCHING TO V3 MODE, v2 is becoming outdated and v3 is here as a new, much more flexible standard. RX stations should also keep their software updated to the latest releases, which support Horus V3.
 bool horusEnable = false;              // Enable horus v2 tx mode
-float horusFreqTable[] = {437.6};     // Specify all horus frequencies You want (example {437.6, 434.714, 433.8};), the sonde will cycle through all of them one-by-one during a transmit cycle. Useful when flying long flights in different places of the world (Poland 437.6Mhz, most of the europe 434.714Mhz) Note - lowAltitudeFasTxMode will only use primary frequency - the first one specified.
-unsigned int horusPayloadId = 256;    // Horus v2 (v1 is outdated and NFW only sends extedned v2 format, v1 IDs seem to work with v2 too) payload ID. Please obtain Yours by creating an issue at https://github.com/projecthorus/horusdemodlib/issues
-int horusRadioPower = 7;              // TX power, 0 = -1dBm (~0.8mW), 1 = 2dBm (~1.6mW), 2 = 5dBm (~3 mW), 3 = 8dBm (~6 mW), 4 = 11dBm (~12 mW), 5 = 14dBm (25 mW), 6 = 17dBm (50 mW), 7 = 20dBm (100 mW)
+constexpr float horusFreqTable[] = {437.6};     // Specify all horus frequencies You want (example {437.6, 434.714, 433.8};), the sonde will cycle through all of them one-by-one during a transmit cycle. Useful when flying long flights in different places of the world (Poland 437.6Mhz, most of the europe 434.714Mhz) Note - lowAltitudeFasTxMode will only use primary frequency - the first one specified.
+constexpr uint16_t horusPayloadId = 256;    // Horus v2 (v1 is outdated and NFW only sends extedned v2 format, v1 IDs seem to work with v2 too) payload ID. Please obtain Yours by creating an issue at https://github.com/projecthorus/horusdemodlib/issues
+constexpr int8_t horusRadioPower = 7;              // TX power, 0 = -1dBm (~0.8mW), 1 = 2dBm (~1.6mW), 2 = 5dBm (~3 mW), 3 = 8dBm (~6 mW), 4 = 11dBm (~12 mW), 5 = 14dBm (25 mW), 6 = 17dBm (50 mW), 7 = 20dBm (100 mW)
 
 
 // APRS:
 bool aprsEnable = true;               // Enable APRS tx mode
-float aprsFreqTable[] = {432.5};      // APRS frequency table (same format as Horus table). Same as for horus frequency table. Note - dataRecorder will only use primary frequency (first specified). Note - lowAltitudeFasTxMode will only use primary frequency - the first one specified.
+constexpr float aprsFreqTable[] = {432.5};      // APRS frequency table (same format as Horus table). Same as for horus frequency table. Note - dataRecorder will only use primary frequency (first specified). Note - lowAltitudeFasTxMode will only use primary frequency - the first one specified.
 char aprsCall[] = "N0CALL";           // Callsign
-String aprsComment = " NFW";          // APRS message comment
-char aprsSsid = 12;                   // SSID for the call sign
-char aprsDest[] = "APRNFW";           // Destination address for APRS
-char aprsDigi[] = "WIDE2";            // Digipeater callsign
-char aprsDigiSsid = 1;                // Digipeater SSID
-char aprsSymbolOverlay = 'O';         // Symbol overlay - 'O' for balloon icon, '_' for WX station icon
-char aprsSymTable = 'a';              // Symbol table (e.g., 'a' for standard symbol)
+String aprsComment = " NFWv65";          // APRS message comment
+constexpr char aprsSsid = 11;                   // SSID for the call sign
+constexpr char aprsDest[] = "APRNFW";           // Destination address for APRS
+constexpr char aprsDigi[] = "WIDE2";            // Digipeater callsign
+constexpr char aprsDigiSsid = 1;                // Digipeater SSID
+constexpr char aprsSymbolOverlay = 'O';         // Symbol overlay - 'O' for balloon icon, '_' for WX station icon
+constexpr char aprsSymTable = 'a';              // Symbol table (e.g., 'a' for standard symbol)
 /* APRS Operation Mode:
   1 - Standard RS41-NFW tracker telemetry format, where in APRS comment:
     F - frame
@@ -300,27 +279,27 @@ char aprsSymTable = 'a';              // Symbol table (e.g., 'a' for standard sy
     R - PCB revision (determines model string)
   
   2 - weather station format, sends APRS WX weather reports */
-int aprsOperationMode = 1;
-int aprsRadioPower = 7;               // TX power, 0 = -1dBm (~0.8mW), 1 = 2dBm (~1.6mW), 2 = 5dBm (~3 mW), 3 = 8dBm (~6 mW), 4 = 11dBm (~12 mW), 5 = 14dBm (25 mW), 6 = 17dBm (50 mW), 7 = 20dBm (100 mW)
+constexpr int8_t aprsOperationMode = 1;
+constexpr int8_t aprsRadioPower = 7;               // TX power, 0 = -1dBm (~0.8mW), 1 = 2dBm (~1.6mW), 2 = 5dBm (~3 mW), 3 = 8dBm (~6 mW), 4 = 11dBm (~12 mW), 5 = 14dBm (25 mW), 6 = 17dBm (50 mW), 7 = 20dBm (100 mW)
 
 
 // RTTY (Franek's original code was modified by OM3BC (thanks!)):
 #define CALLSIGN "N0CALL"             // Callsign used for morse and rtty
 
 bool rttyEnable = false;              // Enable rtty tx mode, compliant with UKHAS format
-float rttyFrequencyMhz = 434.6;       // RTTY tx frequency
-int rttyBitDelay = 10000;             // RTTY delay between transmitted bits - 22000 ~= 45bdrate, 13333 ~= 75bdr, 10000 ~= 100bdr
-int rttyBits = 7;                     // RTTY 7 = 7bit character, 8 = 8bit character
-float rttyStopBits = 2;               // RTTY stop bits (1, 1.5, 2)
+constexpr float rttyFrequencyMhz = 434.6;       // RTTY tx frequency
+constexpr uint16_t rttyBitDelay = 10000;             // RTTY delay between transmitted bits - 22000 ~= 45bdrate, 13333 ~= 75bdr, 10000 ~= 100bdr
+constexpr uint8_t rttyBits = 7;                     // RTTY 7 = 7bit character, 8 = 8bit character
+constexpr uint8_t rttyStopBits = 2;               // RTTY stop bits (1, 1.5, 2)
 #define RTTY_RADIO_MARK_OFFSET 0x03   // TX-related, specifies radio offset settings
 #define RTTY_RADIO_SPACE_OFFSET 0x01  // TX-related, specifies radio offset settings
-int rttyRadioPower = 7;               // TX power, 0 = -1dBm (~0.8mW), 1 = 2dBm (~1.6mW), 2 = 5dBm (~3 mW), 3 = 8dBm (~6 mW), 4 = 11dBm (~12 mW), 5 = 14dBm (25 mW), 6 = 17dBm (50 mW), 7 = 20dBm (100 mW)
+constexpr int8_t rttyRadioPower = 7;               // TX power, 0 = -1dBm (~0.8mW), 1 = 2dBm (~1.6mW), 2 = 5dBm (~3 mW), 3 = 8dBm (~6 mW), 4 = 11dBm (~12 mW), 5 = 14dBm (25 mW), 6 = 17dBm (50 mW), 7 = 20dBm (100 mW)
 
 // Morse:
 bool morseEnable = false;             // Enable morse tx mode
-float morseFrequencyMhz = 434.6;      // Morse tx frequency
-int morseUnitTime = 40;               // Morse unit time
-int morseRadioPower = 7;              // TX power, 0 = -1dBm (~0.8mW), 1 = 2dBm (~1.6mW), 2 = 5dBm (~3 mW), 3 = 8dBm (~6 mW), 4 = 11dBm (~12 mW), 5 = 14dBm (25 mW), 6 = 17dBm (50 mW), 7 = 20dBm (100 mW)
+constexpr float morseFrequencyMhz = 434.6;      // Morse tx frequency
+constexpr uint16_t morseUnitTime = 40;               // Morse unit time
+constexpr int8_t morseRadioPower = 7;              // TX power, 0 = -1dBm (~0.8mW), 1 = 2dBm (~1.6mW), 2 = 5dBm (~3 mW), 3 = 8dBm (~6 mW), 4 = 11dBm (~12 mW), 5 = 14dBm (25 mW), 6 = 17dBm (50 mW), 7 = 20dBm (100 mW)
 
 
 
@@ -335,9 +314,9 @@ bool foxHuntMorseMarker = true;                                    // In fox hun
 String foxMorseMsg = "N0CALL N0CALL FOX";                          // Morse message contents
 bool foxHuntLowVoltageAdditionalMarker = true;                     // When the low voltage threshold is met (specified with vBatWarnValue), the additional marker is activated, to send for example transmitter location
 String foxMorseMsgVbat = "N0CALL N0CALL FOX 11.123456 12.456789";  // Additional morse message when vBatWarnValue is met
-float foxHuntFrequency = 434.5;                                    // Foxhunt tx freq
-unsigned int foxHuntTransmissionDelay = 0;                         // Delay in fox hunting mode between transmission cycles in ms
-int foxHuntRadioPower = 7;                                         // TX power, 0 = -1dBm (~0.8mW), 1 = 2dBm (~1.6mW), 2 = 5dBm (~3 mW), 3 = 8dBm (~6 mW), 4 = 11dBm (~12 mW), 5 = 14dBm (25 mW), 6 = 17dBm (50 mW), 7 = 20dBm (100 mW)
+constexpr float foxHuntFrequency = 434.5;                                    // Foxhunt tx freq
+constexpr uint16_t foxHuntTransmissionDelay = 0;                         // Delay in fox hunting mode between transmission cycles in ms
+constexpr int8_t foxHuntRadioPower = 7;                                         // TX power, 0 = -1dBm (~0.8mW), 1 = 2dBm (~1.6mW), 2 = 5dBm (~3 mW), 3 = 8dBm (~6 mW), 4 = 11dBm (~12 mW), 5 = 14dBm (25 mW), 6 = 17dBm (50 mW), 7 = 20dBm (100 mW)
 
 
 
@@ -357,13 +336,13 @@ LED status description during operation:
 LED status during startup:
 - Red blinks 3 times - wrong conditions for zero humidity calibration, exiting zero humidity calibration
 - Red blinks 5 times - zero humidity calibration cancelled due to a sensor boom error
-- Constant red (unseen) - hardware init
+- Constant red - hardware init
 - Constant orange - sensor boom and heating circuitry init, also partly GPS initialization
 - Blinking orange shortly - calibration in progress, either reconditioning, temperature correction or zero-humidity-check
 - Green blinks 5 times - firmware setup done, entering main program
 */
 bool ledStatusEnable = true;
-int ledAutoDisableHeight = 1000;                            // Altitude in meters above which the status LEDs get disabled
+constexpr int16_t ledAutoDisableHeight = 1000;                            // Altitude in meters above which the status LEDs get disabled
 
 
 
@@ -373,8 +352,8 @@ For most users, Mode 4 is suggested, which enables NFW serial protocol compatibl
 Optionally You may select Mode 1, which allows user to connect to a serial terminal and view text log of firmware operation.
 Modes 0,2, shouldn't be used as they do nothing, mode 3 is still in development.
 */
-const int xdataPortMode = 4;   //0 - disabled, 1 - debug uart, 2 - i2c (NO implementation now, does nothing), 3 - xdata sensors (oif411, bad implementation, needs to be rewritten for user-friendliness), 4 - RS41-NFW Control Software communication mode
-int oif411MsgWaitTime = 1100;  //waiting time for oif411 message
+constexpr uint8_t xdataPortMode = 4;   //0 - disabled, 1 - debug uart, 2 - i2c (NO implementation now, does nothing), 3 - xdata sensors (oif411, bad implementation, needs to be rewritten for user-friendliness), 4 - RS41-NFW Control Software communication mode. 5 - GPS bridge mode @default baudrates (115200)
+constexpr uint16_t oif411MsgWaitTime = 1100;  //waiting time for oif411 message
 
 
 
@@ -386,12 +365,37 @@ bool ultraPowerSaveAfterLanding = false;                    // 20 minutes after 
 
 
 // ===== GPS configuration
-/*gpsOperationMode:
+/* gpsOperationMode:
   0 - fully OFF (stationary use, like WX station, the stationary coordinates can be specified in gpsLat-gpsLong)
   1 - default, always ON;
-  2 - powersaving when stable position (only on old sondes, lowers power consumption by +-30mA. Not implemented on newer sondes, because their GPS already draws very little current, comparable with the old one in power-saving, also they don't have an obvious power saving mode, only some interval-like ones).
-Suggested setting for flight - 1 with RSM4x4 version, 2 with RSM4x2 version. For stationary use, consider using 0, like a weather station or beacon (decide wisely)*/
-int gpsOperationMode = 1;
+  2 - standard powersaving when stable position (only RSM4x2, old feature which lowers power consumption when GPS signal is strong, automatically goes back to Max Performance when necessary)
+  3 - INTELLIGENT GPS management - algorithm available only for RSM4x4 boards, which together with the M10 u-blox GPS' Super-S, PSMCT, ITFM, constellations and GNS messages allows
+      for a BIG improvement in terms of power consumption and interference and jamming resiliance.
+
+Suggested values for tracker use - choose 3 for RSM4x4 or 2 for RSM4x2.
+Both 2 and 3 power modes don't affect tracking performance, as the NFW constantly maintains best performance/power.
+IF SET TO 3 READ BELOW OPTION */
+uint8_t gpsOperationMode = 3;
+
+/* gpsManagement options - available only for RSM4x4 - and only when gpsOperationMode = 3 is selected:
+  m10ConstellationOptimization - NFW automatically adjusts used constellations to provide both the best performance and lowest power consumption. Detects signal quality and navigation properties. 
+  m10AggressiveOpt - prioritizes power efficiency over tracking quality in constellation optimization.
+  m10CyclicTracking - in good signal scenarios the receiver will enter a cyclic tracking mode, where navigation processor wakes up every 10 seconds, calculates the position, and goes to sleep. This option provides a big power improvement.
+  m10PerformanceImprovements - provides many improvements in terms of signal reception, satellite orbit parameters and refresh rates.
+  m10SuperS - u-blox's Super-S technology maximizes performance in different conditions, and optimizes power consumption at the same time.
+  
+Suggested values:
+  m10constellationOptimization = true
+  m10AggressiveOpt = false, set to true if you really really care about those last milliamps. Note: disabling WILL significantly impact tracking performance. This is the only option that can badly impact tracking.
+  m10CyclicTracking = true;
+  m10PerformanceImprovements = true, always;
+  m10SuperS = true, only profit
+*/
+bool m10ConstellationOptimization = true;
+bool m10AggressiveOpt = false;
+bool m10CyclicTracking = true;
+bool m10PerformanceImprovements = true;
+bool m10SuperS = true;
 
 
 /* ubloxGpsAirborneMode - Sets the uBlox GPS module to the Airborne 1G Dynamic Model, which allows flights above 18km altitude
@@ -428,14 +432,14 @@ float gpsLong = 0;                                          // Longitude
 float gpsAlt = 0;                                           // Altitude
 
 
-int gpsSatsWarnValue = 4;                                   // Warning value for GPS satellites number
-int gpsNmeaMsgWaitTime = 1250;                              // Waiting time for gps message
+constexpr uint8_t gpsSatsWarnValue = 4;                     // Warning value for GPS satellites number
 unsigned long gpsPowerSaveDebounce = 300000;                // Debounce to limit setting the GPS back and forth into the power saving mode
 
 
 
 // ===== Sensors
-bool sensorBoomEnable = true;  //Enables sensor boom measurements and diagnostics
+bool sensorBoomEnable = true;                              // Enables sensor boom measurements and diagnostics
+bool sensorBoomPowerSaving = false;                         // Lowers the sensors refresh rate to 30s
 
 //NOTE - calibration process is very clear and fully guided if You use RS41-NFW Ground Control Software together with selected values here. Keep reading :D
 
@@ -493,7 +497,7 @@ bool autoTemperatureCalibration = true;
   Much worse accuracy, works best in environment temperatures ranging from 5C to 32C.
 
 Automatic temperature calibration is indicated by orange LED during startup, for more status information, read about LED status above or launch RS41-NFW Ground Control Software. */
-int autoTemperatureCalibrationMethod = 1;
+constexpr uint8_t autoTemperatureCalibrationMethod = 1;
 float environmentStartupAirTemperature = 24;
 
 
@@ -507,7 +511,7 @@ bool humidityModuleEnable = true;  // Setting that enables the support of humidi
 Phase before zero-humidity check, lasting for a minute. Heats the sensor to the specified value and removes impurities and debris from the humidity module.
 Suggested with the zero-humidity check. (Also used during the original Vaisala ground check, lasts a couple of minutes and heats the sensor to 180*C) */
 bool reconditioningEnabled = false;
-unsigned int reconditioningTemperature = 145;
+constexpr uint8_t reconditioningTemperature = 145;
 
 
 /* Zero humidity check (how Vaisala calls it) or more accurately Zero-Humidity Calibration 
@@ -554,8 +558,8 @@ As always, two methods to choose from (for beginners suggested option 1, if You 
   The observed max delta value change below in 'humidityCapacitanceRangeDelta' and disable 'humidityCalibrationDebug'. */
 float humidityCapacitanceRangeDelta = 6;         // Empirical tests average
 bool humidityCalibrationDebug = false;                    // (Bla bla bla after calibration the sonde enters special mode that prints out on serial port or RS41-NFW Ground Control Software the frequencies and a suggested humidityRangeDelta value. After it enters this mode, place the sensor in a 100%RH environment (for example close over a boiling water) and read the rangeDelta. This will give You a higher accuracy of the readings for each sensor boom.)
-unsigned long humidityCalibrationTimeout = 300000;        // Zero humidity calibration timeouts if it can't finish in (by default) 5 minutes (300000 milliseconds)
-int humidityCalibrationMeasurementTemperature = 115;      // Minimum sensor temperature, at which the calibration function takes measurements. Must be over 110 for reliable calibration, suggested 115
+constexpr unsigned long humidityCalibrationTimeout = 300000;        // Zero humidity calibration timeouts if it can't finish in (by default) 5 minutes (300000 milliseconds)
+constexpr uint8_t humidityCalibrationMeasurementTemperature = 115;      // Minimum sensor temperature, at which the calibration function takes measurements. Must be over 110 for reliable calibration, suggested 115
 
 
 
@@ -572,8 +576,8 @@ int humidityCalibrationMeasurementTemperature = 115;      // Minimum sensor temp
 The pressureValue is sent via Horus v2, Horus v3 and APRS .
 
 Suggested option - 1, using the RPM411 pressure sensor.*/
-bool pressureMode = 1;
-unsigned long seaLevelPressure = 1013.25;                  // Sea level pressure in hPa, used to correctly estimate the pressure in the upper layers
+constexpr uint8_t pressureMode = 1;
+constexpr float seaLevelPressure = 1013.25;                  // Sea level pressure in hPa, used to correctly estimate the pressure in the upper layers
 
 
 
@@ -590,7 +594,7 @@ referenceAreaTargetTemperature - suggested values (temperature in degrees celciu
   - 8, if flying without original box, but with some form of wind cover like a few wraps of tape or foil or a small foil bag with a few layers.
   - 0, if flying with raw PCB. Raw PCB heating will consume much (I mean very much) more power, so beware of it when planning the flight. */
 bool referenceHeating = true;                             // Enable option for reference area heating
-int referenceAreaTargetTemperature = 18;                  // Target temperature of reference area heating.
+constexpr int8_t referenceAreaTargetTemperature = 18;                  // Target temperature of reference area heating.
 
 
 /* humidityModuleHeating, 
@@ -604,26 +608,26 @@ Suggested values:
   - humicaMinimumTemperature = -44, below this value humicap's performance degrades much.
 */
 bool humidityModuleHeating = true;
-int defrostingOffset = 5;                                 // This is the positive offset added to the sensor target temperature to prevent sensor frosting in icing conditions
-int humicapMinimumTemperature = -44;                      // Humicap sensor minimum operating temperature (below this value the sensor gets significantly less accurate and responsive)
-int humidityModuleHeatingTemperatureThreshold = 35;    // NFW will activate the heating only when the sensor's temperature is < this threshold. Vaisala heats at all times.
+constexpr int8_t defrostingOffset = 5;                                 // This is the positive offset added to the sensor target temperature to prevent sensor frosting in icing conditions
+constexpr int8_t humicapMinimumTemperature = -44;                      // Humicap sensor minimum operating temperature (below this value the sensor gets significantly less accurate and responsive)
+constexpr int8_t humidityModuleHeatingTemperatureThreshold = 35;    // NFW will activate the heating only when the sensor's temperature is < this threshold. Vaisala heats at all times.
 
 
 
 /* lowAltitudeFastTx mode
 When sonde is descending after a burst, after it goes below 'lowAltitudeFastTxThreshold' altitude threshold, algorithms switch into a 'lowAltitudeFastTx' mode.
 It is active for 'lowAltitudeFastTxDuration'. During this time it transmits Horus and APRS as fast as it can (or slower by setting the 'lowAltitudeFastTxInterval'), and only refreshes position and sensor data. */
-int lowAltitudeFastTxThreshold = 1000;                    // Meter altitude threshold for this mode to enable (set to 0 to disable)
-unsigned long lowAltitudeFastTxDuration = 480000;         // How long this mode will work, in milliseconds (default 480000ms = 8minutes)
-int lowAltitudeFastTxInterval = 1;                        // Delay in ms between transmissions in this mode, leave at minimum 1 to provide the most data possible (note that it overloads Horus and APRS infrastructure very much for a short period of time).
+constexpr uint16_t lowAltitudeFastTxThreshold = 1000;                    // Meter altitude threshold for this mode to enable (set to 0 to disable)
+constexpr unsigned long lowAltitudeFastTxDuration = 480000;         // How long this mode will work, in milliseconds (default 480000ms = 8minutes)
+constexpr uint16_t lowAltitudeFastTxInterval = 1;                        // Delay in ms between transmissions in this mode, leave at minimum 1 to provide the most data possible (note that it overloads Horus and APRS infrastructure very much for a short period of time).
 
 
 
 /* Flight computing 
 NFW firmware also processes collected data.
 To ensure propper operation, look at these values and correct them if needed. */
-unsigned int flightDetectionAltitude = 750;               // Flight detection altitude, if exceeded, the sonde knows that the flight began. I suggest to set it a few hundred meters above Your terrain level.
-unsigned int burstDetectionThreshold = 800;               // Threshold value, which if exceeded (below maxAlt), deterimnes that the balloon has burst. Suggested 1000m, because some balloons get unsealed or float.
+constexpr uint16_t flightDetectionAltitude = 750;               // Flight detection altitude, if exceeded, the sonde knows that the flight began. I suggest to set it a few hundred meters above Your terrain level.
+constexpr uint16_t burstDetectionThreshold = 800;               // Threshold value, which if exceeded (below maxAlt), deterimnes that the balloon has burst. Suggested 1000m, because some balloons get unsealed or float.
 
 
 
@@ -631,10 +635,6 @@ unsigned int burstDetectionThreshold = 800;               // Threshold value, wh
 bool autoResetEnable = true;                              // Automatically reset the CPU after specified time below, useful in stationary continuous use, to prevent from overflowing some variables and improving overall stability.
 #define SYSTEM_RESET_PERIOD (7UL * 24 * 60 * 60 * 1000)   // 7 days in milliseconds
 bool aprsToneCalibrationMode = false;                     // DON'T use for flight! transmits tones at 1200 and 2200 hz to calibrate the APRS delays for perfect sound frequencies, development mode, not for use
-const unsigned int gpsReadMinimumTime = 1.5;                // Scheduler safety margin (seconds) for GPS readout
-const unsigned int sensorReadMinimumTime = 1.8;             // Scheduler safety margin (seconds) for sensors readout
-const unsigned int gpsMinimumUpdate = 3500;               // Minimum GPS update interval
-const unsigned int sensorMinimumUpdate = 10000;           // Minium sensor update inerval
 #define THERMISTOR_R25 10000                              // Onboard thermistor R value at 25C
 #define THERMISTOR_B 3900                                 // Onboard thermistor Beta factor
 
@@ -650,35 +650,18 @@ Suggested settings: Leave at 1 for a button shutdown and simple operation.
                     If You fly a sonde with PV or on 1xAA power supply, consider disabling the button and shorting its pins for always closed state.
 
 NOTE: The button sometimes would need a longer hold than usual, about 3s instead of 1.5s, time varies due to CPU time availability, but never should exceed a longer hold.*/
-int buttonMode = 1;
+constexpr int8_t buttonMode = 1;
 
 
 
 /* dataRecorder
 Set 'dataRecorderEnable' to true to enable this mode.
-If active, the sonde transmits recorded, computed and debugging data to the ground via additional APRS comments (described in repo) and Horus V3 extraSensors. APRS comment frame decoder is available in a simple separate Python decoder.
+If active, the sonde transmits recorded, computed and debugging data to the ground via Horus V3 extraSensors.
 
-Horus V3 extraSensors format in dataRecorder packet (128 bytes long):
-  * Slot 0: [String] "status" 
-    - Format: "HEALTH VERSION SERIAL"   [status]  (Space separated)
-    - Contents: healthStatusStr, NFW_VERSION_SHORT, RPM411SerialNumber
-  * Slot 1: [Ints] "gps"
-    - arr[0]: gpsHdop                   [gps_1_0] (Horizontal Dilution of Precision value from GPS, m)
-    - arr[1]: gpsJamWarning             [gps_1_1] (GPS signal anomalies/jamming warning status, 0=false, 1=true)
-    - arr[2]: gpsResetCounter           [gps_1_2] (Number of GPS restarts due to jamming in-air)
-    - arr[3]: currentGPSPowerMode       [gps_1_3] (Current GPS power mode. 0=disabled, 1=max performance, 2=powersave)
-  * Slot 2: [Ints] "stats"
-    - arr[0]: maxAlt                    [stats_2_0] (Maximum altitude reached in meters)
-    - arr[1]: maxSpeed                  [stats_2_1] (Maximum horizontal speed in kph)
-    - arr[2]: burstDetected             [stats_2_2] (Balloon burst detected. 0=false, 1=true)
-  * Slot 3: [Ints] "temps-heat"
-    - arr[0]: extHeaterPwmStatus        [temps-heat_3_0] (Humidity module heating power x/500)
-    - arr[1]: referenceHeaterStatus     [temps-heat_3_1] ((Reference area heating power. 0=off, 1=low, 2=medium, 3=high)
-    - arr[2]: readRadioTemp()           [temps-heat_3_2] ((Current radio chip temp)
-    - arr[3]: rpm411InternalTemperature [temps-heat_3_3] ((RPM411 pressure sensor module temperature)
+Warning - APRS dataRecorder has been currently deprecated - there was a memory overflow issue somewhere, which I couldn't resolve and it caused the device to behave erraticaly. Also it seems to be a much better option in Horus V3 extaSensors array.
 */
 bool dataRecorderEnable = true;
-unsigned int dataRecorderInterval = 600000;               // 10 minutes frame interval by default (600000 milliseconds)
+constexpr unsigned int dataRecorderInterval = 180000;               // 3 minutes frame interval by default (180000 milliseconds)
 bool dataRecorderFlightNoiseFiltering = true;             // Filter out noisy data on ground and during position gathering, include in the measurements only the data captured in flight
 
 
@@ -728,20 +711,20 @@ int heatingTemperatureThreshold = 2; //turns on only in conditions where condens
 int heatingHumidityThreshold = 90; //turns on only in conditions where condensation would be really possible*/
 
 //===== System internal variables, shouldn't be changed here
-int btnCounter = 0;
-int bufPacketLength = 64;
-int txRepeatCounter = 0;
+uint8_t btnCounter = 0;
+uint8_t bufPacketLength = 64;
+uint16_t txRepeatCounter = 0;
 float batVFactor = 1.0;
 bool ledsEnable = ledStatusEnable;  //internal boolean used for height disable etc.
 String rttyMsg;
 String morseMsg;
 unsigned long gpsTime;
-int gpsHours;
-int gpsMinutes;
-int gpsSeconds;
+uint8_t gpsHours;
+uint8_t gpsMinutes;
+uint8_t gpsSeconds;
 float gpsSpeed;
 float gpsSpeedKph = 0;
-int gpsSats;  //system wide variables, for use in functions that dont read the gps on their own
+uint8_t gpsSats;  //system wide variables, for use in functions that dont read the gps on their own
 float gpsHdop;
 bool err = false;   //const red light, status state
 bool warn = false;  //orange light, status state
@@ -751,7 +734,7 @@ bool vBatWarn = false;
 bool gpsFixWarn = false;
 int horusPacketCount;
 int horusV3PacketCount;
-int xdataInstrumentType = 0;
+uint8_t xdataInstrumentType = 0;
 int xdataInstrumentNumber = 0;
 float xdataOzonePumpTemperature = 0;
 float xdataOzoneCurrent = 0;
@@ -762,7 +745,7 @@ unsigned long lastGpsAltMillisTime = 1;
 float vVCalc;
 bool gpsTimeoutCounterActive = false;
 unsigned long gpsTimerBegin = 0;
-int currentGPSPowerMode = 1;  // 1 normal (max powerformance/continuous), 2 powersave
+int currentGPSPowerMode = 0;  // 1 normal (max powerformance/continuous), 2 powersave
 unsigned long lastPowerSaveChange = 0;
 unsigned int rttyFrameCounter = 0;
 unsigned long lowAltitudeFastTxModeBeginTime = 0;
@@ -771,16 +754,18 @@ unsigned long lastDataRecorderTransmission = 0;
 unsigned long landingTimeMillis = 0;
 bool cancelGpsImprovement = false;
 bool gpsJamWarning = false;
-int currentRadioPwrSetting = 0;
+int8_t currentRadioPwrSetting = 0;
+int8_t currentM10IntelligentMode = 1;
+int8_t gpsStatus = 1;
 
-int maxAlt = 0;
-int maxSpeed = 0;
-int maxAscentRate = 0.0;
-int maxDescentRate = 0.0;
-int maxMainTemperature = 0;
-int minMainTemperature = 0;
-int maxInternalTemp = 0;
-int minInternalTemp = 0;
+uint16_t maxAlt = 0;
+int16_t maxSpeed = 0;
+int maxAscentRate = 0;
+int maxDescentRate = 0;
+int8_t maxMainTemperature = 0;
+int8_t minMainTemperature = 0;
+int8_t maxInternalTemp = 0;
+int8_t minInternalTemp = 0;
 bool beganFlying = false;
 bool burstDetected = false;
 bool recorderInitialized = false;  //not init by default
@@ -799,14 +784,13 @@ float extHeaterTemperatureValue;
 float humidityFrequency;
 float zeroHumidityFrequency;
 float maxHumidityFrequency;
-int humidityRangeDelta = 850; //old humidity measurement method, depreciated
+uint16_t humidityRangeDelta = 850; //old humidity measurement method, depreciated
 float refCapHighFrequency;
 float refCapLowFrequency;
 float humidityCapacitance;
 float maxHumidityCapacitance;
-int humidityValue;
+uint16_t humidityValue;
 float pressureValue;
-uint32_t measFirstEdgeTime = 0;
 float tempSensorBoomCalibrationFactor = 0;
 bool sensorBoomMainTempError = false;
 bool sensorBoomHumidityModuleError = false;
@@ -814,7 +798,6 @@ bool sensorBoomFault = false;
 bool calibrationError = false;
 int extHeaterPwmStatus = 0;
 int referenceHeaterStatus = 0;
-int extHeaterTarget = 0;
 
 
 // APRS - misc.
@@ -845,7 +828,7 @@ unsigned long nextMorseTxTime = 0;
 
 
 
-
+#ifdef RSM4x4
 //Based on https://github.com/cturvey/RandomNinjaChef/blob/main/uBloxHABceiling.c , and  https://github.com/Nevvman18/rs41-nfw/issues/3
 uint8_t ubxCfgValSet_dynmodel6[] = {                     // Series 9 and 10
   0xB5, 0x62, 0x06, 0x8A, 0x09, 0x00,                    // Header/Command/Size  UBX-CFG-VALSET (RAM)
@@ -859,6 +842,105 @@ uint8_t ubxCfgValGet_dynmodel6[] = {
   0x21, 0x00, 0x11, 0x20,              // Key for CFG-NAVSPG-DYNMODEL
   0xEB, 0x57                           //hardcoded checksum
 };
+
+// More new messages for M10:
+
+uint8_t ubxCfgValSet_msgRate4Hz[] = {
+  0xB5, 0x62, 0x06, 0x8A, 0x0A, 0x00,                    // Header
+  0x00, 0x01, 0x00, 0x00, 0x01, 0x00, 0x21, 0x30, 0xFA, 0x00, // 250ms (0x00FA)
+  0xE7, 0xE5                                             // Checksum
+};
+
+uint8_t ubxCfgValSet_enableGns[] = {
+  0xB5, 0x62, 0x06, 0x8A, 0x09, 0x00, 0x00, 0x01, 0x00, 0x00, 0xB6, 0x00, 0x91, 0x20, 0x01, 0x02, 0xB3
+};
+
+uint8_t ubxCfgValSet_disableGga[] = {
+  0xB5, 0x62, 0x06, 0x8A, 0x09, 0x00, 0x00, 0x01, 0x00, 0x00, 0xBB, 0x00, 0x91, 0x20, 0x00, 0x06, 0xCB
+};
+
+uint8_t ubxCfgValSet_navRate2500[] = {
+  0xB5, 0x62, 0x06, 0x8A, 0x0A, 0x00 ,0x00, 0x01, 0x00, 0x00, 0x01, 0x00, 0x21, 0x30, 0xC4, 0x09, 0xBA, 0x82                                            // Checksum
+};
+
+uint8_t ubxCfgValSet_enableSuperS[] = { // Super-S power saving mode
+  0xB5, 0x62, 0x06, 0x8A, 0x09, 0x00, 0x00, 0x01, 0x00, 0x00, 0xD6, 0x00, 0x11, 0x20, 0xFF, 0xA0, 0xD1
+};
+/*uint8_t ubxCfgValSet_disableSuperS[] = { // Super-S power saving mode
+  0xB5, 0x62, 0x06, 0x8A, 0x09, 0x00, 0x00, 0x01, 0x00, 0x00, 0xD6, 0x00, 0x11, 0x20, 0x00, 0xA1, 0xD2
+};*/
+
+uint8_t ubxCfgValSetPsmct[] = {
+  0xB5, 0x62, 0x06, 0x8A, 0x09, 0x00, 0x00, 0x01, 0x00, 0x00, 0x01, 0x00, 0xD0, 0x20, 0x02, 0x8D, 0xE8
+};
+
+uint8_t ubxCfgValSetPsmctPeriod10[] = {
+  0xB5, 0x62, 0x06, 0x8A, 0x0C, 0x00, 0x00, 0x01, 0x00, 0x00, 0x02, 0x00, 0xD0, 0x40, 0x0A, 0x00, 0x00, 0x00, 0x00, 0xB9, 0x81
+};
+
+uint8_t ubxCfgValSetContinuous[] = {
+  0xB5, 0x62, 0x06, 0x8A, 0x09, 0x00, 0x00, 0x01, 0x00, 0x00, 0x01, 0x00, 0xD0, 0x20, 0x00, 0x8B, 0xE6
+};
+
+uint8_t ubxEnableGal[] = {
+  0xB5, 0x62, 0x06, 0x8A, 0x09, 0x00, 
+  0x00, 0x01, 0x00, 0x00, 
+  0x21, 0x00, 0x31, 0x10, 0x01, 
+  0xFD, 0x8A
+};
+uint8_t ubxEnableGlo[] = {
+  0xB5, 0x62, 0x06, 0x8A, 0x09, 0x00, 
+  0x00, 0x01, 0x00, 0x00, 
+  0x25, 0x00, 0x31, 0x10, 0x01, 
+  0x01, 0x9E
+};
+uint8_t ubxDisableGal[] = {
+  0xB5, 0x62, 0x06, 0x8A, 0x09, 0x00, 
+  0x00, 0x01, 0x00, 0x00, 
+  0x21, 0x00, 0x31, 0x10, 0x00, 
+  0xFC, 0x89
+};
+uint8_t ubxDisableGlo[] = {
+  0xB5, 0x62, 0x06, 0x8A, 0x09, 0x00, 
+  0x00, 0x01, 0x00, 0x00, 
+  0x25, 0x00, 0x31, 0x10, 0x00, 
+  0x00, 0x9D
+};
+uint8_t ubxEnableGps[] = {
+  0xB5, 0x62, 0x06, 0x8A, 0x09, 0x00, 
+  0x00, 0x01, 0x00, 0x00, 
+  0x1F, 0x00, 0x31, 0x10, 0x01, 
+  0xFB, 0x80
+};
+uint8_t ubxEnableBds[] = {
+  0xB5, 0x62, 0x06, 0x8A, 0x09, 0x00, 
+  0x00, 0x01, 0x00, 0x00, 
+  0x22, 0x00, 0x31, 0x10, 0x01, 
+  0xFE, 0x8F
+};
+
+
+// CFG-NAVSPG-MAX_SVS set to 64 (0x40)
+uint8_t ubxCfgValSet_maxSvs64[] = {
+  0xB5, 0x62, 0x06, 0x8A, 0x09, 0x00,          // Header
+  0x00, 0x01, 0x00, 0x00,                      // Layer: RAM
+  0x21, 0x00, 0x11, 0x20, 0x40,                // Key ID for MAX_SVS, Value: 64
+  0x1A, 0x02                                   // Checksum
+};
+
+// Elevation: 3 deg | C/N0: 10 dBHz
+uint8_t ubxCfgElev3[] = {
+  0xB5, 0x62, 0x06, 0x8A, 0x09, 0x00, 0x00, 0x01, 0x00, 0x00, 0xA3, 0x00, 0x11, 0x20, 0x0A, 0x78, 0xDD
+};
+
+uint8_t ubxCfgSig10[] = {
+  0xB5, 0x62, 0x06, 0x8A, 0x09, 0x00, 0x00, 0x01, 0x00, 0x00, 0xA4, 0x00, 0x11, 0x20, 0x02, 0x71, 0xDA
+};
+
+#endif
+
+
+// 6 series
 
 uint8_t ubxCfgNav5_dynmodel6[] = {
   0xB5, 0x62, 0x06, 0x24, 0x24, 0x00, 0xFF, 0xFF,
@@ -926,7 +1008,6 @@ uint32_t fsk4_bitDuration;
 uint32_t fsk4_tones[4];
 uint32_t fsk4_tonesHz[4];
 
-#ifndef RSM4x2_UNLOCK_HORUSV3
 //===== Morse mode definitions
 // Morse code mapping for letters A-Z, digits 0-9, and space
 const char* MorseTable[37] = {
@@ -968,7 +1049,6 @@ const char* MorseTable[37] = {
   "----.",  // 9
   " "       // Space (7 dot lengths)
 };
-#endif
 
 
 
@@ -1178,7 +1258,6 @@ void setRadioModulation(int modulationNumber) {
 
 //===== Radio modes functions
 
-#ifndef RSM4x2_UNLOCK_HORUSV3
 //rtty
 void sendRTTYPacket(const char* message) {
   rttySendBit(1);
@@ -1262,7 +1341,6 @@ void transmitMorseString(const char* str, int unitTime) {
     delay(3 * unitTime);
   }
 }
-#endif
 
 
 //4fsk implementation for horus
@@ -1324,7 +1402,6 @@ size_t fsk4_write(char* buff, size_t len) {
 
 
 //===== Radio payload creation
-#ifndef RSM4x2_UNLOCK_HORUSV3
 String createRttyMorsePayload() {
   rttyFrameCounter++;
   // Start with the payload string
@@ -1371,12 +1448,10 @@ String createRttyMorsePayload() {
 
   return payloada;
 }
-#endif
 
 
 // Horus V3 mode - protocol and code provided by Mark VK5QI - big thanks for awesome work on code and the protocol!!!
 int buildHorusV3Packet(char* uncoded_buffer){
-  #if defined(RSM4x4) || (defined(RSM4x2) && defined(RSM4x2_UNLOCK_HORUSV3))
   // Horus v3 packets are encoded using ASN1, and are encapsulated in packets
   // of sizes 32, 48, 64, 96 or 128 bytes (before coding)
   // The CRC16 for these packets is located at the *start* of the packet, still little-endian encoded
@@ -1414,7 +1489,7 @@ int buildHorusV3Packet(char* uncoded_buffer){
                     .u = {
                         .horusInt = {
                           .nCount = 2,
-                            .arr = {gpsHdop, gpsJamWarning},
+                            .arr = {gpsStatus, gpsHdop},
                         }
                     }
                 },
@@ -1493,17 +1568,11 @@ int buildHorusV3Packet(char* uncoded_buffer){
 
     // Conditionally disable some of the fields if we have no valid data source for them
 
-    // Don't send pressure data if it's just 0. This is either a failed sensor or no data
-    if (pressureValue == 0){
-      asnMessage.exist.pressurehPa_x10 = false;
-    }
-
     // Don't send external temp and humidity data if the sensor boom isn't in use
     if (sensorBoomEnable == false){
       asnMessage.temperatureCelsius_x10.exist.external = false;
       asnMessage.exist.humidityPercentage = false;
       asnMessage.temperatureCelsius_x10.exist.custom1 = false;
-      asnMessage.exist.extraSensors = false;
     }
 
     // The encoder needs a data structure for the serialization
@@ -1586,14 +1655,12 @@ int buildHorusV3Packet(char* uncoded_buffer){
         return frameSize;
     }
 
-    #endif
     return 0;
 }
 
 
 
 int buildHorusV3PacketDataRecorder(char* uncoded_buffer){
-  #if defined(RSM4x4) || (defined(RSM4x2) && defined(RSM4x2_UNLOCK_HORUSV3))
   // Horus v3 packets are encoded using ASN1, and are encapsulated in packets
   // of sizes 32, 48, 64, 96 or 128 bytes (before coding)
   // The CRC16 for these packets is located at the *start* of the packet, still little-endian encoded
@@ -1605,19 +1672,6 @@ int buildHorusV3PacketDataRecorder(char* uncoded_buffer){
   // Increment packet count
   horusV3PacketCount++;
 
-  char healthStatusStr[5];
-  if (err) { 
-      strcpy(healthStatusStr, "err"); 
-  } else if (warn) { 
-      strcpy(healthStatusStr, "warn"); 
-  } else { 
-      strcpy(healthStatusStr, "ok"); 
-  }
-
-  char combinedStatus[64]; 
-  snprintf(combinedStatus, sizeof(combinedStatus), "%s %s %s", 
-        healthStatusStr, NFW_VERSION_SHORT, RPM411SerialNumber);
-
 
   horusTelemetry asnMessage = {
       .payloadCallsign = HORUS_V3_CALLSIGN,
@@ -1628,13 +1682,8 @@ int buildHorusV3PacketDataRecorder(char* uncoded_buffer){
       .altitudeMeters = gpsAlt,
       
       .extraSensors = {
-          .nCount = 4,
+          .nCount = 3,
           .arr = {
-              {
-                  .name = "status",
-                  .values = { .kind = horusStr_PRESENT },
-                  .exist = { .name = true, .values = true }
-              },
               {
                   .name = "gps",
                   .values = {
@@ -1709,7 +1758,6 @@ int buildHorusV3PacketDataRecorder(char* uncoded_buffer){
       }
   };
 
-  strncpy(asnMessage.extraSensors.arr[0].values.u.horusStr, combinedStatus, 255);
 
     // The encoder needs a data structure for the serialization
     // Again - how much memory is allocated here?
@@ -1791,9 +1839,9 @@ int buildHorusV3PacketDataRecorder(char* uncoded_buffer){
         return frameSize;
     }
 
-    #endif
     return 0;
 }
+
 
 
 int build_horus_binary_packet_v2(char* buffer) {
@@ -1858,7 +1906,6 @@ unsigned int crc16(unsigned char* string, unsigned int len) {
   return crc;
 }
 
-#ifndef RSM4x2_UNLOCK_HORUSV3
 uint16_t rttyCrc16Checksum(unsigned char* string, unsigned int len) {
   uint16_t crc = 0xffff;
   char i;
@@ -1876,7 +1923,6 @@ uint16_t rttyCrc16Checksum(unsigned char* string, unsigned int len) {
   }
   return crc;
 }
-#endif
 
 void PrintHex(char* data, uint8_t length, char* tmp) {
   // Print char data as hex
@@ -2137,28 +2183,203 @@ float readRadioTemp() {  //slightly modified script from rs41ng
   return temperature;  // Temperature in degrees Celsius
 }
 
+bool ackWait(uint16_t timeoutMs = 100)
+{
+  uint8_t buf[10];
+  uint8_t idx = 0;
+  unsigned long start = millis();
 
-void gpsHandler() {
-  if (gpsOperationMode == 0) {
-    shutdownGPS();
-  } else if (gpsOperationMode == 1) {  //gps in normal mode, nothing changed
-    startGPS();
-    GPSPowerModeSet(1);                //make sure it is 1 (normal)
-  } else if (gpsOperationMode == 2) {  //gps in powersaving mode
-    startGPS();
-    if (gpsSats > 6) {  //if gps has stable fix, set to powersaving
-      GPSPowerModeSet(2);
-    } else {  //else, go back to max performance
-      GPSPowerModeSet(1);
+  while (millis() - start < timeoutMs) {
+    while (gpsSerial.available()) {
+      uint8_t b = gpsSerial.read();
+
+      // Sync char 1
+      if (idx == 0 && b != 0xB5) continue;
+
+      // Sync char 2
+      if (idx == 1 && b != 0x62) {
+        idx = 0;
+        continue;
+      }
+
+      buf[idx++] = b;
+
+      // ACK/NAK packets are always 10 bytes
+      if (idx == 10) {
+        // UBX-ACK class?
+        if (buf[2] == 0x05) {
+          if (buf[3] == 0x01) return true;   // ACK-ACK
+          if (buf[3] == 0x00) return false;  // ACK-NAK
+        }
+        idx = 0; // restart scan
+      }
     }
   }
+  return false; // timeout treated as failure
+}
 
+void sendUblox(int Size, uint8_t* Buffer) {
+  gpsSerial.write(Buffer, Size);  // Arduino style byte send
+
+  if(rsm4x4) {
+    ackWait();
+  }
+}
+
+
+void GPSManagement() {
+  if(gpsOperationMode == 0) { // GPS disabled
+    shutdownGPS();
+  }
+  else if(gpsOperationMode == 1) {
+    startGPS();
+
+    if (currentGPSPowerMode != 1) {
+      if(rsm4x4) {
+#ifdef RSM4x4
+        sendUblox(sizeof(ubxCfgValSetContinuous), ubxCfgValSetContinuous);
+        sendUblox(sizeof(ubxEnableGps), ubxEnableGps);
+        sendUblox(sizeof(ubxEnableGlo), ubxEnableGlo);
+        sendUblox(sizeof(ubxEnableGal), ubxEnableGal);
+        sendUblox(sizeof(ubxEnableBds), ubxEnableBds);
+#endif
+      }
+      else if(rsm4x2) {
+        sendUblox(sizeof(ubxCfgNav5_maxPerformance), ubxCfgNav5_maxPerformance);
+      }
+      currentGPSPowerMode = 1;
+    }
+  }
+  else if (gpsOperationMode == 2) {
+    startGPS();
+
+    if(rsm4x2) {
+      if(gpsSats < 7 && currentGPSPowerMode != 2) {
+        sendUblox(sizeof(ubxCfgNav5_powerSave), ubxCfgNav5_powerSave);
+        currentGPSPowerMode = 1;
+      }
+      else if(gpsSats >= 7 && currentGPSPowerMode != 1) {
+        sendUblox(sizeof(ubxCfgNav5_maxPerformance), ubxCfgNav5_maxPerformance);
+        currentGPSPowerMode = 2;
+      }
+    }
+    else if(rsm4x4) {
+#ifdef RSM4x4
+      gpsOperationMode = 3;
+#endif
+    }
+  }
+  else if (gpsOperationMode == 3) {
+    startGPS();
+
+    if(rsm4x4) {
+#ifdef RSM4x4
+      if(gpsSats <= 10 && currentM10IntelligentMode != 1) {
+        if(m10ConstellationOptimization && !m10AggressiveOpt) {
+          sendUblox(sizeof(ubxEnableGps), ubxEnableGps);
+          sendUblox(sizeof(ubxEnableGlo), ubxEnableGlo);
+          sendUblox(sizeof(ubxEnableGal), ubxEnableGal);
+          sendUblox(sizeof(ubxEnableBds), ubxEnableBds);
+        }
+        else if(m10ConstellationOptimization && m10AggressiveOpt) {
+          sendUblox(sizeof(ubxEnableGps), ubxEnableGps);
+          sendUblox(sizeof(ubxDisableGlo), ubxDisableGlo);
+          sendUblox(sizeof(ubxEnableGal), ubxEnableGal);
+          sendUblox(sizeof(ubxEnableBds), ubxEnableBds);
+        }
+        sendUblox(sizeof(ubxCfgValSetContinuous), ubxCfgValSetContinuous);
+        currentM10IntelligentMode = 1;
+      }
+      else if(gpsSats <= 15 && gpsSats > 10 && currentM10IntelligentMode != 2) {
+        if(m10ConstellationOptimization && !m10AggressiveOpt) {
+          sendUblox(sizeof(ubxEnableGps), ubxEnableGps);
+          sendUblox(sizeof(ubxEnableGlo), ubxEnableGlo);
+          sendUblox(sizeof(ubxEnableGal), ubxEnableGal);
+          sendUblox(sizeof(ubxEnableBds), ubxEnableBds);
+        }
+        else if (m10ConstellationOptimization && m10AggressiveOpt) {
+          sendUblox(sizeof(ubxEnableGps), ubxEnableGps);
+          sendUblox(sizeof(ubxDisableGlo), ubxDisableGlo);
+          sendUblox(sizeof(ubxDisableGal), ubxDisableGal);
+          sendUblox(sizeof(ubxEnableBds), ubxEnableBds);
+        }
+
+        if(m10CyclicTracking && !m10AggressiveOpt) {
+          sendUblox(sizeof(ubxCfgValSetContinuous), ubxCfgValSetContinuous);
+        }
+        else if(m10CyclicTracking && m10AggressiveOpt) {
+          sendUblox(sizeof(ubxCfgValSetPsmct), ubxCfgValSetPsmct);
+          sendUblox(sizeof(ubxCfgValSetPsmctPeriod10), ubxCfgValSetPsmctPeriod10);
+        }
+        currentM10IntelligentMode = 2;
+      }
+      else if(gpsSats >= 15 && currentM10IntelligentMode != 3) {
+        if(m10ConstellationOptimization && !m10AggressiveOpt) {
+          sendUblox(sizeof(ubxEnableGps), ubxEnableGps);
+          sendUblox(sizeof(ubxDisableGlo), ubxDisableGlo);
+          sendUblox(sizeof(ubxEnableGal), ubxEnableGal);
+          sendUblox(sizeof(ubxEnableBds), ubxEnableBds);
+        }
+        else if (m10ConstellationOptimization && m10AggressiveOpt) {
+          sendUblox(sizeof(ubxEnableGps), ubxEnableGps);
+          sendUblox(sizeof(ubxDisableGlo), ubxDisableGlo);
+          sendUblox(sizeof(ubxDisableGal), ubxDisableGal);
+          sendUblox(sizeof(ubxEnableBds), ubxEnableBds);
+        } 
+
+        if(m10CyclicTracking && !m10AggressiveOpt) {
+          sendUblox(sizeof(ubxCfgValSetPsmct), ubxCfgValSetPsmct);
+          sendUblox(sizeof(ubxCfgValSetPsmctPeriod10), ubxCfgValSetPsmctPeriod10);
+        }
+        else if(m10CyclicTracking && m10AggressiveOpt) {
+          sendUblox(sizeof(ubxCfgValSetPsmct), ubxCfgValSetPsmct);
+          sendUblox(sizeof(ubxCfgValSetPsmctPeriod10), ubxCfgValSetPsmctPeriod10);
+        }
+        currentM10IntelligentMode = 3;
+      }
+#endif
+    }
+    else if (rsm4x2) {
+      gpsOperationMode = 2;
+    }
+  }
+  else {
+    gpsOperationMode = 1;
+  }
+}
+
+void gpsHandler() {
+
+  GPSManagement();
+
+  if(rsm4x4) {
+    gpsStatus = currentM10IntelligentMode;
+  }
+  else {
+    gpsStatus = currentGPSPowerMode;
+  }
+
+  uint16_t gpsNmeaMsgWaitTime = 1200;
+
+  if(m10PerformanceImprovements && rsm4x4) {
+    gpsNmeaMsgWaitTime = 1000;
+  }
+  else {
+    gpsNmeaMsgWaitTime = 1200;
+  }
 
   if (gpsOperationMode != 0) {  //if gps disabled then don't unnecesarly try to read it
     unsigned long start = millis();
     do {
-      while (gpsSerial.available())
-        gps.encode(gpsSerial.read());
+      while (gpsSerial.available()) {
+        char c = gpsSerial.read();
+        gps.encode(c);
+        
+        if(xdataPortMode == 5) {
+          xdataSerial.print(c);
+        }
+      }
+        
     } while (millis() - start < gpsNmeaMsgWaitTime);
 
 
@@ -2246,20 +2467,22 @@ void restartGPS() {
 
 void initGPS() {
   if (xdataPortMode == 1) {
-    xdataSerial.println("[info]: GPS settings are being initialized...");
+    xdataSerial.println(F("[info]: GPS settings are being initialized..."));
   }
 
   if (ubloxGpsAirborneMode) {
     if (xdataPortMode == 1) {
-      xdataSerial.println("[info] Setting the Airborne 1G (6) GPS dynamic model...");
+      xdataSerial.println(F("[info] Setting the Airborne 1G (6) GPS dynamic model..."));
     }
 
     if (rsm4x4) {
+#ifdef RSM4x4
       sendUblox(sizeof(ubxCfgValSet_dynmodel6), ubxCfgValSet_dynmodel6);
       delay(1000);
       sendUblox(sizeof(ubxCfgValSet_dynmodel6), ubxCfgValSet_dynmodel6);
-
+#endif
     } else if (rsm4x2) {
+      // Assuming these are defined globally for RSM4x2
       sendUblox(sizeof(ubxCfgNav5_dynmodel6), ubxCfgNav5_dynmodel6);
       delay(1000);
       sendUblox(sizeof(ubxCfgNav5_dynmodel6), ubxCfgNav5_dynmodel6);
@@ -2267,33 +2490,40 @@ void initGPS() {
   }
 
   if (xdataPortMode == 1) {
-    xdataSerial.println("[info]: GPS settings done");
+    xdataSerial.println(F("[info]: GPS settings done"));
   }
-}
 
-void GPSPowerModeSet(int mode) {
-  if (rsm4x2) {
-    if (mode == 1 && currentGPSPowerMode != 1) {  //set to max performance, ensure that it is not already in that mode
-      sendUblox(sizeof(ubxCfgNav5_maxPerformance), ubxCfgNav5_maxPerformance);
-      currentGPSPowerMode = 1;
-
-      if (xdataPortMode == 1) {
-        xdataSerial.println("[info]: Setting current GPS operation power mode to Max Performance");
-      }
-
-    } else if (mode == 2 && currentGPSPowerMode != 2) {
-      if (millis() - lastPowerSaveChange > gpsPowerSaveDebounce) {
-        sendUblox(sizeof(ubxCfgNav5_powerSave), ubxCfgNav5_powerSave);
-        currentGPSPowerMode = 2;
-        lastPowerSaveChange = millis();
-
-        if (xdataPortMode == 1) {
-          xdataSerial.println("[info]: Setting current GPS operation power mode to Power Save");
-        }
-      }
-    } else {
-    }
+#ifdef RSM4x4
+  if (rsm4x4 && m10PerformanceImprovements) {
+    sendUblox(sizeof(ubxCfgValSet_msgRate4Hz), ubxCfgValSet_msgRate4Hz);
+    delay(100);
+    sendUblox(sizeof(ubxCfgValSet_navRate2500), ubxCfgValSet_navRate2500);
+    delay(100);
+    sendUblox(sizeof(ubxCfgValSet_enableGns), ubxCfgValSet_enableGns);
+    delay(100);
+    sendUblox(sizeof(ubxCfgValSet_disableGga), ubxCfgValSet_disableGga);
+    delay(100);
+    sendUblox(sizeof(ubxCfgValSet_maxSvs64), ubxCfgValSet_maxSvs64);
+    delay(100); 
+    sendUblox(sizeof(ubxCfgElev3), ubxCfgElev3);
+    delay(100);
+    sendUblox(sizeof(ubxCfgSig10), ubxCfgSig10);
   }
+
+  // Wrap constellation enables as they use the M10 ValSet arrays
+  sendUblox(sizeof(ubxEnableGps), ubxEnableGps);
+  delay(100);
+  sendUblox(sizeof(ubxEnableGlo), ubxEnableGlo);
+  delay(100);
+  sendUblox(sizeof(ubxEnableGal), ubxEnableGal);
+  delay(100);
+  sendUblox(sizeof(ubxEnableBds), ubxEnableBds);
+
+  if(rsm4x4 && m10SuperS) {
+    delay(100);
+    sendUblox(sizeof(ubxCfgValSet_enableSuperS), ubxCfgValSet_enableSuperS);
+  }
+#endif
 }
 
 
@@ -2596,10 +2826,6 @@ void decodeXdataOif411(String xdataString) {
     xdataOzonePumpCurrent = strtol(data.substring(15, 18).c_str(), NULL, 16);
   }
 }*/
-
-void sendUblox(int Size, uint8_t* Buffer) {
-  gpsSerial.write(Buffer, Size);  // Arduino style byte send
-}
 
 
 // Function to select reading of a sensor and set its state (on/off)
@@ -2923,6 +3149,9 @@ void sensorBoomHandler() {
 
     selectSensorBoom(0, 0);
     selectReferencesHeater(lastReferenceHeaterStatus);
+  }
+  else {
+    selectSensorBoom(0, 0);
   }
 }
 
@@ -3660,7 +3889,6 @@ void pipTx() {
 }
 
 void morseTx() {
-  #ifndef RSM4x2_UNLOCK_HORUSV3
   if (morseEnable) {
     if (xdataPortMode == 1) {
       xdataSerial.println("[info]: Morse mode enabled");
@@ -3701,11 +3929,9 @@ void morseTx() {
       }
     }
   }
-  #endif
 }
 
 void rttyTx() {
-  #ifndef RSM4x2_UNLOCK_HORUSV3
   if (rttyEnable) {
     if (xdataPortMode == 1) {
       xdataSerial.println("[info]: RTTY mode enabled");
@@ -3748,7 +3974,6 @@ void rttyTx() {
       }
     }
   }
-  #endif
 }
 
 
@@ -3953,53 +4178,7 @@ void aprsTx() {
 }
 
 void dataRecorderTx() {
-  if (dataRecorderEnable && millis() - lastDataRecorderTransmission > dataRecorderInterval) {
-    if (aprsEnable) {
-      // Calculate size locally (even if just to check if table is empty)
-      int tableSize = sizeof(aprsFreqTable) / sizeof(aprsFreqTable[0]);
-
-      if (tableSize == 0) return;  // Safety check
-
-      if (xdataPortMode == 1) {
-        xdataSerial.println("[info]: APRS Data Recorder mode active");
-      }
-
-      if (radioEnablePA) {
-        // Strictly uses the first frequency in the table
-        float primaryFreq = aprsFreqTable[0] - 0.002;
-
-        setRadioPower(aprsRadioPower);
-        setRadioModulation(2);
-        setRadioFrequency(primaryFreq);
-
-        if (xdataPortMode == 1) {
-          xdataSerial.print("[info]: Recorder using Primary Freq (MHz): ");
-          xdataSerial.println(primaryFreq, 3);
-        }
-
-        aprsLocationFormat(gpsLat, gpsLong, aprsLocationMsg);
-        aprsRecorderFormat(aprsOthersMsg);
-
-        aprsPacketNum++;
-
-        radioEnableTx();
-        for (int i = 0; i < 128; i++) {
-          aprsSendMark();
-        }
-        sendAprsPacket(1);
-        radioDisableTx();
-
-        if (xdataPortMode == 1) {
-          xdataSerial.println("[info]: APRS Recorder TX done");
-        }
-
-      } else {
-        if (xdataPortMode == 1) {
-          xdataSerial.println("[info]: radioEnablePA false, won't transmit");
-        }
-      }
-    }
-
+  if (dataRecorderEnable && millis() - lastDataRecorderTransmission > dataRecorderInterval) {    
     if (horusV3Enable) {
     if (xdataPortMode == 1) {
       xdataSerial.println("[info]: HORUS V3 mode enabled");
@@ -4570,7 +4749,6 @@ void foxHuntMiscHandler() {
 
 
 void foxHuntModeLoop() {
-  #ifndef RSM4x2_UNLOCK_HORUSV3
   setRadioPower(foxHuntRadioPower);
   for (;;) {
     foxHuntMiscHandler();
@@ -4635,7 +4813,6 @@ void foxHuntModeLoop() {
     delay(foxHuntTransmissionDelay);
     foxHuntMiscHandler();
   }
-  #endif
 }
 
 
@@ -4676,6 +4853,51 @@ void humidityModuleHeaterPowerControl(unsigned int heaterPower) {  //0 - OFF, 1-
   }
 }
 
+void gpsQuietMode() {
+    if (xdataPortMode == 1) xdataSerial.println(F("[info]: Entering GPS Quiet Mode"));
+
+    unsigned long startQuietMillis = millis();
+    unsigned long lastUpdateMillis = startQuietMillis;
+
+    // Block execution while radioSilenceDuration not elapsed or cancelled
+    while ((millis() - startQuietMillis < radioSilenceDuration) && !cancelGpsImprovement) {
+
+        unsigned long now = millis();
+        unsigned long elapsed = now - lastUpdateMillis;
+
+        // Update monotonic system time
+        if (elapsed > 0) {
+            systemTimeMillis += elapsed;
+            lastUpdateMillis = now;
+        }
+
+        if (gpsSats < 5) {
+          bothLedOff(); delay(100);
+          orangeLed();  delay(100);
+          bothLedOff(); delay(100);
+          orangeLed();  delay(100);
+        }
+        else if (gpsSats >= 5) {
+          greenLed();
+          delay(80);
+          bothLedOff();
+        }
+
+        // Run handlers to keep system responsive
+        gpsHandler();
+        buttonHandler();
+        interfaceHandler();
+        sensorBoomHandler();
+        flightHeatingHandler();
+        pressureHandler();
+    }
+
+    if (xdataPortMode == 1) xdataSerial.println(F("[info]: Exiting GPS Quiet Mode"));
+
+    // Resync reference after blocking loop
+    lastMillisUpdate = millis();
+}
+
 
 void schedulerInit() {
   lastMillisUpdate = millis();
@@ -4692,206 +4914,160 @@ void schedulerInit() {
 }
 
 void schedulerLoop() {
+
   static unsigned long lastSensorUpdate = 0;
   static unsigned long lastSyncPrint = 0;
-  const unsigned long SENSOR_UPDATE_INTERVAL = 30000;
-  
-  // Update system time ONCE at the start
-  unsigned long currentMillis = millis();
-  unsigned long elapsed;
-  
-  if (currentMillis >= lastMillisUpdate) {
-    elapsed = currentMillis - lastMillisUpdate;
-  } else {
-    // Overflow occurred
-    elapsed = (0xFFFFFFFFUL - lastMillisUpdate) + currentMillis + 1UL;
+  static unsigned long previousSeconds = 0;
+
+  const unsigned long SENSOR_UPDATE_INTERVAL = 30000UL;
+
+  unsigned long nowMillis = millis();
+  unsigned long elapsed = nowMillis - lastMillisUpdate;
+
+  // millis() rollover safe
+  if (nowMillis < lastMillisUpdate) {
+    elapsed = nowMillis;
   }
-  
-  systemTimeMillis += elapsed;
-  lastMillisUpdate = currentMillis;
-  
-  // GPS time sync
-  if (gpsSats >= 4 && gps.time.isValid()) {
-    unsigned long gpsSeconds = (unsigned long)gps.time.hour() * 3600UL + 
-                               (unsigned long)gps.time.minute() * 60UL + 
-                               (unsigned long)gps.time.second();
-    
-    systemTimeMillis = gpsSeconds * 1000UL;
-    lastMillisUpdate = millis();  // Reset reference point after sync
-    
-    if (!gpsTimeSynced || (millis() - lastSyncPrint >= 1000)) {
+
+  if (elapsed > 0) {
+    systemTimeMillis += elapsed;
+    lastMillisUpdate = nowMillis;
+  }
+
+  unsigned long currentSeconds = systemTimeMillis / 1000UL;
+
+  if (currentSeconds < previousSeconds) {
+    nextPipTxTime      = 0;
+    nextHorusV3TxTime  = 0;
+    nextHorusTxTime    = 0;
+    nextAprsTxTime     = 0;
+    nextRttyTxTime     = 0;
+    nextMorseTxTime    = 0;
+
+    if (xdataPortMode == 1) {
+      xdataSerial.println(F("[warn]: Time anomaly detected, schedules reset"));
+    }
+  }
+  previousSeconds = currentSeconds;
+
+  if (gpsSats >= 4 && gps.time.isValid() && gps.time.age() < 1000) {
+
+    unsigned long gpsSeconds =
+        (unsigned long)gps.time.hour()   * 3600UL +
+        (unsigned long)gps.time.minute() * 60UL +
+        (unsigned long)gps.time.second();
+
+    // Compare only within 24h window
+    long localDaySeconds = (long)(currentSeconds % 86400UL);
+    long diff = (long)gpsSeconds - localDaySeconds;
+
+    // Wrap correction
+    if (diff > 43200L)  diff -= 86400L;
+    if (diff < -43200L) diff += 86400L;
+
+    if (labs(diff) >= 2) {
+      systemTimeMillis += diff * 1000L;
+      lastMillisUpdate = millis();
+      currentSeconds = systemTimeMillis / 1000UL;
+
+      if (xdataPortMode == 1) {
+        xdataSerial.print(F("[info]: GPS clock adjust "));
+        xdataSerial.print(diff);
+        xdataSerial.println(F("s"));
+      }
+    }
+
+    if (!gpsTimeSynced || millis() - lastSyncPrint >= 5000) {
       if (xdataPortMode == 1 && !gpsTimeSynced) {
-        xdataSerial.print("[info]: GPS Time Synced: ");
+        xdataSerial.print(F("[info]: GPS synced "));
+        if (gps.time.hour() < 10) xdataSerial.print('0');
         xdataSerial.print(gps.time.hour());
-        xdataSerial.print(":");
+        xdataSerial.print(':');
+        if (gps.time.minute() < 10) xdataSerial.print('0');
         xdataSerial.print(gps.time.minute());
-        xdataSerial.print(":");
+        xdataSerial.print(':');
+        if (gps.time.second() < 10) xdataSerial.print('0');
         xdataSerial.println(gps.time.second());
       }
       lastSyncPrint = millis();
     }
-    
+
     gpsTimeSynced = true;
+
   } else {
     if (gpsTimeSynced && xdataPortMode == 1) {
-      xdataSerial.println("[info]: GPS sync lost, using system clock");
+      xdataSerial.println(F("[info]: GPS sync lost"));
     }
     gpsTimeSynced = false;
   }
-  
-  unsigned long currentSeconds = systemTimeMillis / 1000UL;
-  
-  // GPS Quiet Mode
+
+
   if (improvedGpsPerformance && !cancelGpsImprovement && gpsSats < 4) {
-    unsigned long startQuietTime = millis();
-    unsigned long lastQuietUpdate = startQuietTime;
-    
-    if (xdataPortMode == 1) {
-      xdataSerial.println("[info]: Entering GPS Quiet Mode");
+    gpsQuietMode();
+  }
+
+
+  unsigned long minTimeUntilTx = 0xFFFFFFFFUL;
+  unsigned long targetTxTime = 0;
+
+  #define CHECK_NEXT_TX(t) \
+    if ((t) > currentSeconds) { \
+      unsigned long d = (t) - currentSeconds; \
+      if (d < minTimeUntilTx) { minTimeUntilTx = d; targetTxTime = (t); } \
     }
-    
-    while (millis() - startQuietTime < radioSilenceDuration && !cancelGpsImprovement) {
-      // Update system time during quiet mode too
-      unsigned long quietMillis = millis();
-      unsigned long quietElapsed;
-      
-      if (quietMillis >= lastQuietUpdate) {
-        quietElapsed = quietMillis - lastQuietUpdate;
-      } else {
-        quietElapsed = (0xFFFFFFFFUL - lastQuietUpdate) + quietMillis + 1UL;
-      }
-      
-      systemTimeMillis += quietElapsed;
-      lastQuietUpdate = quietMillis;
-      
-      if (gpsSats < 4) {
-        bothLedOff(); 
-        delay(100); 
-        orangeLed(); 
-        delay(100); 
-        bothLedOff(); 
-        delay(100); 
-        orangeLed();
-        if (xdataPortMode == 4) xdataSerial.println("stage: 31");
-      } else {
-        greenLed(); 
-        delay(80); 
-        bothLedOff(); 
-        delay(160);
-        if (xdataPortMode == 4) xdataSerial.println("stage: 32");
-      }
-      
-      gpsHandler();
+
+  CHECK_NEXT_TX(nextPipTxTime);
+  CHECK_NEXT_TX(nextHorusV3TxTime);
+  CHECK_NEXT_TX(nextHorusTxTime);
+  CHECK_NEXT_TX(nextAprsTxTime);
+  CHECK_NEXT_TX(nextRttyTxTime);
+  CHECK_NEXT_TX(nextMorseTxTime);
+  
+  if (minTimeUntilTx > 0 && minTimeUntilTx <= 3) {
+
+    unsigned long waitStart = millis();
+
+    if (xdataPortMode == 1) {
+      xdataSerial.println(F("[info]: Syncing TX"));
+    }
+
+    while (currentSeconds < targetTxTime) {
+
+      if (millis() - waitStart > 4000UL) break;
+
+      unsigned long lNow = millis();
+      unsigned long lElapsed = lNow - lastMillisUpdate;
+      systemTimeMillis += lElapsed;
+      lastMillisUpdate = lNow;
+      currentSeconds = systemTimeMillis / 1000UL;
+
       buttonHandler();
-      interfaceHandler();
-      sensorBoomHandler();
-      flightHeatingHandler();
-      pressureHandler();
+      delay((targetTxTime - currentSeconds > 1) ? 50 : 5);
     }
-    
-    if (xdataPortMode == 1) {
-      xdataSerial.println("[info]: Exiting GPS Quiet Mode");
+  }
+
+
+  #define SCHEDULE_TX(enable, nextVar, offset, period, txFunc) \
+    if (enable) { \
+      if ((nextVar) == 0) { \
+        unsigned long p = (currentSeconds - (offset)) % (period); \
+        (nextVar) = currentSeconds - p + (period); \
+      } \
+      if (currentSeconds >= (nextVar)) { \
+        txFunc(); \
+        unsigned long p = (currentSeconds - (offset)) % (period); \
+        (nextVar) = currentSeconds - p + (period); \
+      } \
     }
-    
-    // Resync lastMillisUpdate after quiet mode
-    lastMillisUpdate = millis();
-    currentSeconds = systemTimeMillis / 1000UL;
-  }
-  
 
-  unsigned long minTimeUntilTx = 0xFFFFFFFF;
-  
-  if (nextPipTxTime > currentSeconds && (nextPipTxTime - currentSeconds) < minTimeUntilTx) {
-    minTimeUntilTx = nextPipTxTime - currentSeconds;
-  }
-  if (nextHorusV3TxTime > currentSeconds && (nextHorusV3TxTime - currentSeconds) < minTimeUntilTx) {
-    minTimeUntilTx = nextHorusV3TxTime - currentSeconds;
-  }
-  if (nextHorusTxTime > currentSeconds && (nextHorusTxTime - currentSeconds) < minTimeUntilTx) {
-    minTimeUntilTx = nextHorusTxTime - currentSeconds;
-  }
-  if (nextAprsTxTime > currentSeconds && (nextAprsTxTime - currentSeconds) < minTimeUntilTx) {
-    minTimeUntilTx = nextAprsTxTime - currentSeconds;
-  }
-  if (nextRttyTxTime > currentSeconds && (nextRttyTxTime - currentSeconds) < minTimeUntilTx) {
-    minTimeUntilTx = nextRttyTxTime - currentSeconds;
-  }
-  if (nextMorseTxTime > currentSeconds && (nextMorseTxTime - currentSeconds) < minTimeUntilTx) {
-    minTimeUntilTx = nextMorseTxTime - currentSeconds;
-  }
-  
-  bool nearTx = (minTimeUntilTx <= 3);
-  
+  SCHEDULE_TX(pipEnable,     nextPipTxTime,     pipTimeSyncOffsetSeconds,     pipTimeSyncSeconds,     pipTx);
+  SCHEDULE_TX(horusV3Enable, nextHorusV3TxTime, horusV3TimeSyncOffsetSeconds, horusV3TimeSyncSeconds, horusV3Tx);
+  SCHEDULE_TX(horusEnable,   nextHorusTxTime,   horusTimeSyncOffsetSeconds,   horusTimeSyncSeconds,   horusTx);
+  SCHEDULE_TX(aprsEnable,    nextAprsTxTime,    aprsTimeSyncOffsetSeconds,    aprsTimeSyncSeconds,    aprsTx);
+  SCHEDULE_TX(rttyEnable,    nextRttyTxTime,    rttyTimeSyncOffsetSeconds,    rttyTimeSyncSeconds,    rttyTx);
+  SCHEDULE_TX(morseEnable,   nextMorseTxTime,   morseTimeSyncOffsetSeconds,   morseTimeSyncSeconds,   morseTx);
 
-  
-  // PIP
-  if (nextPipTxTime == 0) {
-    unsigned long secondsInPeriod = (currentSeconds - pipTimeSyncOffsetSeconds) % pipTimeSyncSeconds;
-    nextPipTxTime = currentSeconds - secondsInPeriod + pipTimeSyncSeconds;
-  }
-  if (currentSeconds >= nextPipTxTime) {
-    pipTx();
-    unsigned long secondsInPeriod = (currentSeconds - pipTimeSyncOffsetSeconds) % pipTimeSyncSeconds;
-    nextPipTxTime = currentSeconds - secondsInPeriod + pipTimeSyncSeconds;
-  }
-  
-  // Horus V3
-  if (nextHorusV3TxTime == 0) {
-    unsigned long secondsInPeriod = (currentSeconds - horusV3TimeSyncOffsetSeconds) % horusV3TimeSyncSeconds;
-    nextHorusV3TxTime = currentSeconds - secondsInPeriod + horusV3TimeSyncSeconds;
-  }
-  if (currentSeconds >= nextHorusV3TxTime) {
-    horusV3Tx();
-    unsigned long secondsInPeriod = (currentSeconds - horusV3TimeSyncOffsetSeconds) % horusV3TimeSyncSeconds;
-    nextHorusV3TxTime = currentSeconds - secondsInPeriod + horusV3TimeSyncSeconds;
-  }
-  
-  // Horus V2
-  if (nextHorusTxTime == 0) {
-    unsigned long secondsInPeriod = (currentSeconds - horusTimeSyncOffsetSeconds) % horusTimeSyncSeconds;
-    nextHorusTxTime = currentSeconds - secondsInPeriod + horusTimeSyncSeconds;
-  }
-  if (currentSeconds >= nextHorusTxTime) {
-    horusTx();
-    unsigned long secondsInPeriod = (currentSeconds - horusTimeSyncOffsetSeconds) % horusTimeSyncSeconds;
-    nextHorusTxTime = currentSeconds - secondsInPeriod + horusTimeSyncSeconds;
-  }
-  
-  // APRS
-  if (nextAprsTxTime == 0) {
-    unsigned long secondsInPeriod = (currentSeconds - aprsTimeSyncOffsetSeconds) % aprsTimeSyncSeconds;
-    nextAprsTxTime = currentSeconds - secondsInPeriod + aprsTimeSyncSeconds;
-  }
-  if (currentSeconds >= nextAprsTxTime) {
-    aprsTx();
-    dataRecorderTx();
-    unsigned long secondsInPeriod = (currentSeconds - aprsTimeSyncOffsetSeconds) % aprsTimeSyncSeconds;
-    nextAprsTxTime = currentSeconds - secondsInPeriod + aprsTimeSyncSeconds;
-  }
-  
-  // RTTY
-  if (nextRttyTxTime == 0) {
-    unsigned long secondsInPeriod = (currentSeconds - rttyTimeSyncOffsetSeconds) % rttyTimeSyncSeconds;
-    nextRttyTxTime = currentSeconds - secondsInPeriod + rttyTimeSyncSeconds;
-  }
-  if (currentSeconds >= nextRttyTxTime) {
-    rttyTx();
-    unsigned long secondsInPeriod = (currentSeconds - rttyTimeSyncOffsetSeconds) % rttyTimeSyncSeconds;
-    nextRttyTxTime = currentSeconds - secondsInPeriod + rttyTimeSyncSeconds;
-  }
-  
-  // Morse
-  if (nextMorseTxTime == 0) {
-    unsigned long secondsInPeriod = (currentSeconds - morseTimeSyncOffsetSeconds) % morseTimeSyncSeconds;
-    nextMorseTxTime = currentSeconds - secondsInPeriod + morseTimeSyncSeconds;
-  }
-  if (currentSeconds >= nextMorseTxTime) {
-    morseTx();
-    unsigned long secondsInPeriod = (currentSeconds - morseTimeSyncOffsetSeconds) % morseTimeSyncSeconds;
-    nextMorseTxTime = currentSeconds - secondsInPeriod + morseTimeSyncSeconds;
-  }
-  
-
+  dataRecorderTx();
   gpsHandler();
   deviceStatusHandler();
   flightComputing();
@@ -4901,30 +5077,38 @@ void schedulerLoop() {
   flightHeatingHandler();
   ultraPowerSaveHandler();
   autoResetHandler();
-  
-  // Slow handlers - skip if near TX unless 30s timeout
-  currentMillis = millis();
-  bool forceSensorUpdate = (currentMillis - lastSensorUpdate >= SENSOR_UPDATE_INTERVAL);
-  
-  if (!nearTx || forceSensorUpdate) {
-    sensorBoomHandler();
+
+
+  unsigned long cm = millis();
+  bool forceUpdate = (cm - lastSensorUpdate >= SENSOR_UPDATE_INTERVAL);
+
+  if (minTimeUntilTx > 3 || forceUpdate) {
+    if (sensorBoomPowerSaving && (cm - lastSensorUpdate >= 30000UL)) {
+      sensorBoomHandler();
+      lastSensorUpdate = cm;
+    }
+    else if (!sensorBoomPowerSaving) {
+      sensorBoomHandler();
+      lastSensorUpdate = cm;
+    }
+
     pressureHandler();
     interfaceHandler();
-    lastSensorUpdate = currentMillis;
 
-    if (xdataPortMode == 1) {
-      xdataSerial.println("[info]: Scheduler - not near transmission, updating sensors and interface");
-    }
   }
+
 }
 
 
 
 
 
+
+
+
 void interfaceHandler() {
-  #ifndef RSM4x2_UNLOCK_HORUSV3
-  if (xdataPortMode != 4) return;
+  #ifndef RSM4x2
+  if (xdataPortMode != 4 || gpsAlt > flightDetectionAltitude) return;
 
   // --- 1. SYSTEM & HARDWARE ---
   xdataSerial.print("isRSM4x2: ");
@@ -4978,7 +5162,7 @@ void interfaceHandler() {
   xdataSerial.print("vVCalc: ");
   xdataSerial.println(vVCalc);
   xdataSerial.print("currentGPSPowerMode: ");
-  xdataSerial.println(currentGPSPowerMode);
+  xdataSerial.println(gpsStatus);
   xdataSerial.print("gpsJamWarning: ");
   xdataSerial.println(gpsJamWarning);
 
@@ -5496,43 +5680,65 @@ void pressureHandler() {
     }
 
   }
-  else if(pressureMode == 2) {
-    // Physical constants
-    const float gMR = 0.0341632; 
-    float Pb, Tb, Lb, hb;
+  else if (pressureMode == 2) {
 
-    // 1. Calculate the Scaling Factor
-    // This ensures that if it's a high-pressure day at launch (e.g. 1020 hPa), 
-    // the entire atmosphere model shifts up correctly.
-    float scale = seaLevelPressure / 1013.25;
+    // --- Constants ---
+    const double gMR = 0.0341632;   // g0*M/R (1/m)
 
-    // 2. Determine layer and set Standard Base Pressures (Pb)
-    if (gpsAlt < 11000.0) {        
-      Pb = 1013.25 * scale;  // Adjusted for your launch site
-      Tb = 288.15; Lb = -0.0065; hb = 0.0;
-    } 
-    else if (gpsAlt < 20000.0) {   
-      Pb = 226.32 * scale;   // Adjusted
-      Tb = 216.65; Lb = 0.0; hb = 11000.0;
-    } 
-    else if (gpsAlt < 32000.0) {   
-      Pb = 54.74 * scale;    // Adjusted
-      Tb = 216.65; Lb = 0.0010; hb = 20000.0;
-    } 
-    else {                         
-      Pb = 8.68 * scale;     // Adjusted
-      Tb = 228.65; Lb = 0.0028; hb = 32000.0;
+    double Pb, Tb, Lb, hb;
+
+    // --- 1. Use measured sea-level pressure directly ---
+    // seaLevelPressure in hPa
+    double P0 = seaLevelPressure;
+
+    // --- 2. Precompute base pressures for each ISA layer ---
+    // Layer 0–11 km (lapse)
+    double P11 = P0 * pow(1.0 + (-0.0065 * 11000.0) / 288.15, -gMR / -0.0065);
+
+    // Layer 11–20 km (isothermal)
+    double P20 = P11 * exp(-gMR * (20000.0 - 11000.0) / 216.65);
+
+    // Layer 20–32 km (lapse)
+    double P32 = P20 * pow(1.0 + (0.0010 * (32000.0 - 20000.0)) / 216.65, -gMR / 0.0010);
+
+    // --- 3. Select layer ---
+    if (gpsAlt < 11000.0) {
+      Pb = P0;
+      Tb = 288.15;
+      Lb = -0.0065;
+      hb = 0.0;
+    }
+    else if (gpsAlt < 20000.0) {
+      Pb = P11;
+      Tb = 216.65;
+      Lb = 0.0;
+      hb = 11000.0;
+    }
+    else if (gpsAlt < 32000.0) {
+      Pb = P20;
+      Tb = 216.65;
+      Lb = 0.0010;
+      hb = 20000.0;
+    }
+    else {
+      Pb = P32;
+      Tb = 228.65;
+      Lb = 0.0028;
+      hb = 32000.0;
     }
 
-    // 3. Final Calculation
+    // --- 4. Final pressure calculation ---
     if (Lb == 0.0) {
       pressureValue = Pb * exp(-gMR * (gpsAlt - hb) / Tb);
     }
     else {
-      pressureValue = Pb * pow(1.0 + Lb * (gpsAlt - hb) / Tb, -gMR / Lb);
+      double term = 1.0 + Lb * (gpsAlt - hb) / Tb;
+      if (term > 0.0) {
+        pressureValue = Pb * pow(term, -gMR / Lb);
+      } else {
+        pressureValue = 0.0;  // Safety clamp
+      }
     }
-
-
   }
   else {
     pressureValue = 0;
@@ -5553,7 +5759,6 @@ float kalmanFilter(float measurement, float &est, float &err_est, float err_meas
 
   return est;
 }
-
 
 
 
@@ -5596,7 +5801,7 @@ void setup() {
     xdataSerial.begin(115200);
   } else if (xdataPortMode == 3) {
     xdataSerial.begin(9600);
-  } else if (xdataPortMode == 4) {
+  } else if (xdataPortMode == 4 || xdataPortMode == 5) {
     xdataSerial.begin(115200);
   }
 
@@ -5674,15 +5879,6 @@ void setup() {
 
   fsk4_bitDuration = (uint32_t)1000000 / horusBdr;  //horus 100baud delay calculation
   
-  if(rsm4x2 && !lowMemoryCode) {
-    horusV3Enable = false; // Because by default the RSM4x2 boards don't support Horus V3 - too small flash memory size
-  }
-
-  if(lowMemoryCode) {
-    morseEnable = false;
-    rttyEnable = false;
-  }
-
   if (xdataPortMode == 4) {
     xdataSerial.println("stage: 03");
   }
@@ -5718,7 +5914,7 @@ void setup() {
     temperatureCalibration();
   }
 
-  if (reconditioningEnabled) {
+  if (sensorBoomEnable && reconditioningEnabled) {
     reconditioningPhase();
   }
 
