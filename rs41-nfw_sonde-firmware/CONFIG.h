@@ -666,8 +666,8 @@ float humidityKalmanErrorEst = 2;      // Initialised to humidityKalmanError
 
 // PID controller - humidity module heater:
 float extHeaterProportionalK = 2.5;   // Proportional gain (slightly raised for a touch faster response)
-float extHeaterIntegralK     = 0.45;   // Integral gain
-float extHeaterDerivativeK   = 0.59;   // Derivative gain (slightly lowered to reduce damping/overshoot kick)
+float extHeaterIntegralK     = 0.53;   // Integral gain
+float extHeaterDerivativeK   = 0.55;   // Derivative gain (slightly lowered to reduce damping/overshoot kick)
 
 
 #endif  // NFW_CONFIG_H
