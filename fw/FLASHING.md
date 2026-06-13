@@ -1,37 +1,47 @@
 # Firmware flashing
-To install the firmware on the RS41 radiosonde, you should follow these instructions.
+
+This page explains how to upload an RS41-NFW `.bin` to a Vaisala RS41 radiosonde.
+
+> **Shortcut:** the **[NFW Sounding Software](../README.md#rs41-nfw-sounding-software)** ([nfw.flada.ovh](https://nfw.flada.ovh)) prints the exact steps for your board right after it compiles your firmware, including ready-to-paste terminal commands. This page is the full reference behind that help.
+
+You only need a `.bin` file and an ST-Link programmer. There are several ways to flash, all covered below; pick one:
 
 * [Requirements](#requirements)
 * [Connecting the programmer to the sonde](#connecting-the-programmer-to-the-sonde)
-* [Unlocking the factory MCU protection](#unlocking-the-factory-mcu-protection)
-* [*Uploading the pre-compiled binary*](#uploading-the-pre-compiled-binary)
-* [Uploading the Arduino Code](#uploading-the-arduino-code)
+* [Method A - OpenOCD (terminal, cross-platform)](#method-a---openocd-terminal-cross-platform)
+* [Method B - STM32CubeProgrammer (GUI, Windows / Linux)](#method-b---stm32cubeprogrammer-gui-windows--linux)
+* [Method C - STM32CubeProgrammer CLI (terminal)](#method-c---stm32cubeprogrammer-cli-terminal)
+* [Uploading directly from the Arduino IDE](#uploading-directly-from-the-arduino-ide)
+
+Whichever method you use, the procedure for a sonde is always the same three ideas:
+1. **Unlock** the factory protection (read-out protection + write protection). Only needed once in the sonde's life.
+2. **Erase** the chip.
+3. **Write** the new `.bin` to flash address `0x08000000` and start it.
+
 
 ## Requirements
-* **Hardware-side**:
-    * Vaisala RS41 sonde (firmware supports [all versions](../hw/README.md#older-vs-newer---how-do-i-know-which-one-im-holding-now))
-    * ST-Link compatible programmer - cheap v2 clone was confirmed working. Any expensive original programmer or most clones from china that look like [this](https://sklep.msalamon.pl/wp-content/uploads/2024/07/sklep_msalamon_STLINK_USB_RED.jpg) should work. Also, any other programmer that supports ST's SWD programming protocol and debuging should do the job.
-    * Some jumper wires (often included with programmers).
-    * Windows, Linux (and probably Mac) computer, software described below.
 
-<br>
+* **Hardware**
+  * A Vaisala RS41 sonde (this firmware supports [all versions](../hw/README.md#older-vs-newer---how-do-i-know-which-one-im-holding-now)).
+  * An ST-Link compatible SWD programmer. A cheap ST-Link V2 clone works fine. Any programmer that speaks ST's SWD protocol will do.
+  * A few jumper wires (often included with the programmer).
+  * A Windows or Linux computer (macOS should also work).
+* **Software** (choose the method you will use)
+  * [OpenOCD](https://openocd.org/) - the popular open-source on-chip debugger / programmer (the same tool the rs41ng project documents). Cross-platform and available straight from most package managers. This is the method the NFW Sounding Software hands you to copy after a build (Method A).
+  * Or [STM32CubeProgrammer](https://www.st.com/en/development-tools/stm32cubeprog.html) - the official ST tool, available for Windows, Linux and macOS. It ships with both a GUI (Method B) and a command-line tool `STM32_Programmer_CLI` (Method C).
 
-**NOTE:** The pre-compiled binaries aren't provided anymore with each release, due to increasing number of customization options and sonde-specific things, such as an automatic sensor boom calibration.
-Compiling the firmware is a very straight-forward process, by following the documentation it is rather easy and really takes under 30 minutes.
+> **Which MCU is on my board?** The simplest way is to read the model printed on the bottom of the PCB - it is marked `RSM4x` followed by the revision digit (e.g. `RSM425`, `RSM414`, `RSM412`). The MCU also decides the option-byte values used when unlocking:
+> * `RSM4x2` / `RSM4x1` (older boards) - **STM32F100C8** (64 KB flash).
+> * `RSM4x4` / `RSM4x5` (newer boards) - **STM32L412RBT6** (128 KB flash).
+>
+> Not sure which one you hold? See [hw/README.md](../hw/README.md#older-vs-newer---how-do-i-know-which-one-im-holding-now).
 
-<br>**Note:** Radiosondes that are factory new, with original firmware, need to be [unlocked](#unlocking-the-factory-mcu-protection).
-
-* **Software-side**:
-    * For flasing a **pre-compiled binary**, you will need:
-        * A pre-compiled binary (should be in the .bin format) - download a preferred version either from [there](./fw-files/) or from the releases page.
-        * [STM32CubeProgrammer](https://www.st.com/en/development-tools/stm32cubeprog.html) or any debuger program (stm32flash on Linux for example) that can utilize the ST-Link to upload the binary to it. This tutorial will cover STM32CubeProgrammer running on Windows and in the future there will be a tutorial for stm32flash on Linux.
-    * For **compiling** and flashing **your own code**, you will need:
-        * [STM32CubeProgrammer](https://www.st.com/en/development-tools/stm32cubeprog.html) - used by Arduino IDE in the flashing process and to unlock the memory.
-        * A properly configured Arduino IDE - more on that further in this text, with tutorial
+**Note:** pre-compiled binaries are not shipped with releases, because of the per-sonde calibration and the large number of options. Build your `.bin` with the [NFW Sounding Software](../README.md#rs41-nfw-sounding-software) or [locally](./COMPILE.md). Factory-new sondes still running the original Vaisala firmware must be [unlocked](#method-a---openocd-terminal-cross-platform) once before they accept any new firmware.
 
 
 ## Connecting the programmer to the sonde
-After you met all needed requirements for your purposes, you have to connect the programmer to the Vaisala sonde.<br>
+
+Connect the programmer to the sonde's XDATA connector.
 
 The connector has a pinout like this:
 ```
@@ -50,60 +60,160 @@ XDATA_TX(PB10)  | o   o |  +3V_MCU                             3  XDATA_TX(PB10)
 
 PAY ATTENTION TO THE CUT-OUT
 ```
-<br>
 
-**Note:** The RS41 XDATA connector has a non-standard raster of 2mm, instead of the standard 2.54mm, usually used in standard jumper cables. However, for only 4 wires it should fit inside well and you shouldn't need to buy separate 2mm connectors.<br>
+**Note:** the RS41 XDATA connector has a non-standard 2 mm pitch (instead of the usual 2.54 mm). For only four wires, jumper cables push in well enough that you do not need a dedicated 2 mm connector.
 
-Using the jumper cables, connect it as follows:
-* RS41-**GND** -> STLink-**GND** | RS41-GND is on XDATA pin 1 and 10
-* RS41-**SWDCLK** -> STLink-**SWDCLK** | RS41-SWDCLK is on XDATA pin 8; SWDCLK is often named SWCLK or CLK or Clock
-* RS41-**SWDIO** -> STLink-**SWDIO** | RS41-SWDIO is on XDATA pin 9; SWDIO is often named SWIO or DIO or Data
-* Powering the system:
-    * If your programmer is capable of supplying **stable 3.3V DC with at least 200mA** of current (most cheap clones are able to):
-        * **Take out both batteries!**
-        * Connect: RS41-**+3V_MCU** -> STLink-**+3.3V** | RS41-+3V_MCU is on XDATA pin 4; +3.3V is often named 3.3V or 3v3
-    * If not, leave both batteries in the place, **don't** connect any power supply to any of the XDATA power pins, and for the upload, power on the sonde by pressing the onboard button.
+Wire it as follows:
+* RS41-**GND** -> STLink-**GND** (RS41-GND is on XDATA pin 1 and 10)
+* RS41-**SWCLK** -> STLink-**SWCLK** (RS41-SWCLK is on XDATA pin 8; sometimes labelled CLK)
+* RS41-**SWDIO** -> STLink-**SWDIO** (RS41-SWDIO is on XDATA pin 9; sometimes labelled DIO)
+* Powering the sonde:
+  * If your programmer can supply a stable 3.3 V at 200 mA or more (most cheap clones can):
+    * **Take both batteries out.**
+    * Connect RS41-**+3V_MCU** -> STLink-**+3.3V** (RS41-+3V_MCU is on XDATA pin 4).
+  * If not, leave both batteries in, do **not** connect any programmer power pin to the XDATA power pins, and power the sonde on with its button before flashing.
 
-<br>
-Now your system should be ready to upload the code. <br>
-If you encounter any problems at this moment, search in Google for the solution, try to ask AI assistant, and if you don't find the answer, raise an issue (though it should work out of the box).
+The system should now be ready. If you have trouble at this stage, double-check the wiring and the programmer selection before going further.
 
 
-## Unlocking the factory MCU protection
-Factory new sondes with original firmware have read and write protections enabled. Disabling them is only needed once in the sonde's life, to allow the sonde to accept new firmware files. These steps are mandatory for both binary upload and Arduino IDE programming. To disable them, preferably, launch the **STM32CubeProgrammer**:
-* In the window, by default you should see something like [this](./photos/main_window.png).
-* Now, turn on the sonde, connect it with programmer to the computer and **Select the ST-LINK** as a programmer, then click **connect** [there](./photos/stlink-connection.png).
-* Go to **Option bytes** page, and set the following bytes as below:
-  * For older models (eg. `RSM412`), set like on [this picture](./photos/mcu-unlock-rsm412.png):
-    * In the **Read Out Protection**
-      * `RDP byte` to `unchecked` (read out protection disabled)
-    * In the **Write Protection**
-      * Set **all** boxes to `unchecked`, the write protection has to be disabled on all sectors.
-  * For newer models (eg. `RSM414`, `RSM424`, `RSM425`), set like on [this picture](./photos/mcu-unlock-rsm414.png):
-    * In the **Read Out Protection**
-      * `RDP byte` to `AA`
-    * In the **Write Protection**
-      * `WRP1A_STRT` - **value** `0x1`, **address** `0x08000800`
-      * `WRP1A_END` - **value** `0x0`, **address** `0x08000000`
-      * `WRP1B_STRT` - **value** `0x1`, **address** `0x08000800`
-      * `WRP1B_END` - **value** `0x0`, **address** `0x08000000`
-  * And click **Apply**
-* Go to **Erasing & Programming** [page](./photos/erase_and_upload.png), and perform a Full Chip Erase. This will fully clear the MCU memory. If you encoutner any more errors mentioning RDP or any access-protection, please check in the available sources and if you don't know how to resolve it, make an issue there.
-* Now your MCU should be **unlocked and ready** to be reprogrammed!
+## Method A - OpenOCD (terminal, cross-platform)
 
-## Uploading the pre-compiled binary
-* Start-up the STM32CubeProgrammer. It's not the fastest thing in the world, so wait a second.
-* In the window, by default you should see something like [this](./photos/main_window.png).
-* Now, turn on the sonde, connect it with programmer to the computer and **Select the ST-LINK** as a programmer, then click **connect** [there](./photos/stlink-connection.png).
-* Go to **Erasing & Programming** [page](./photos/erase_and_upload.png), and perform a Full Chip Erase. This will clear the MCU and all protections. If you encoutner any errors mentioning RDP or any access-protection, go to third page and make sure any RDP bytes are OFF.
-* If you have connected and erased the MCU properly without errors, select your binary file in the File path area (pay attention to the right version for your sonde), then check the **Verify programming** box and make sure that the **Skip flash erase before programming** is *unchecked*. Optionally, you may want the memory checksum, but it isn't needed and works without that.
-* If your settings are similiar to the one on the tutorial and the [photo](./photos/erase_and_upload.png), click **Start Programming** button. Now, after a couple of seconds the sonde should run the firmware from the binary.
-* Disconnect all the cables, insert batteries and follow the [**Operation manual**](./OPERATION_MANUAL.md). The sonde should remain OFF until you turn it on with the button.
+[OpenOCD](https://openocd.org/) is a popular open-source programmer. This is exactly what the [NFW Sounding Software](../README.md#rs41-nfw-sounding-software) gives you to copy after a build, and it works the same on Linux, macOS and Windows.
 
-## Uploading the Arduino Code
-* Download and start-up the Arduino IDE, it should be the new, 2.x version.
-* Make sure you followed the [**compilation guide**](./COMPILE.md)!!!
-* Open the desired version of the .ino project, available in `./fw-files/` folder.
-* Select appropriate board model, this operation is described in the operation manual [here](./OPERATION_MANUAL.md#sonde-pcb-version)
-* If you double-checked all the things in the Arduino-IDE and on the hardware-side, connect the programmer to the computer and click upload (CTRL-U). The compilation process takes a while, after this time (look at the progress bar in the corner), you should see the upload progress. After seeing something like *Start application achieved successfully...*, the compiled code should be running on your sonde. If you encoutner any errors targeting flash process, triple check your wiring, selected programmer and every step of this guide.
-* Now, you can disconnect all the cables and insert batteries. Then follow the [**Operation manual**](./OPERATION_MANUAL.md). The sonde should remain OFF until you turn it on with the button.
+Install it from your package manager, for example on Debian / Ubuntu:
+```bash
+sudo apt install openocd
+```
+
+Run the commands from the folder where you saved the `.bin`, and replace `FIRMWARE.bin` with the file you downloaded. OpenOCD resets the target between invocations on its own, so there is nothing to unplug or power-cycle by hand. All RS41 MCUs flash to `0x08000000`.
+
+**Older boards (`RSM4x2` / `RSM4x1`, STM32F100):**
+The STM32F100C8 has 64 KB of flash, which is pages 0...63 (1 KB each).
+```bash
+# 1. Clear write protection on every flash page
+openocd -f interface/stlink.cfg -f target/stm32f1x.cfg \
+  -c "init; halt; flash protect 0 0 63 off; exit"
+
+# 2. Flash, verify and start the firmware
+openocd -f interface/stlink.cfg -f target/stm32f1x.cfg \
+  -c "program FIRMWARE.bin verify reset exit 0x08000000"
+```
+
+**Newer boards (`RSM4x4` / `RSM4x5`, STM32L412):**
+On the L412, `stm32l4x unlock 0` drops read-out protection to level 0, which mass-erases a factory-locked chip.
+```bash
+# 1. Drop read-out protection to level 0 (mass-erases a locked chip)
+openocd -f interface/stlink.cfg -f target/stm32l4x.cfg \
+  -c "init; halt; stm32l4x unlock 0; exit"
+
+# 2. Clear write protection on all sectors
+openocd -f interface/stlink.cfg -f target/stm32l4x.cfg \
+  -c "init; halt; flash protect 0 0 last off; exit"
+
+# 3. Flash, verify and start the firmware
+openocd -f interface/stlink.cfg -f target/stm32l4x.cfg \
+  -c "program FIRMWARE.bin verify reset exit 0x08000000"
+```
+
+Notes:
+* `interface/stlink.cfg` selects an ST-Link programmer; `target/stm32f1x.cfg` / `target/stm32l4x.cfg` select the MCU family. These config files ship with OpenOCD.
+* `program ... verify reset exit 0x08000000` writes the `.bin`, verifies it, resets the chip so the firmware starts, then exits OpenOCD.
+* The protection-clearing steps are the one-time unlock. Once a sonde is unlocked you only need the final `program` step for future updates.
+* If OpenOCD cannot attach because the chip is running or protected, add `-c "reset_config srst_only srst_nogate"` before the action, or briefly hold the sonde in reset while it connects.
+
+
+## Method B - STM32CubeProgrammer (GUI, Windows / Linux)
+
+The friendliest GUI option, and a convenient way to change the option bytes by hand on a factory-new sonde.
+
+### A.1 Connect
+
+* Start STM32CubeProgrammer. By default you should see the [main window](./photos/main_window.png).
+* Power the sonde on, then select **ST-LINK** as the programmer and click **Connect** ([screenshot](./photos/stlink-connection.png)).
+  * If the connection is refused because of read-out protection, set the connection **mode** to **Under reset** (top-right of the ST-LINK panel) and connect again.
+
+### A.2 Unlock the factory protection (one time per sonde)
+
+Open the **Option bytes** (OB) page and set the values for your MCU:
+
+* **Older boards (`RSM4x2` / `RSM4x1`, STM32F100)** - see [this picture](./photos/mcu-unlock-rsm412.png):
+  * **Read Out Protection**: set `RDP` to **unchecked / disabled** (level 0).
+  * **Write Protection**: **uncheck every** box (`WRP0`...`WRP3`) so no sector is write-protected.
+* **Newer boards (`RSM4x4` / `RSM4x5`, STM32L412)** - see [this picture](./photos/mcu-unlock-rsm414.png):
+  * **Read Out Protection**: set the `RDP` byte to `AA` (level 0).
+  * **Write Protection** (an empty region = no protection, so set start above end):
+    * `WRP1A_STRT` -> value `0x1`
+    * `WRP1A_END`  -> value `0x0`
+    * `WRP1B_STRT` -> value `0x1`
+    * `WRP1B_END`  -> value `0x0`
+* Click **Apply**.
+
+Then open **Erasing & Programming** ([page](./photos/erase_and_upload.png)) and run a **Full chip erase**. This clears the memory and finishes removing the protection. If you still see RDP / access errors, go back to the Option bytes page and make sure RDP is at level 0.
+
+The MCU is now unlocked and stays unlocked for the rest of its life.
+
+### A.3 Flash the firmware
+
+* On the **Erasing & Programming** page, select your `.bin` in the **File path** field (make sure it is the build for *your* board).
+* Tick **Verify programming**, and make sure **Skip flash erase before programming** is **unchecked**.
+* Set the start address to `0x08000000` (the default).
+* Click **Start Programming**. After a few seconds the firmware is written and verified.
+* Disconnect everything, insert the batteries, and continue with the [Operation manual](./OPERATION_MANUAL.md). The sonde stays off until you turn it on with the button.
+
+
+## Method C - STM32CubeProgrammer CLI (terminal)
+
+The official ST command-line alternative to OpenOCD, driven with `STM32_Programmer_CLI`. Same tool as Method B's GUI, and a good fallback if you already have STM32CubeProgrammer installed. It works identically on Windows and Linux.
+
+The command is named `STM32_Programmer_CLI` (on Windows `STM32_Programmer_CLI.exe`). If it is not on your `PATH`, call it by full path, e.g. on Linux it is usually:
+`~/STMicroelectronics/STM32Cube/STM32CubeProgrammer/bin/STM32_Programmer_CLI`.
+
+Replace `FIRMWARE.bin` with the file you downloaded. All RS41 MCUs flash to `0x08000000`.
+
+**Older boards (`RSM4x2` / `RSM4x1`, STM32F100):**
+```bash
+# 1. Remove read-out protection (this mass-erases a protected chip)
+STM32_Programmer_CLI -c port=SWD mode=UR -rdu
+
+# 2. Clear write protection on all sectors (0xFF = unprotected)
+STM32_Programmer_CLI -c port=SWD mode=UR -ob WRP0=0xFF WRP1=0xFF WRP2=0xFF WRP3=0xFF
+
+# 3. Mass-erase the flash
+STM32_Programmer_CLI -c port=SWD mode=UR -e all
+
+# 4. Write the firmware, verify it, and start it
+STM32_Programmer_CLI -c port=SWD mode=UR -w "FIRMWARE.bin" 0x08000000 -v -rst
+```
+
+**Newer boards (`RSM4x4` / `RSM4x5`, STM32L412):**
+```bash
+# 1. Remove read-out protection (this mass-erases a protected chip)
+STM32_Programmer_CLI -c port=SWD mode=UR -rdu
+
+# 2. Clear write protection on all flash (empty WRP region: start above end)
+STM32_Programmer_CLI -c port=SWD mode=UR -ob WRP1A_STRT=0x1 WRP1A_END=0x0 WRP1B_STRT=0x1 WRP1B_END=0x0
+
+# 3. Mass-erase the flash
+STM32_Programmer_CLI -c port=SWD mode=UR -e all
+
+# 4. Write the firmware, verify it, and start it
+STM32_Programmer_CLI -c port=SWD mode=UR -w "FIRMWARE.bin" 0x08000000 -v -rst
+```
+
+Notes:
+* `mode=UR` means "connect under reset", which is the most reliable way to attach to a protected or running chip.
+* `-rdu` is read-unprotect: on a factory-locked sonde it drops RDP and triggers a mass erase. On an already-unlocked sonde it is harmless.
+* Steps 1 and 2 are the one-time unlock. Once a sonde is unlocked you only need steps 3 and 4 for future updates.
+* `-rst` issues a system reset over SWD so the firmware starts immediately after flashing.
+
+
+## Uploading directly from the Arduino IDE
+
+If you compiled the firmware locally and just want the IDE to flash it for you:
+
+* Open the Arduino IDE (the 2.x version), with the project set up per the [compilation guide](./COMPILE.md).
+* Select the correct board model (see the [operation manual](./OPERATION_MANUAL.md#sonde-pcb-version)).
+* Select **(IDE) Tools -> Programmer: -> STMicroelectronics ST-LINK**.
+* With the programmer wired up, click **Upload** (Ctrl-U). The IDE compiles and then flashes through STM32CubeProgrammer. When you see a message like *Start application achieved successfully*, the firmware is running.
+* A factory-new sonde still has to be [unlocked once](#a2-unlock-the-factory-protection-one-time-per-sonde) before the IDE can program it.
+* Disconnect the cables, insert the batteries, and follow the [Operation manual](./OPERATION_MANUAL.md). The sonde stays off until you turn it on with the button.

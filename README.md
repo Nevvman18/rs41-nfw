@@ -3,6 +3,14 @@
 **NOTE:** This firmware works with the **ALL** variants of RS41 radiosondes, with the new (2023 and 2025) ones too, bringing full hardware and software support with lots of features for everyone. More below.<br><br>
 Vaisala some time ago began launching new RS41 sonde revisions, with new internal design. They can be recognized by a last digit of 4 or 5 of the PCB model (eg. `RSM414`, `RSM424`, `RSM425`). This firmware is an approach for reusing them as amateur devices for many different purposes. It brings full and thorough support for [all revisions](../hw/README.md#older-vs-newer---how-do-i-know-which-one-im-holding-now).<br>
 
+> ## 🎈 NFW Sounding Software - [nfw.flada.ovh](https://nfw.flada.ovh)
+> **The easiest way to use this firmware - straight from your browser, nothing to install.**
+> It joins two tools in one page:
+> * a **Firmware Builder** that configures and compiles your firmware online (no Arduino IDE, no toolchain), then hands you a ready `.bin`, and
+> * a **Ground Station** that connects to the sonde over USB-serial for pre-flight checks, live sensor readout, calibration values and a map.
+>
+> Full description in the [RS41-NFW Sounding Software](#rs41-nfw-sounding-software) section below.
+
 * [RS41-NFW Firmware features](#rs41-nfw-firmware-features)
 * [Terms of Use](#terms-of-use)
 * [Radiosondes?](#radiosondes)
@@ -10,8 +18,8 @@ Vaisala some time ago began launching new RS41 sonde revisions, with new interna
 * [Firmware flashing](#firmware-flashing)
 * [Firmware compilation](#firmware-compilation)
 * [Firmware and device operation](#firmware-and-device-operation)
-* [RS41-NFW Ground Control Software](#rs41-nfw-ground-control-software)
-* [RSM414 hardware](#rsm414-hardware)
+* [RS41-NFW Sounding Software](#rs41-nfw-sounding-software)
+* [RSM425 and RSM414 hardware](#rsm425-and-rsm414-hardware)
 * [Firmware changelog](#firmware-changelog)
 * [Authors and contributors to this branch](#authors-and-contributors-to-this-branch)
 * [References](#references)
@@ -42,8 +50,7 @@ Vaisala some time ago began launching new RS41 sonde revisions, with new interna
     * PIP
         * Beacon operation, transmitting short beep with a specified interval, which could be used as a foxhunting TX device
 * Thorough support of RS41 hardware, including GPS, radio, power circuitry, heaters etc., timers ...and:
-* Support for **onboard boom sensors**, including **temperature and humidity** sensors!
-* Apart from the sensor boom, also Vaisala **RPM411** pressure sensor add-on board measurement support!
+* **Precise atmospheric measurements from the original silver sensor boom** - external air **temperature** and **relative humidity**, read through hardware timers with custom correction algorithms for fast, low-noise output; humidity is derived from the sensor's actual capacitance for better accuracy high in the atmosphere
 * Detailed in-built **debugging** features via LED status and serial messages
 * Onboard **button** allowing user to shutdown the sonde and change different operation modes
 * **Safety features**, including GPS watchdog and position improvement (these two nicely improve flights in environments with interference/noise), battery voltage protection, sensors defrosting and condensation prevention, system reset watchdog
@@ -52,9 +59,14 @@ Vaisala some time ago began launching new RS41 sonde revisions, with new interna
 * **User-friendly** firmware and IDE allows users to easily customimze the device operation
 * Weather station mode, supporting APRS WX report, constant coordinates
 * Fox hunting mode, with CW and FM audio beacons
-* Flight controling algorithms. Ability to rapidly send packets when below set altitude. Data analysis and debug sent via APRS extended packets every set interval
+* Flight controlling algorithms, including the ability to rapidly send packets when below a set altitude, to capture the lowest frames on descent
 * Automatic calibration modes for temperature and humidity sensors on the silver boom, ground-check procedures, humidity module reconditioning. Ability to further improve accuracy by manually calibrating the readings
-* Dedicated **RS41-NFW Ground Control Software**, for simple and detailed pre-flilght things
+* **Onboard pressure sensing** via the original Vaisala **RPM411** BARO-CAP board (RS41-SGP), or a built-in pressure estimation when no sensor is fitted
+* **Atmospheric ozone sounding** with the Vaisala **OIF411** ECC instrument over the XDATA port - full telemetry decoded and transmitted to ground
+* **Data Recorder** - extended diagnostic telemetry (GPS quality, flight statistics, thermal/heater state) sent as extra Horus V3 pages at a set interval
+* **Intelligent GPS management** on the M10-based new boards - automatic constellation, power and tracking optimisation, u-blox Super-S, and a radio-silence cold-start booster on all boards
+* **GPS-clock synchronised scheduler** - every transmission mode fires on a precise, configurable time slot aligned to the top of the hour
+* Dedicated **[RS41-NFW Sounding Software](#rs41-nfw-sounding-software)** ([nfw.flada.ovh](https://nfw.flada.ovh)) - a browser-based firmware builder and ground station, so no Arduino IDE or toolchain setup is needed
 * And many more
 
 
@@ -74,36 +86,54 @@ For more details about HAB and sonde hunting, please look on google and social m
 
 ## Installation guide
 A thorough, detailed project guide is available at the links below.<br>
-**If you want to fully utilize all capabilities of this firmware**, please, read the documentation in the following header order:
+**The simplest path is the [NFW Sounding Software](#rs41-nfw-sounding-software) ([nfw.flada.ovh](https://nfw.flada.ovh)): configure and compile in the browser, then flash.** If you prefer to do everything by hand, read the documentation in the following header order:
 
 
 ## Firmware flashing
-See: [fw/FLASHING.md](./fw/FLASHING.md)
+See: [fw/FLASHING.md](./fw/FLASHING.md) <br>
+Covers OpenOCD (cross-platform terminal, the recommended route) and STM32CubeProgrammer (Windows/Linux, GUI and CLI).
 
 
 ## Firmware compilation
-See: [fw/COMPILE.md](./fw/COMPILE.md)
+See: [fw/COMPILE.md](./fw/COMPILE.md) <br>
+**Note:** with the [NFW Sounding Software](#rs41-nfw-sounding-software) you no longer need to set up Arduino IDE, the STM32 core or libraries by hand - this guide is only for those who want to build locally.
 
 
 ## Firmware and device operation
 See: [fw/OPERATION_MANUAL.md](./fw/OPERATION_MANUAL.md) <br>
-**Note:** this manual is outdated, please refer to new improved code comments, as they are up-to-date resource full of information about the functions of this project.
+The manual describes how the sonde behaves and how each option works. The per-option comments in [`CONFIG.h`](./rs41-nfw_sonde-firmware/CONFIG.h) are always the authoritative, up-to-date reference.
 
-## RS41-NFW Ground Control Software
-Advanced and user friendly webGUI created in Python. <br>
-See: [./rs41-nfw_ground_control_software/README.MD](./rs41-nfw_ground_control_software/README.MD)
-<p float="left">
-  <img src="./rs41-nfw_ground_control_software/picture1.png" width="33%"/>
-  <img src="./rs41-nfw_ground_control_software/picture2.png" width="33%" /> 
-  <img src="./rs41-nfw_ground_control_software/picture3.png" width="33%" />
-</p>
+## RS41-NFW Sounding Software
+A single web application that takes you from a blank sonde to a flight-ready one, entirely in the browser, at [nfw.flada.ovh](https://nfw.flada.ovh) - ready to use, nothing to install. It is the recommended way to use RS41-NFW and it replaces three older, separate tools that used to live in this repository: the Python *Ground Control Software*, the *gcs_webserial* prototype and the standalone *dataRecorder decoder* (the data recorder now uses a different on-air format, so the old decoder no longer applies).
+
+The interface has **two tabs**.
+
+### Tab 1 - Firmware Builder
+Builds a ready-to-flash `.bin` without any local toolchain (no Arduino IDE, no STM32 core, no libraries).
+
+* **Firmware source** - fetch the latest firmware straight from this GitHub repository. The page remembers which source and version is currently loaded.
+* **Board selection** - pick `RSM4x4 / RSM4x5` (STM32L412) or `RSM4x2 / RSM4x1` (STM32F100). A side-by-side comparison table lists every hardware and feature difference (flash/RAM, GPS module, which radio modes fit, build optimisation), so you know what your board supports before you build.
+* **Guided configuration** - every firmware option from `CONFIG.h` is exposed as a form with inline explanations: TX timing (the GPS-clock scheduler), Horus V3 and V2, APRS, RTTY, Morse, fox-hunt, status LEDs, the XDATA port and OIF411 ozone, power management, GPS (including the M10 intelligent algorithms, shown only when relevant), the sensor boom, temperature and humidity calibration, pressure source, heating, low-altitude fast-TX, flight computing, the data recorder, the button and system settings. Irrelevant options hide themselves based on the board and your other choices.
+* **Online compile** - one click compiles your configuration on the server with live build log output. When it finishes you download the compiled `.bin` together with a plain-text `config.txt` (an exact, human-readable record of the build so you can reproduce or tweak it later).
+* **Flashing help** - after a successful build the page shows exactly what to do next: flash the `.bin` with [OpenOCD](#firmware-flashing) (cross-platform terminal commands matched to your selected MCU) or [STM32CubeProgrammer](#firmware-flashing) (Windows/Linux GUI). See [fw/FLASHING.md](./fw/FLASHING.md).
+
+### Tab 2 - Ground Station
+Connects directly to the sonde over USB and turns the pre-flight routine into a clear checklist. It uses the browser **Web Serial API**, so it runs in a Chromium-based browser (Chrome / Edge) with no driver or app to install. On the sonde, set the XDATA port to **mode 1** (combined log + `$NFW` telemetry) and connect a USB-UART adapter to the XDATA port.
+
+* **Live telemetry** - decodes the compact `$NFW` frames the firmware emits: operation stage, all temperatures, humidity, pressure and its source, battery voltage, radio status and more.
+* **Pre-flight ground check** - a multi-phase guided procedure that walks you through start-up, calibration, sensor and GPS verification, up to the *ready for flight* stage, watching the live stage/LED state as it goes.
+* **Sensors and charts** - inline charts for the sensor and heater values (dual-axis heater power vs. temperature), a pressure readout, and a GPS minimap with a live position pin.
+* **Calibration helper** - surfaces the calibration values the firmware computes (temperature offset, zero-humidity capacitance, humidity range delta) so you can copy them straight back into the Firmware Builder for your next, fully-calibrated build.
+
+> **A note on how it was built:** the Sounding Software is "vibe-coded" - written quickly with the help of AI tooling - but with the highest standards kept for verifying its stability. Every part was reviewed, tested and hardened (input sanitisation, build sandboxing, abuse limits) before going live. The firmware itself is hand-written and unaffected by this.
 
 
-## RSM414 hardware
+## RSM425 and RSM414 hardware
 See: [hw/README.md](./hw/README.md)
 
 
 ## Firmware changelog
+* `v66` - **Brand-new, fully stable transmission scheduler** - rewritten from the ground up so every mode fires on its exact GPS-clock time slot, with the timing jitter of earlier versions gone. **Full, proper OIF411 ozone support** - complete decoding of the Vaisala OIF411 ECC instrument over the XDATA port, with ozone partial pressure and ppbv computed and transmitted to ground via Horus V3. The firmware now uses the **board's external TCXO** as the clocking reference, for more stable operation (thanks Mark!). **NFW Sounding Software** released ([nfw.flada.ovh](https://nfw.flada.ovh)) - a browser-based firmware builder and ground station that replaces the previous *Ground Control Software*, the *gcs_webserial* prototype and the standalone *dataRecorder decoder* (all three removed from the repo). All user settings moved to a dedicated `CONFIG.h` file. Data Recorder reworked: it now rides dedicated Horus V3 pages (packet A - GPS quality, packet B - flight statistics, packet C - thermal/heater state, and packets D/E for OIF411 telemetry) at a configurable interval, and runs on the RSM4x2 too (the older 64 KB board is now built with LTO so everything fits). New robust flight detection - the sonde declares flight after a configurable climb above the launch baseline (`flightStartClimbThreshold`, default 150 m), which works at any launch elevation and any ascent rate, replacing the old fixed-altitude trigger. Status-LED scheme clarified (green - sonde OK, orange - waiting for fix, red - any error). Docs overhaul.
 * `v65` - great code size optimisation (Horus V3 fits with all other freatures on the RSM4x2), lowering RSM4x2 memory usage down to 90%. GPS parser rewritten - now reports up to 99 satellites (no 12 GNSS SVS limits). RSM4x4 big GPS improvements - message and navigation rates optimised, intelligent GPS constellation management (user can select whether the sonde should focus on power efficiency or tracking performance, sonde automatically switches according to the signal quality), automatic GPS PSM modes, u-Blox Super-S technology, for further receiver sensitivity, trakcing performance and jamming-mitigation. GPS satellite filter optimisation - receiver now uses many more satellites for position calculation (can be sometimes over 30 sats). Final fix for overflow problems - dataRecorder is currently available in Horus V3 extraSensors (sent every 3 minutes). Others.
 * `v64` - APRS WX pressure bugfix
 * `v63` - Scheduler overflow issue, now program will happily run infinitely (auto reset is every 7 days). Docs.
@@ -113,7 +143,7 @@ See: [hw/README.md](./hw/README.md)
 * `v59` - Horus Binary V3 bugfix for RSM4x2 revisions, APRS WX wind reporting correction, docs.
 * `v58` - **Horus Binary 4FSK V3** support for **all** revisions of sondes. Horus Binary v2/v3 preamble improvements. Code size optimization for old models. Users aren't now required to download libraries in Library Manager - **libraries are now provided** with the downloaded sonde-firmware directory, and work out of the box! [Issue 37](https://github.com/Nevvman18/rs41-nfw/issues/37).
 * `v57` - New APRS telemetry format and tocall, with much more data sent, bugfixes.
-* `v56` - Introducing **Scheduler** - new CPU time management function. Introducing [**RS41-NFW Ground Control Software**](./rs41-nfw_ground_control_software/README.MD), which guides you through different ground check stages and lets you inspect a lot(!) of flight parameters and sensor data. Improved sensor readout - much faster, more acurate, and with slightly reduced oscillations. Support for infinite number of cycling Horus and APRS frequencies. Redefined heating algorithms - now based on precise PID control and PWM, also with new in-flight contrl, allowing for sensor defrosting, while having no impact on the radings. New humidity correction algorithms, based on empirical data from many previous flights. Faster program operation. New LED status messages. Redefined documentation - operation manual markdown file became outdated, but new detailed code comments are here.
+* `v56` - Introducing **Scheduler** - new CPU time management function. Introducing **RS41-NFW Ground Control Software** (later superseded by the [NFW Sounding Software](#rs41-nfw-sounding-software)), which guides you through different ground check stages and lets you inspect a lot(!) of flight parameters and sensor data. Improved sensor readout - much faster, more acurate, and with slightly reduced oscillations. Support for infinite number of cycling Horus and APRS frequencies. Redefined heating algorithms - now based on precise PID control and PWM, also with new in-flight contrl, allowing for sensor defrosting, while having no impact on the radings. New humidity correction algorithms, based on empirical data from many previous flights. Faster program operation. New LED status messages. Redefined documentation - operation manual markdown file became outdated, but new detailed code comments are here.
 * `v55` - Si4032 radio now consumes 10-15mA less current than before, due to a misunderstanding of operation stages, allowing now to sleep properly between transmissions. Ability to specify TX power in each mode. Removed power save mode which changed interval and power below a certain altitude, which was a clone of a newer feature called `lowAltitudeFastTx`. Ability yo specify constant altitude when stationary use with no GPS. Others. + support of the newest `RSM425` boards.
 * `v54` - power OFF routine modification, making the procedure status more clear. APRS temperature reporting length improvement.
 * `v53` - timing improvements down to milliseconds, with help of Bernd DL1XH. More talkative UART debug messages.
@@ -151,11 +181,6 @@ See: [hw/README.md](./hw/README.md)
 * `v22` - support for OIF411 ozone sounding system (including decoding the ozone info and transmision to ground), XDATA port mode selection (disabled, debug UART, XDATA UART), easy method of changing the payload-ID in Horus v2 mode, height activated oscillator heater
 * `v21` - added support for old RS41 models (`RSM412`)
 * `v20` - initial public release, releases before this were never published
-
-<br>
-
-Incoming features:
-* Document the hardware of `RSM425` revision - it works flawlessly with the RS41-NFW, however, I don't have one yet that I can study on. **If you have one, please contact me.**
 
 
 ## People responsible for this project

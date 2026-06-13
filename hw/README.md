@@ -1,4 +1,4 @@
-# RSM414 hardware
+# RSM425 and RSM414 hardware
 * [References](#references)
 * [Older vs newer](#older-vs-newer---how-do-i-know-which-one-im-holding-now)
 * [Key components](#key-components)
@@ -31,19 +31,36 @@ Open the enclosure and take out the PCB. On the back side of it (the one without
 
 <br>
 
-This guide describes hardware used in the `RSM414` newer version of the sonde.
+This guide describes the hardware of the newer sonde generation, the `RSM414` and `RSM425` revisions. They belong to the same new internal design (the `RSM4x4` / `RSM4x5` family) and share the same components and layout, so the description applies to both. The photos below show an `RSM414` board and, further down, an `RSM425` board.
 
 
 # Key components
-**PCB - Front photo**
+**RSM414 PCB - Front photo**
 <p align="center">
-<img src="./photos/front.JPG" alt="pcb - front photo" style="width:90%"/><br>
+<img src="./photos/front.JPG" alt="RSM414 PCB - front photo" style="width:90%"/><br>
 </p><br>
 
-**PCB - Rear photo**
+**RSM414 PCB - Rear photo**
 <p align="center">
-<img src="./photos/rear.JPG" alt="pcb - rear photo" style="width:90%"/><br>
+<img src="./photos/rear.JPG" alt="RSM414 PCB - rear photo" style="width:90%"/><br>
 </p>
+
+**RSM425 PCB - Front photo**
+<p align="center">
+<img src="./photos/rsm425_front.jpg" alt="RSM425 PCB - front photo" style="width:90%"/><br>
+</p><br>
+
+**RSM425 PCB - Rear photo** (without the RPM411 pressure board)
+<p align="center">
+<img src="./photos/rsm425_back_withoutRPM411.jpg" alt="RSM425 PCB - rear photo, no RPM411" style="width:90%"/><br>
+</p><br>
+
+**RSM425 PCB - Rear photo** (with the Vaisala RPM411 pressure board fitted to the internal expansion connector)
+<p align="center">
+<img src="./photos/rsm425_back_withRPM411.jpg" alt="RSM425 PCB - rear photo with RPM411" style="width:90%"/><br>
+</p>
+
+> **Thanks for the RSM4x5 material:** big thanks to **Timo** for gathering the information about the `RSM4x5` revision, and to **Aki Salento** for taking the excellent `RSM4x5` photographs shown above.
 
 
 ## Power Supply
@@ -115,6 +132,18 @@ XDATA_TX(PB10)  | o   o |  +3V_MCU                             3  XDATA_TX(PB10)
 
 ### Internal expansion connector
 In the new revisions, connector pinout is left the same, desciription can be found in the *radiosonde_hardware*. The pressure sensor (`RPM411` module) is the only known one to use it, and has only one revision, wihtout changes over time, so far.
+
+The Vaisala **RPM411** is the original BARO-CAP pressure add-on board (as fitted to the RS41-SGP). It plugs into this internal connector on the rear of the sonde; RS41-NFW reads it when `pressureMode = 1`.
+
+**RPM411 pressure board - Front photo**
+<p align="center">
+<img src="./photos/rpm411_front.jpg" alt="Vaisala RPM411 pressure board - front photo" style="width:60%"/><br>
+</p><br>
+
+**RPM411 pressure board - Rear photo**
+<p align="center">
+<img src="./photos/rpm411_back.jpg" alt="Vaisala RPM411 pressure board - rear photo" style="width:60%"/><br>
+</p>
 
 ### NFC interface
 Besides the lack of the `C604` capacitor (but the footprint is still there?) the circuit looks the same as the one before. <br>

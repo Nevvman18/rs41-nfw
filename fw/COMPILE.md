@@ -1,4 +1,10 @@
 # Firmware compile
+
+> ## You probably do not need this guide anymore
+> The **[NFW Sounding Software](../README.md#rs41-nfw-sounding-software)** ([nfw.flada.ovh](https://nfw.flada.ovh)) compiles the firmware for you in the browser. You select your board, set every option through a guided form, click compile, and download a ready `.bin` - **no Arduino IDE, no STM32 core, no board variant files and no libraries to install**. For almost everyone that is the easier and faster path; just head straight to [firmware flashing](./FLASHING.md).
+>
+> The manual setup below is only worth following if you specifically want to build locally (for example to modify the source code by hand).
+
 This firmware was written in the Arduino IDE. It is a beginner-friendly IDE with support of tons of different MCUs, made with one of the largest communities that work with embedded coding.<br>
 
 **NOTE:** The [New sondes compiler configuration guide](#new-sondes-compiler-configuration-guide) setup has to be done **only** if you have newer version of sondes, eg. `RSM414`. The older versions have the compiler definitions set in the default core package. The sonde version can be determined [here](../hw/README.md#older-vs-newer---how-do-i-know-which-one-im-holding-now).
@@ -50,7 +56,7 @@ After you correctly added the official STM32 core to Arduino IDE board manager, 
 * **Your IDE should now be good to go**
 
 ## Board selection
-This depends on the PCB version you have. <br>
+This depends on the PCB version you have. The simplest way to find it is to read the model printed on the bottom of the PCB - it is marked `RSM4x` followed by the revision digit (e.g. `RSM425`, `RSM414`, `RSM412`). A trailing `4` or `5` means a newer board (STM32L412); a `1` or `2` means an older board (STM32F100). <br>
 
 * Open Arduino IDE
   * For older versions (eg. `RSM412`):
@@ -58,7 +64,9 @@ This depends on the PCB version you have. <br>
   * For newer versions (eg. `RSM414`, `RSM424`):
     * Select the **Generic STM32L4 series** under **(IDE) Tools**, then go to **(IDE) Tools -> Board part number:** and select the newely installed **Generic L412RBTxP**. Don't see it? Make sure you followed the [above](#new-sondes-compiler-configuration-guide) guide.
 * Select the appropriate programmer -  **(IDE) Tools -> Programmer: -> STMicroelectronics ST-LINK**
-* Select compiler optimization config as **Smallest (-Os default)**.
+* Select compiler optimization under **(IDE) Tools -> Optimize:**
+  * Newer boards (`RSM4x4` / `RSM4x5`, L412) - **Smallest (-Os default)**. There is plenty of flash, no LTO needed.
+  * Older boards (`RSM4x2` / `RSM4x1`, F100) - **Smallest (-Os) with LTO**. The full feature set only fits in the 64 KB flash with Link-Time Optimization enabled. (The Sounding Software already builds the F100 with LTO automatically.)
 
 
 ## Additional libraries

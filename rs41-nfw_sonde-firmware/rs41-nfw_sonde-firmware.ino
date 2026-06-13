@@ -3,13 +3,11 @@ RS41-NFW - versatile, feature-rich and user-friendly custom firmware for ALL rev
 Released on GPL-3.0 license.
 Authors: Franek Łada (nevvman, SP5FRA)
 
-Version 65 (public, stable)
+Version 66 (public, stable)
 
 All code and dependencies used or modified here that don't origin from me are described in code comments and repo details.
 https://github.com/Nevvman18/rs41-nfw
 */
-
-
 
 /*
 Thanks for choosing RS41-NFW.
@@ -23,10 +21,7 @@ I wish You high, successful flights with a lot of data gathered with this firmwa
 Franek,
 Author of RS41-NFW
 */
-#define NFW_VERSION "RS41-NFW v65, GPL-3.0 Franek Lada (nevvman, SP5FRA)"  //This is the firmware version You are running
-
-
-
+#define NFW_VERSION "RS41-NFW v66, GPL-3.0 Franek Lada (nevvman, SP5FRA)"  //This is the firmware version You are running
 
 //===== Libraries and lib-dependant definitions (nothing to modify)
 /* No libraries are required to be installed, all dependencies are shipped within the project folder. */
@@ -40,26 +35,24 @@ TinyGPSPlus gps;
 
 #include <HardwareTimer.h>
 
-
-
-
-/* ===== BEGINING OF THE RS41-NFW CONFIGURATION SECTION ===== */
-
-
-
-//===== Device revision definitions
-/* CHANGE-ME! SELECT YOUR BOARD REVISION BY UNCOMMENTING THE RIGHT DEFINITION BELOW (model can be found written on the PCB at the bottom part, see compilation manual for more info)*/
- 
-// #define RSM4x4 // New PCB versions, RSM4x4 AND RSM4x5 (based on MCU STM32L412RBT6 LQFP64)
-// #define RSM4x2  // Old PCB versions, RSM4x2 and RSM4x1 (based on MCU STM32F100C8T6B LQFP48)
-
-
-
-
-
-
-
-
+/*
+ * ============================================================
+ *  RS41-NFW - CONFIGURATION
+ * ============================================================
+ *  ALL user-configurable settings are located in CONFIG.h.
+ *  Open CONFIG.h to configure the firmware:
+ *    • Board revision selection (RSM4x4 or RSM4x2)
+ *    • TX timing and protocol settings (Horus, APRS, RTTY, …)
+ *    • GPS mode, sensor boom, heating, power management
+ *    • System, button, data-recorder, and calibration options
+ *
+ *  DO NOT edit configuration values in this .ino file.
+ *  The hardware pin and interface definitions that follow are
+ *  fixed per board revision and are resolved automatically
+ *  from the revision selected in CONFIG.h.
+ * ============================================================
+ */
+#include "CONFIG.h"
 
 //==== Firmware-internal definitions:
 #ifdef RSM4x4
@@ -159,537 +152,6 @@ int gpsBaudRate = 9600;
 // XDATA (2,3)          rx    tx
 HardwareSerial xdataSerial(PB11, PB10);
 
-
-
-
-
-//===== Radio signals config
-
-bool radioEnablePA = true;  // Default radio state
-
-
-
-/*
-TX timing configuration
-
-GPS-clock synchronized transmission intervals.
-Select desired interval using '...TimeSyncSeconds' variable (example: 15 means every transmission 15 seconds from round hour, so at 10:40:00, 10:40:15, 10:40:30 etc.),
-note that setting the interval to zero disables the transmission, and setting transmissions too often could result in no time for other tasks.
-Suggested stable intervals are >7s for each transmission, but feel free to test everything.
-Offset however (example: offset 2 means 2 seconds after set interval time, so 10:40:02, 10:40:17, 10:40:32, etc.) is useful when flying multiple sondes.
-*/
-
-// Pip:
-constexpr uint16_t pipTimeSyncSeconds = 15;
-constexpr uint16_t pipTimeSyncOffsetSeconds = 0;
-
-
-// Horus V3:
-constexpr uint16_t horusV3TimeSyncSeconds = 15;
-constexpr uint16_t horusV3TimeSyncOffsetSeconds = 0;
-
-
-// Horus V2:
-constexpr uint16_t horusTimeSyncSeconds = 15;
-constexpr uint16_t horusTimeSyncOffsetSeconds = 0;
-
-
-// APRS:
-constexpr uint16_t aprsTimeSyncSeconds = 30;
-constexpr uint16_t aprsTimeSyncOffsetSeconds = 0;
-
-
-// RTTY:
-constexpr uint16_t rttyTimeSyncSeconds = 15;
-constexpr uint16_t rttyTimeSyncOffsetSeconds = 0;
-
-
-// Morse:
-constexpr uint16_t morseTimeSyncSeconds = 15;
-constexpr uint16_t morseTimeSyncOffsetSeconds = 0;
-
-
-
-
-// Modes configuration:
-
-// Pip:
-bool pipEnable = false;               // Enable pip tx mode (carrier)
-constexpr float pipFrequencyMhz = 432.7;        // Pip tx frequency
-constexpr uint16_t pipLengthMs = 100;               // Pip signal length in ms
-constexpr uint16_t pipRepeat = 3;                    // Pip signal repeat count in 1 transmit window
-constexpr int8_t pipRadioPower = 7;                // TX power, 0 = -1dBm (~0.8mW), 1 = 2dBm (~1.6mW), 2 = 5dBm (~3 mW), 3 = 8dBm (~6 mW), 4 = 11dBm (~12 mW), 5 = 14dBm (25 mW), 6 = 17dBm (50 mW), 7 = 20dBm (100 mW)
-
-
-/* Horus V3 transmission mode - encoder provided by Mark VK5QI
-Lately released 3rd generation of Horus 4FSK modem and protocol - read more about experimental releases at: https://github.com/xssfox/horusbinaryv3, and soon at: https://github.com/projecthorus/horusdemodlib/wiki/6-TBA-Horus-Binary-V3 and all other official sources.
-The biggest change is ASN.1 encoding. Thanks to it, you no longer need to request a payload ID nor a custom packet format anymore. From now, you can specify the callsign below in the definition, and it will be sent in the packet itself.
-Also, the new additional sensor data can be easily sent now.
-
-horusV3LongerPacket - Enabling longer packet adds:
-temperatures:
-  custom1 - humidity module temperature sensor
-
-extraSensors:
-  gps_0_0 - gpsStatus - Current GPS power mode. If RSM4x2: 0=disabled, 1=max performance, 2=powersave. If RSM4x4: 0=disabled, 1=max performance, 2=max tracking, powersave, 3=efficient tracking, powersave
-  gps_0_1 - gpsHdop   - Horizontal GPS precision value
-  
-, leaving the horusV3LongerPacket at false will transmit using V3 the same telemetry contents as with V2. I suggest leaving the longerPacket true for most cases.
-
-For more information of encoding, refer to documentation and horus v3 function in code.*/
-bool horusV3Enable = true;              // Enable horus v3 tx mode
-constexpr float horusV3FreqTable[] = {437.6};     // Specify all horus frequencies You want (example {437.6, 434.714, 433.8};), the sonde will cycle through all of them one-by-one during a transmit cycle. Useful when flying long flights in different places of the world (Poland 437.6Mhz, most of the europe 434.714Mhz) Note - lowAltitudeFasTxMode will only use primary frequency - the first one specified.
-#define HORUS_V3_CALLSIGN "4FSKTEST-V3"      // Payload callsign for Horus V3 mode. Note that adding every single character increases your packet size by 6 bits.
-constexpr uint16_t horusV3Bdr = 100;                   // Transmission baudrate, default 100
-constexpr int8_t horusV3RadioPower = 7;              // TX power, 0 = -1dBm (~0.8mW), 1 = 2dBm (~1.6mW), 2 = 5dBm (~3 mW), 3 = 8dBm (~6 mW), 4 = 11dBm (~12 mW), 5 = 14dBm (25 mW), 6 = 17dBm (50 mW), 7 = 20dBm (100 mW)
-bool horusV3LongerPacket = true;        // See explanation above.
-constexpr uint16_t horusBdr = 100;                   // Transmission baudrate, default 100
-constexpr int8_t horusPreambleLength = 8;   // Horus V2/V3 preamble length in bits - default at 16. Allows receivers to lock on the carriers etc.
-
-
-// Horus v2 - NOTE: I HIGHLY! SUGGEST SWITCHING TO V3 MODE, v2 is becoming outdated and v3 is here as a new, much more flexible standard. RX stations should also keep their software updated to the latest releases, which support Horus V3.
-bool horusEnable = false;              // Enable horus v2 tx mode
-constexpr float horusFreqTable[] = {437.6};     // Specify all horus frequencies You want (example {437.6, 434.714, 433.8};), the sonde will cycle through all of them one-by-one during a transmit cycle. Useful when flying long flights in different places of the world (Poland 437.6Mhz, most of the europe 434.714Mhz) Note - lowAltitudeFasTxMode will only use primary frequency - the first one specified.
-constexpr uint16_t horusPayloadId = 256;    // Horus v2 (v1 is outdated and NFW only sends extedned v2 format, v1 IDs seem to work with v2 too) payload ID. Please obtain Yours by creating an issue at https://github.com/projecthorus/horusdemodlib/issues
-constexpr int8_t horusRadioPower = 7;              // TX power, 0 = -1dBm (~0.8mW), 1 = 2dBm (~1.6mW), 2 = 5dBm (~3 mW), 3 = 8dBm (~6 mW), 4 = 11dBm (~12 mW), 5 = 14dBm (25 mW), 6 = 17dBm (50 mW), 7 = 20dBm (100 mW)
-
-
-// APRS:
-bool aprsEnable = true;               // Enable APRS tx mode
-constexpr float aprsFreqTable[] = {432.5};      // APRS frequency table (same format as Horus table). Same as for horus frequency table. Note - dataRecorder will only use primary frequency (first specified). Note - lowAltitudeFasTxMode will only use primary frequency - the first one specified.
-char aprsCall[] = "N0CALL";           // Callsign
-String aprsComment = " NFWv65";          // APRS message comment
-constexpr char aprsSsid = 11;                   // SSID for the call sign
-constexpr char aprsDest[] = "APRNFW";           // Destination address for APRS
-constexpr char aprsDigi[] = "WIDE2";            // Digipeater callsign
-constexpr char aprsDigiSsid = 1;                // Digipeater SSID
-constexpr char aprsSymbolOverlay = 'O';         // Symbol overlay - 'O' for balloon icon, '_' for WX station icon
-constexpr char aprsSymTable = 'a';              // Symbol table (e.g., 'a' for standard symbol)
-/* APRS Operation Mode:
-  1 - Standard RS41-NFW tracker telemetry format, where in APRS comment:
-    F - frame
-    S - sats
-    V - batt (mV -> V)
-    C - ascent_rate (cm/s -> m/s)
-    I - temp
-    T - ext_temperature
-    H - ext_humidity
-    P - ext_pressure (daPa (dekaPascal) -> hPa)
-    J - jam_warning (1 or 0)
-    R - PCB revision (determines model string)
-  
-  2 - weather station format, sends APRS WX weather reports */
-constexpr int8_t aprsOperationMode = 1;
-constexpr int8_t aprsRadioPower = 7;               // TX power, 0 = -1dBm (~0.8mW), 1 = 2dBm (~1.6mW), 2 = 5dBm (~3 mW), 3 = 8dBm (~6 mW), 4 = 11dBm (~12 mW), 5 = 14dBm (25 mW), 6 = 17dBm (50 mW), 7 = 20dBm (100 mW)
-
-
-// RTTY (Franek's original code was modified by OM3BC (thanks!)):
-#define CALLSIGN "N0CALL"             // Callsign used for morse and rtty
-
-bool rttyEnable = false;              // Enable rtty tx mode, compliant with UKHAS format
-constexpr float rttyFrequencyMhz = 434.6;       // RTTY tx frequency
-constexpr uint16_t rttyBitDelay = 10000;             // RTTY delay between transmitted bits - 22000 ~= 45bdrate, 13333 ~= 75bdr, 10000 ~= 100bdr
-constexpr uint8_t rttyBits = 7;                     // RTTY 7 = 7bit character, 8 = 8bit character
-constexpr uint8_t rttyStopBits = 2;               // RTTY stop bits (1, 1.5, 2)
-#define RTTY_RADIO_MARK_OFFSET 0x03   // TX-related, specifies radio offset settings
-#define RTTY_RADIO_SPACE_OFFSET 0x01  // TX-related, specifies radio offset settings
-constexpr int8_t rttyRadioPower = 7;               // TX power, 0 = -1dBm (~0.8mW), 1 = 2dBm (~1.6mW), 2 = 5dBm (~3 mW), 3 = 8dBm (~6 mW), 4 = 11dBm (~12 mW), 5 = 14dBm (25 mW), 6 = 17dBm (50 mW), 7 = 20dBm (100 mW)
-
-// Morse:
-bool morseEnable = false;             // Enable morse tx mode
-constexpr float morseFrequencyMhz = 434.6;      // Morse tx frequency
-constexpr uint16_t morseUnitTime = 40;               // Morse unit time
-constexpr int8_t morseRadioPower = 7;              // TX power, 0 = -1dBm (~0.8mW), 1 = 2dBm (~1.6mW), 2 = 5dBm (~3 mW), 3 = 8dBm (~6 mW), 4 = 11dBm (~12 mW), 5 = 14dBm (25 mW), 6 = 17dBm (50 mW), 7 = 20dBm (100 mW)
-
-
-
-/* Fox hunting mode
-This mode is separate from standard HAB operation mode. It can only transmit morse and FM melody sounds on a specified frequency.The firmware minimises the current consumption.
-In this mode, only the simplified button operation mode is used (1 only power OFF) and the status lights are simplified - green LED blinking when OK, orange LED when something is wrong (for example low battery)
-*/
-bool foxHuntMode = false;                                          // Enables the fox hunting mode.
-bool foxHuntFmMelody = true;                                       // In fox hunting mode, enables a melody transmitted with the onboard radio
-bool foxHuntCwTone = false;                                        // If You prefer a CW tone instead of a FM melody, the tone length is 10s
-bool foxHuntMorseMarker = true;                                    // In fox hunting mode, enables a morse marker transmitted after the melody with the text specified below. Warning - the marker is transmitted in CW, not in FM! Use a side-band capable receiver to receive it.
-String foxMorseMsg = "N0CALL N0CALL FOX";                          // Morse message contents
-bool foxHuntLowVoltageAdditionalMarker = true;                     // When the low voltage threshold is met (specified with vBatWarnValue), the additional marker is activated, to send for example transmitter location
-String foxMorseMsgVbat = "N0CALL N0CALL FOX 11.123456 12.456789";  // Additional morse message when vBatWarnValue is met
-constexpr float foxHuntFrequency = 434.5;                                    // Foxhunt tx freq
-constexpr uint16_t foxHuntTransmissionDelay = 0;                         // Delay in fox hunting mode between transmission cycles in ms
-constexpr int8_t foxHuntRadioPower = 7;                                         // TX power, 0 = -1dBm (~0.8mW), 1 = 2dBm (~1.6mW), 2 = 5dBm (~3 mW), 3 = 8dBm (~6 mW), 4 = 11dBm (~12 mW), 5 = 14dBm (25 mW), 6 = 17dBm (50 mW), 7 = 20dBm (100 mW)
-
-
-
-
-// ===== Hardware operation config
-
-/* ===== LED Status
-You can enable them and set an altitude at which they automatically turn OFF.
-
-LED status description during operation:
-- Constant Red - important error, such as sensor boom error, initial sensor calibration error, RPM411 connection error (if configured)
-- Constant Orange - warning, like no GPS fix or battery voltage below 'vBatWarnValue'
-- Blinking Orange - improved GPS performance mode enabled and sonde is still searching for satelliltes
-- Blinking Green - improved GPS performance mode enabled and sonde successfully found many satellites and soon will return to ready-to-flight mode
-- Constant Green - all systems working correctly and no errors, sonde is ready to be launched
-
-LED status during startup:
-- Red blinks 3 times - wrong conditions for zero humidity calibration, exiting zero humidity calibration
-- Red blinks 5 times - zero humidity calibration cancelled due to a sensor boom error
-- Constant red - hardware init
-- Constant orange - sensor boom and heating circuitry init, also partly GPS initialization
-- Blinking orange shortly - calibration in progress, either reconditioning, temperature correction or zero-humidity-check
-- Green blinks 5 times - firmware setup done, entering main program
-*/
-bool ledStatusEnable = true;
-constexpr int16_t ledAutoDisableHeight = 1000;                            // Altitude in meters above which the status LEDs get disabled
-
-
-
-/* ===== XDATA port and instruments
-Choose Your XDATA port operation mode.
-For most users, Mode 4 is suggested, which enables NFW serial protocol compatible with RS41-NFW Ground Control Software, an advanced and user-friendly webGUI interface.
-Optionally You may select Mode 1, which allows user to connect to a serial terminal and view text log of firmware operation.
-Modes 0,2, shouldn't be used as they do nothing, mode 3 is still in development.
-*/
-constexpr uint8_t xdataPortMode = 4;   //0 - disabled, 1 - debug uart, 2 - i2c (NO implementation now, does nothing), 3 - xdata sensors (oif411, bad implementation, needs to be rewritten for user-friendliness), 4 - RS41-NFW Control Software communication mode. 5 - GPS bridge mode @default baudrates (115200)
-constexpr uint16_t oif411MsgWaitTime = 1100;  //waiting time for oif411 message
-
-
-
-// ===== Power management
-float vBatWarnValue = 0;                                    // Battery warning voltage
-float batteryCutOffVoltage = 0;                             // Good for nimh rechargable cell life, below 0.8V per AA cell the damage could occur; if You plan on maximising the working time, set to 0V to disable the auto turn OFF, or if using lithium batteries, which are safer to use
-bool ultraPowerSaveAfterLanding = false;                    // 20 minutes after landing the sonde will turn OFF the GPS completely, turn OFF all sensors and change the transmit interval to 5 minutes and switch to Horus and APRS, transmitting the last coordinates. Useful for preserving as much battery as possible
-
-
-
-// ===== GPS configuration
-/* gpsOperationMode:
-  0 - fully OFF (stationary use, like WX station, the stationary coordinates can be specified in gpsLat-gpsLong)
-  1 - default, always ON;
-  2 - standard powersaving when stable position (only RSM4x2, old feature which lowers power consumption when GPS signal is strong, automatically goes back to Max Performance when necessary)
-  3 - INTELLIGENT GPS management - algorithm available only for RSM4x4 boards, which together with the M10 u-blox GPS' Super-S, PSMCT, ITFM, constellations and GNS messages allows
-      for a BIG improvement in terms of power consumption and interference and jamming resiliance.
-
-Suggested values for tracker use - choose 3 for RSM4x4 or 2 for RSM4x2.
-Both 2 and 3 power modes don't affect tracking performance, as the NFW constantly maintains best performance/power.
-IF SET TO 3 READ BELOW OPTION */
-uint8_t gpsOperationMode = 3;
-
-/* gpsManagement options - available only for RSM4x4 - and only when gpsOperationMode = 3 is selected:
-  m10ConstellationOptimization - NFW automatically adjusts used constellations to provide both the best performance and lowest power consumption. Detects signal quality and navigation properties. 
-  m10AggressiveOpt - prioritizes power efficiency over tracking quality in constellation optimization.
-  m10CyclicTracking - in good signal scenarios the receiver will enter a cyclic tracking mode, where navigation processor wakes up every 10 seconds, calculates the position, and goes to sleep. This option provides a big power improvement.
-  m10PerformanceImprovements - provides many improvements in terms of signal reception, satellite orbit parameters and refresh rates.
-  m10SuperS - u-blox's Super-S technology maximizes performance in different conditions, and optimizes power consumption at the same time.
-  
-Suggested values:
-  m10constellationOptimization = true
-  m10AggressiveOpt = false, set to true if you really really care about those last milliamps. Note: disabling WILL significantly impact tracking performance. This is the only option that can badly impact tracking.
-  m10CyclicTracking = true;
-  m10PerformanceImprovements = true, always;
-  m10SuperS = true, only profit
-*/
-bool m10ConstellationOptimization = true;
-bool m10AggressiveOpt = false;
-bool m10CyclicTracking = true;
-bool m10PerformanceImprovements = true;
-bool m10SuperS = true;
-
-
-/* ubloxGpsAirborneMode - Sets the uBlox GPS module to the Airborne 1G Dynamic Model, which allows flights above 18km altitude
-Suggested setting - true (only consider false if You don't use the sonde at altitudes over 18km and want a slightly better position precision) */
-bool ubloxGpsAirborneMode = true;
-
-
-/* gpsTimeoutWatchdog - In milliseconds, the time after which the GPS chip resets if the position is not valid (no fix), kind of a watchdog.
-Also helps to regain the fix quicker, default 30 minutes (1800000 ms), set to 0 to disable.
-Suggested setting - 900000 ms (reset every 15 minutes of no valid fix) */
-unsigned long gpsTimeoutWatchdog = 900000;
-
-
-/* improvedGpsPerformance - If true, the device improves the gps fix achieving performance.
-The issue is that the radio chip (Si4032) makes wideband noises (so-called spurious emmissions), which affects the GPS L-band too, causing the receiver to have an overall lower sensitivity.
-This option automatically changes the TX interval to 120s if the GPS didn't catch a fix; after GPS sees enough satelites, the TX interval goes back to default set.
-Mode status is available via LED status and RS41-NFW Ground software.
-Suggested setting - true */
-bool improvedGpsPerformance = true;
-
-
-/* This setting disables the improvedGpsPerformance features when the sonde is in-flight, because it can cause a loss of data for up to 2 minutes.
-Suggested: If You fly under interference conditions, very worth to set this to false. Else - usually set to true. */
-bool disableGpsImprovementInFlight = true;
-
-unsigned long radioSilenceDuration = 120000;  // How long the radio is silent (by default tx every 2 minutes) when improvedGpsPerformance feature is active
-
-
-/* GPS default coordinates
-Worth setting during stationary use when gpsOperation mode is set to 0.
-If GPS is active, they will get overwritten. */
-float gpsLat = 0;                                           // Latitude
-float gpsLong = 0;                                          // Longitude
-float gpsAlt = 0;                                           // Altitude
-
-
-constexpr uint8_t gpsSatsWarnValue = 4;                     // Warning value for GPS satellites number
-unsigned long gpsPowerSaveDebounce = 300000;                // Debounce to limit setting the GPS back and forth into the power saving mode
-
-
-
-// ===== Sensors
-bool sensorBoomEnable = true;                              // Enables sensor boom measurements and diagnostics
-bool sensorBoomPowerSaving = false;                         // Lowers the sensors refresh rate to 30s
-
-//NOTE - calibration process is very clear and fully guided if You use RS41-NFW Ground Control Software together with selected values here. Keep reading :D
-
-/* Temperature measurement subsystem */
-/* mainTemperatureCorrectionC - correction offset for main temperature sensor (silver hook).
-Vaisala sensor booms are nearly similairly linear between each other and the only difference between them is this temperature offset here.
-Note that all calibration parameters here are only for a particular sensor boom. Switching to a different one will more than likely require recalibration.
-Usage (suggested option 1 and then option 2):
-  1. 
-  Enable 'autoTemperatureCalibration', which will automatically calibrate Your sensor boom during initialization and calculate this value.
-  Beware that during each sonde startup it will need to auto-calibrate. If You want to have a pre-programmed value, look into 2 below (3 is more complicated but works too).
-
-  2.
-  You can then read this value through serial port of RS41-NFW Ground Software (xdataPortMode 1 or 4).
-  After reading it You can disable 'autoTemperatureCalibration' and manually set the calculated 'mainTemperatureCorrectionC' in the firmware, so in the future the calibration of a particular sensor boom won't be needed.
-
-  3. If options 1 and 2 aren't for You:
-  Turn ON the sonde with 'mainTemperatureCorrectionC' set to 0, read the reported external temperature value (either in radio transmission or in RS41-NFW Ground Control Software) and compare it with a known thermometer.
-  Calculate (actualTemperature - sondeRawReading = mainTemperatureCorrectionC) and set this offset down below.
-*/
-float mainTemperatureCorrectionC = 0;
-
-
-/* extHeaterTemperatureCorrectionC and autoHumidityModuleTemperatureCorrection - offset and auto-calibration of external humidity module heater temperature sensor.
-Usage (suggested option 1):
-  1.
-  Enable 'autoHumidityModuleTemperatureCorrection' and forget about this variable. Seriously.
-  The firmware will compare all temperature values and correct this sensor automatically.
-  Note that for a real and accurate correction Your main temperature sensor needs to be calibrated.
-
-  2. If option 1 is not for You:
-  Optionally set this to 0, launch RS41-NFW Ground Control Software and read the reported temperature value. Manually calculate the offset and enter it below.
-*/
-float extHeaterTemperatureCorrectionC = 35;
-bool autoHumidityModuleTemperatureCorrection = true;
-
-
-/* autoTemperatureCalibration - enables automatic calibration of main temperature sensor
-Calibration uses a method selected below with 'autoTemperatureCalibrationMethod'
-For suggested settings read about 'mainTemperatureCorrectionC' and 'extHeaterTemperatureCorrectionC'.
-*/
-bool autoTemperatureCalibration = true;
-
-
-/* autoTemperatureCalibrationMethod - method of automatic calibration of the main temperature sensor
-  1. autoTemperatureCalibrationMethod = 1
-  Calibration based on the known constant air temperature, which is specified with 'environmentStartupAirTemperature'.
-  For example Your room has 24*C and You turn ON the sonde in it, the sonde will correct automatically itself. You MUST then turn ON the sonde in this environment.
-  This option gives most accurate results of calibration when used properly (accurately specified environment temperature).
-  
-  2. autoTemperatureCalibrationMethod = 2
-  Based on the average PCB temperature.
-  The PCB temperature should be adapted to the environment temperature (which means raw PCB with no cover should be left in the calibration environment for about 10 minutes).
-  The function corrects the calibration slightly by an empirical polynomial, which uses PCB temperature as input data.
-  Much worse accuracy, works best in environment temperatures ranging from 5C to 32C.
-
-Automatic temperature calibration is indicated by orange LED during startup, for more status information, read about LED status above or launch RS41-NFW Ground Control Software. */
-constexpr uint8_t autoTemperatureCalibrationMethod = 1;
-float environmentStartupAirTemperature = 24;
-
-
-
-
-/* Humidity measurement subsystem */
-bool humidityModuleEnable = true;  // Setting that enables the support of humidity module
-
-
-/* reconditioningEnabled - humidity sensor reconditioning
-Phase before zero-humidity check, lasting for a minute. Heats the sensor to the specified value and removes impurities and debris from the humidity module.
-Suggested with the zero-humidity check. (Also used during the original Vaisala ground check, lasts a couple of minutes and heats the sensor to 180*C) */
-bool reconditioningEnabled = false;
-constexpr uint8_t reconditioningTemperature = 145;
-
-
-/* Zero humidity check (how Vaisala calls it) or more accurately Zero-Humidity Calibration 
-This option automatically checks and calibrates the humidity sensor, by heating it to a temperature where water evaporates - above 100C in normal conditions.
-Note that all this is completely safe, as factory Vaisala firmware does the same during launch, and NFW uses carefully written and adjusted PID control for heater to achieve stable temperature.
-
-The process is completely automatic and straightforward. After turning ON the sonde, eventually an orange light will blink, indicating heating of the sensor.
-You can monitor the calibration progress by launching RS41-NFW Ground Control Software (or by using serial terminal if You don't like the easier method).
-The calibration should last under a minute, usually less than 30 seconds.
-
-The sonde during calibration should stay in a warm, not wet environment, with little to no wind (preferably indoors, with temperature raning from 5 to 40C and RH from 0 to 60%).
-
-As with temperature calibration, there are 2 paths to choose (no suggestion, choose what is suitable for You):
-  1. Automatic calibration on each startup.
-  This won't be however possible when sonde will be turned ON outdoors during winter, because wind and cold will not allow the heater to achieve a working temperature, here comes the option 2:
-
-  2. Zero humidity calibration and manual config
-  Before turing ON the sonde, launch RS41-NFW Ground Control Software (or serial terminal and xdataPortMode=1).
-  Turn ON the sonde, wait for the calibration to end and look in the Sensors tab for a "zero humidity capacitance". Copy it and paste here in "zeroHumidityCapacitance".
-  Now Your sonde will remember the calibration data for this sensor boom. */
-bool zeroHumidityCalibration = true;
-float zeroHumidityCapacitance = 0;
-
-
-/* humidityRangeDelta
-Default value should be okay, as it is an average from many different sensor booms.
-However some are different, and if You notice that Your humidity readings are of%, this is the cause, as some humicaps react differently to humidity.
-
-As always, two methods to choose from (for beginners suggested option 1, if You have 10 minutes time more today check out option 2 :D):
-  1.
-  Leave this value as is and keep humidityCalibrationDebug disabled.
-
-  2. 'humidityRangeDelta' calibration with 'humidityCalibrationDebug'
-  Before turning ON the sonde prepare 100%RH environment. Well working home options:
-    - Boiling water (kettle, pot) or very hot water (big cup, bowl, keep in mind it should release water fog).
-    When later placing the sensor boom, hold it sensor-side upwards in the boiling fog about 5-8cm above the water.
-    - Your mouth, but it isn't as accurate. Do a warm, humid whoooh on the sensor for a period of time. If using this method, consider adding +0.3 to the value.
-  It doesn't need to be a lab environment, just wet environment close to 100%RH.
-
-  If You want the most accurate humidity readings, enable 'humidityCalibrationDebug' below and connect Your sonde through a serial port:
-    - Using RS41-NFW Ground Control Software: after turning ON the sonde and waiting for zero humidity calibration to pass, the sonde will enter 'humidityCalibrationDebug' mode.
-      From there, switch to the Sensors tab, look around for the humidity range delta number (it should be changing a bit) and place the sensor in a 100%RH environment.
-      Observe the value and the sensor. Write down the highest number You have seen, BUT keep the sensor without condensation (in boiling fog with the sensor upwards and look at it to be clear of water).
-  The observed max delta value change below in 'humidityCapacitanceRangeDelta' and disable 'humidityCalibrationDebug'. */
-float humidityCapacitanceRangeDelta = 6;         // Empirical tests average
-bool humidityCalibrationDebug = false;                    // (Bla bla bla after calibration the sonde enters special mode that prints out on serial port or RS41-NFW Ground Control Software the frequencies and a suggested humidityRangeDelta value. After it enters this mode, place the sensor in a 100%RH environment (for example close over a boiling water) and read the rangeDelta. This will give You a higher accuracy of the readings for each sensor boom.)
-constexpr unsigned long humidityCalibrationTimeout = 300000;        // Zero humidity calibration timeouts if it can't finish in (by default) 5 minutes (300000 milliseconds)
-constexpr uint8_t humidityCalibrationMeasurementTemperature = 115;      // Minimum sensor temperature, at which the calibration function takes measurements. Must be over 110 for reliable calibration, suggested 115
-
-
-
-/* pressureMode - determines pressure measurement method:
-  0 - pressure measurement disabled, reported value is 0.#
-  
-  1 - Vaisala RPM411 pressure sensor measurement method. Simply plug the sensor on the back side of the board (note - it must be an RS41-SGP model) and configure this option. You'll now heave extremely precise pressure, measured with an official, factory-calibrated BARO-CAP sensor.
-      You do not need to calibrate anything, nor specify any values (don' change the sea level pressure as it will do nothing).
-  
-  2 - pressure estimation - works like in RS41-SG models, with a pressure model, which expects user's input of `seaLevelPressure`. Estimates the pressure of dry air based on altitude, temperature and humidity. Not so precise, more of an 'order of magnitude'.
-      Change 'seaLevelPressure' [Pa] value to the correct Mean Sea Level Pressure (pressure reduced to the level of sea) in the region of launch.
-      If launching in the near future, please look at Your weather forecast and weather models.
-
-The pressureValue is sent via Horus v2, Horus v3 and APRS .
-
-Suggested option - 1, using the RPM411 pressure sensor.*/
-constexpr uint8_t pressureMode = 1;
-constexpr float seaLevelPressure = 1013.25;                  // Sea level pressure in hPa, used to correctly estimate the pressure in the upper layers
-
-
-
-/* Heating */
-
-/* referenceHeating, referenceAreaTargetTemperature
-Enabling 'referenceHeating' option provides advanced heating algorithm for the cut-out part of the PCB, where reference elements are located.
-This function works with the same method as the Vaisala firmware - maintaing temperature of around 20*C at the cut out PCB area.
-When enabled, warm resistors give a notable improvement in temperature readings accuracy, while also increasing the power consumption a bit.
-Suggested setting: when sensor boom is present and You're flying with 2xAA batteries - set to true if You are doing a flight lasting up to 18h. With either 1xAA or no sensor boom - definitely false.
-
-referenceAreaTargetTemperature - suggested values (temperature in degrees celcius):
-  - 18, if flying with original styrofoam box (Vaisala default is 20C and with good thermal isolation NFW maintains 1.5C above target)
-  - 8, if flying without original box, but with some form of wind cover like a few wraps of tape or foil or a small foil bag with a few layers.
-  - 0, if flying with raw PCB. Raw PCB heating will consume much (I mean very much) more power, so beware of it when planning the flight. */
-bool referenceHeating = true;                             // Enable option for reference area heating
-constexpr int8_t referenceAreaTargetTemperature = 18;                  // Target temperature of reference area heating.
-
-
-/* humidityModuleHeating, 
-Enabling 'humidityModuleHeating' option provides advanced heating algorithm for humidity module. It safely and precisely adjusts the heater power using PWM and PID.
-During flight, the humidity module is kept above 'humicapMinimumTemperature', because below that humicap sensor doesn't work that well.
-Above 'humicapMinimumTemperature', the sensor is kept 'defrostingOffset' degrees above the air temperature.
-
-Suggested values:
-  - humidityModuleHeating = true when flying with the sensor boom (unless You do really long flights above 18h, then false).
-  - defrostingOffset = 3, default for Vaisala algorithm is 5. Works very well to keep the sensor free of frost and condensation. Values higher than 5 shouldn't be used as they could affect the readings too much.
-  - humicaMinimumTemperature = -44, below this value humicap's performance degrades much.
-*/
-bool humidityModuleHeating = true;
-constexpr int8_t defrostingOffset = 5;                                 // This is the positive offset added to the sensor target temperature to prevent sensor frosting in icing conditions
-constexpr int8_t humicapMinimumTemperature = -44;                      // Humicap sensor minimum operating temperature (below this value the sensor gets significantly less accurate and responsive)
-constexpr int8_t humidityModuleHeatingTemperatureThreshold = 35;    // NFW will activate the heating only when the sensor's temperature is < this threshold. Vaisala heats at all times.
-
-
-
-/* lowAltitudeFastTx mode
-When sonde is descending after a burst, after it goes below 'lowAltitudeFastTxThreshold' altitude threshold, algorithms switch into a 'lowAltitudeFastTx' mode.
-It is active for 'lowAltitudeFastTxDuration'. During this time it transmits Horus and APRS as fast as it can (or slower by setting the 'lowAltitudeFastTxInterval'), and only refreshes position and sensor data. */
-constexpr uint16_t lowAltitudeFastTxThreshold = 1000;                    // Meter altitude threshold for this mode to enable (set to 0 to disable)
-constexpr unsigned long lowAltitudeFastTxDuration = 480000;         // How long this mode will work, in milliseconds (default 480000ms = 8minutes)
-constexpr uint16_t lowAltitudeFastTxInterval = 1;                        // Delay in ms between transmissions in this mode, leave at minimum 1 to provide the most data possible (note that it overloads Horus and APRS infrastructure very much for a short period of time).
-
-
-
-/* Flight computing 
-NFW firmware also processes collected data.
-To ensure propper operation, look at these values and correct them if needed. */
-constexpr uint16_t flightDetectionAltitude = 750;               // Flight detection altitude, if exceeded, the sonde knows that the flight began. I suggest to set it a few hundred meters above Your terrain level.
-constexpr uint16_t burstDetectionThreshold = 800;               // Threshold value, which if exceeded (below maxAlt), deterimnes that the balloon has burst. Suggested 1000m, because some balloons get unsealed or float.
-
-
-
-// System
-bool autoResetEnable = true;                              // Automatically reset the CPU after specified time below, useful in stationary continuous use, to prevent from overflowing some variables and improving overall stability.
-#define SYSTEM_RESET_PERIOD (7UL * 24 * 60 * 60 * 1000)   // 7 days in milliseconds
-bool aprsToneCalibrationMode = false;                     // DON'T use for flight! transmits tones at 1200 and 2200 hz to calibrate the APRS delays for perfect sound frequencies, development mode, not for use
-#define THERMISTOR_R25 10000                              // Onboard thermistor R value at 25C
-#define THERMISTOR_B 3900                                 // Onboard thermistor Beta factor
-
-
-
-/* buttonMode 
-Specifies button operation mode:
-  0 - Button operation disabled
-  1 - Hold briefly for sonde shutdown
-  2 - Extended menu mode, allowing to manually cancel 'improveGpsPerformance' and if the transmission should be enabled and shutdown. Holding the button cycles through 3 options, indicated by the LED, one blink is cancel the 'improveGpsPerformance', two blinks disable radio PA, and the longest hold shutdowns the sonde. Release on the desired option, quite hard so not suggested ever.
-
-Suggested settings: Leave at 1 for a button shutdown and simple operation.
-                    If You fly a sonde with PV or on 1xAA power supply, consider disabling the button and shorting its pins for always closed state.
-
-NOTE: The button sometimes would need a longer hold than usual, about 3s instead of 1.5s, time varies due to CPU time availability, but never should exceed a longer hold.*/
-constexpr int8_t buttonMode = 1;
-
-
-
-/* dataRecorder
-Set 'dataRecorderEnable' to true to enable this mode.
-If active, the sonde transmits recorded, computed and debugging data to the ground via Horus V3 extraSensors.
-
-Warning - APRS dataRecorder has been currently deprecated - there was a memory overflow issue somewhere, which I couldn't resolve and it caused the device to behave erraticaly. Also it seems to be a much better option in Horus V3 extaSensors array.
-*/
-bool dataRecorderEnable = true;
-constexpr unsigned int dataRecorderInterval = 180000;               // 3 minutes frame interval by default (180000 milliseconds)
-bool dataRecorderFlightNoiseFiltering = true;             // Filter out noisy data on ground and during position gathering, include in the measurements only the data captured in flight
-
-
-
-
-// Data Kalman filter constants, no need to modify
-float pressureKalmanError = 3;
-float pressureKalmanQ = 2;
-float humidityKalmanError = 2;
-float humidityKalmanQ = 5;
-float pressureKalmanEst = 1013.25; 
-float pressureKalmanErrorEst = pressureKalmanError;
-float humidityKalmanEst = 5;
-float humidityKalmanErrorEst = humidityKalmanError;
-
-/* PID values for heater control*/
-float extHeaterProportionalK = 2.32;                      // proportional gain
-float extHeaterIntegralK = 0.35;                          // integral gain
-float extHeaterDerivativeK = 0.85;                        // derivative gain
-
-
-/* ===== END OF THE RS41-NFW CONFIGURATION SECTION ===== */
-
-
-
-
-
-
 //Support of ability to heat up the radio/gps oscillator by reference heating resistors has ENDED. This is due to the decision, that RTTY (especially 75 baud) is not used widely, so the heating isn't needed, and also that the heating of them at max power is very power hungry. Also, they are used for temperature calibration and now have been implemented to correct the readings properly. This can be configured in the sensorBoom area
 /*
 //Oscillator heating system (don't activate unless You plan to use fast RTTY in extremely small temperatures and fly with large batteries)
@@ -726,26 +188,40 @@ float gpsSpeed;
 float gpsSpeedKph = 0;
 uint8_t gpsSats;  //system wide variables, for use in functions that dont read the gps on their own
 float gpsHdop;
-bool err = false;   //const red light, status state
-bool warn = false;  //orange light, status state
-bool ok = true;
-;  //green light, status state
+bool err = false;   //red light, error status state
+bool ok = true;     //green light, ok status state
 bool vBatWarn = false;
 bool gpsFixWarn = false;
 int horusPacketCount;
 int horusV3PacketCount;
 uint8_t xdataInstrumentType = 0;
 int xdataInstrumentNumber = 0;
-float xdataOzonePumpTemperature = 0;
-float xdataOzoneCurrent = 0;
-float xdataOzonewxVoltage = 0;
-int xdataOzonePumpCurrent = 0;
+float xdataOzonePumpTemperature = 0;  // [°C]
+float xdataOzoneCurrent = 0;           // [μA]
+float xdataOzoneBatteryVoltage = 0;    // [V]
+float xdataOzonePumpCurrent = 0;       // [mA]
+float xdataOzoneExtVoltage = 0;        // external voltage [V]
+char  xdataOzoneSerial[9] = {0};       // 8-char instrument serial
+uint16_t xdataOzoneDiagnostics = 0xFFFF; // 0x0000=OK, 0x0004=pump T cold, 0x0400=batt off
+uint8_t  xdataOzoneFwVersion = 0;      // firmware version integer (e.g. 10 = v0.10)
+float xdataOzonePartialPressure = 0;   // P3 partial pressure of ozone [mPa]
+float xdataOzonePpb = 0;              // O3 volume mixing ratio [ppbv]
+float ozone_P0 = 0;                   // ground-level pressure at first GPS fix [hPa]
+bool  ozone_P0Set = false;
+uint8_t ozone_P0SampleCount = 0;
+float ozone_P0Accumulator = 0;
+unsigned long ozoneLastFrameMs = 0;   // millis() of last valid OIF411 parsed frame
+bool ozoneConnectionError = false;    // true when no valid frame for > 3 s (after first frame)
+char    ozoneDbgRaw[64] = "";         // last raw xdata= frame content (for debug)
+uint8_t ozoneDbgLen     = 0;          // length of last received raw frame
+uint32_t ozoneRxByteTotal = 0;        // total bytes received on xdata RX port
+uint16_t ozoneFrameTotal = 0;         // count of successfully parsed OIF411 frames
 float lastGpsAlt;
 unsigned long lastGpsAltMillisTime = 1;
 float vVCalc;
 bool gpsTimeoutCounterActive = false;
 unsigned long gpsTimerBegin = 0;
-int currentGPSPowerMode = 0;  // 1 normal (max powerformance/continuous), 2 powersave
+int currentGPSPowerMode = 0;  // RSM4x2/4x1 GPS power state (sent as Horus "gpspwr"): 0 not set, 1 max-performance/continuous, 2 power-save
 unsigned long lastPowerSaveChange = 0;
 unsigned int rttyFrameCounter = 0;
 unsigned long lowAltitudeFastTxModeBeginTime = 0;
@@ -755,11 +231,12 @@ unsigned long landingTimeMillis = 0;
 bool cancelGpsImprovement = false;
 bool gpsJamWarning = false;
 int8_t currentRadioPwrSetting = 0;
-int8_t currentM10IntelligentMode = 1;
-int8_t gpsStatus = 1;
+int8_t currentM10IntelligentMode = 1;  // RSM4x4/4x5 M10 intelligent tier (sent as Horus "gpspwr", mode 3): 1 weak fix (<=10 sats) continuous, 2 moderate (11-15) cyclic/continuous, 3 strong (>=15) cyclic power-save
+int8_t gpsStatus = 1;  // value sent as Horus V3 extra-sensor "gpspwr": = currentM10IntelligentMode on RSM4x4/4x5, = currentGPSPowerMode on RSM4x2/4x1
 
 uint16_t maxAlt = 0;
 int16_t maxSpeed = 0;
+char nfwCurrentStage[4] = "00";
 int maxAscentRate = 0;
 int maxDescentRate = 0;
 int8_t maxMainTemperature = 0;
@@ -768,6 +245,11 @@ int8_t maxInternalTemp = 0;
 int8_t minInternalTemp = 0;
 bool beganFlying = false;
 bool burstDetected = false;
+// Flight-start detection state (cumulative climb above launch baseline).
+float   flightBaseAlt = 0.0f;        // launch-baseline altitude, captured at first valid fix
+bool    flightBaselineSet = false;
+float   flightPrevAlt = 0.0f;        // last fix altitude, to count only new fixes
+uint8_t flightSustainedRise = 0;     // consecutive fixes >= climb threshold (noise rejection)
 bool recorderInitialized = false;  //not init by default
 bool hasLanded = false;
 bool lowAltitudeFastTxModeEnd = false;
@@ -795,6 +277,7 @@ float tempSensorBoomCalibrationFactor = 0;
 bool sensorBoomMainTempError = false;
 bool sensorBoomHumidityModuleError = false;
 bool sensorBoomFault = false;
+bool _hrdStopRequested = false;
 bool calibrationError = false;
 int extHeaterPwmStatus = 0;
 int referenceHeaterStatus = 0;
@@ -810,23 +293,28 @@ char aprsBitStuffingCounter = 0;  // Bit stuffing counter
 unsigned short aprsCrc = 0xffff;  // CRC for error checking
 unsigned int aprsPacketNum = 0;
 
+// ===== SCHEDULER STATE =====
+// Managed by schedulerInit() / schedulerLoop(). Do not access directly from other code.
 
-// Scheduler:
-// Time tracking variables
-unsigned long systemTimeMillis = 0;        // System clock in milliseconds
-unsigned long lastMillisUpdate = 0;        // Last millis() reading
-bool gpsTimeSynced = false;                // Whether we have GPS time sync
+unsigned long sch_sysMs    = 0;   // UTC time-of-day in ms (GPS-synced when available)
+unsigned long sch_lastMillis = 0; // Previous millis() snapshot used for time tracking
+bool          sch_gpsSynced  = false; // True when GPS time is valid and locked
 
-// Transmission tracking - stores next scheduled transmission time in seconds
-unsigned long nextPipTxTime = 0;
-unsigned long nextHorusV3TxTime = 0;
-unsigned long nextHorusTxTime = 0;
-unsigned long nextAprsTxTime = 0;
-unsigned long nextRttyTxTime = 0;
-unsigned long nextMorseTxTime = 0;
+// Next scheduled TX times in sch_sysMs units (ms since UTC midnight).
+// Value 0 = uninitialized → compute first slot on the next scheduler pass.
+unsigned long sch_nextPipMs     = 0;
+unsigned long sch_nextHorusV3Ms = 0;
+unsigned long sch_nextHorusMs   = 0;
+unsigned long sch_nextAprsMs    = 0;
+unsigned long sch_nextRttyMs    = 0;
+unsigned long sch_nextMorseMs   = 0;
 
-
-
+// Sensor-update freshness - millis()-based (immune to GPS clock corrections)
+unsigned long sch_lastSensorBoom = 0;
+unsigned long sch_lastPressure   = 0;
+unsigned long sch_lastInterface  = 0;
+unsigned long sch_lastGps        = 0;
+unsigned long sch_lastOzone      = 0;
 
 #ifdef RSM4x4
 //Based on https://github.com/cturvey/RandomNinjaChef/blob/main/uBloxHABceiling.c , and  https://github.com/Nevvman18/rs41-nfw/issues/3
@@ -919,7 +407,6 @@ uint8_t ubxEnableBds[] = {
   0xFE, 0x8F
 };
 
-
 // CFG-NAVSPG-MAX_SVS set to 64 (0x40)
 uint8_t ubxCfgValSet_maxSvs64[] = {
   0xB5, 0x62, 0x06, 0x8A, 0x09, 0x00,          // Header
@@ -938,7 +425,6 @@ uint8_t ubxCfgSig10[] = {
 };
 
 #endif
-
 
 // 6 series
 
@@ -965,10 +451,9 @@ uint8_t ubxCfgNav5_powerSave[] = {
   0x22, 0x92                           // Checksum
 };
 
-
 //===== Horus mode deifinitions
+#ifdef RSM4x4
 // Horus v2 Mode 1 (32-byte) Binary Packet
-//== FOR MORE INFO SEE int build_horus_binary_packet_v2(char *buffer) function around line 600
 struct HorusBinaryPacketV2 {
   uint16_t PayloadID;
   uint16_t Counter;
@@ -982,15 +467,14 @@ struct HorusBinaryPacketV2 {
   uint8_t Sats;
   int8_t Temp;          // Twos Complement Temp value.
   uint8_t BattVoltage;  // 0 = 0.5v, 255 = 2.0V, linear steps in-between.
-  // The following 9 bytes (up to the CRC) are user-customizable. The following just
-  // provides an example of how they could be used.
-  int16_t dummy1;     // unsigned int uint8_t
-  int16_t dummy2;     // Float float
-  uint8_t dummy3;     // battery voltage test uint8_t
-  uint16_t dummy4;    // divide by 10 uint8_t
-  uint16_t dummy5;    // divide by 100 uint16_t
+  int16_t dummy1;
+  int16_t dummy2;
+  uint8_t dummy3;
+  uint16_t dummy4;
+  uint16_t dummy5;
   uint16_t Checksum;  // CRC16-CCITT Checksum.
 } __attribute__((packed));
+#endif
 
 // Buffers and counters.
 // QI - Horus v2 - 32 bytes uncoded -> 65 bytes coded.
@@ -1050,11 +534,6 @@ const char* MorseTable[37] = {
   " "       // Space (7 dot lengths)
 };
 
-
-
-
-
-
 char RPM411SerialNumber[9];
 
 //1 byte uint8_t-stored configuration frame for rpm411 (captured by nevvman's logic analyzer)
@@ -1089,13 +568,10 @@ const uint8_t RPM411TriggerReadoutFrame[] = {0x02,0x00,0x6D,0x7B,0x00};
 uint8_t RPM411ConfigData[21][33];
 
 bool rpm411Error = false;
+bool lastRpm411ErrorState = false;  // tracks previous RPM411 state so the status is logged only on change (avoids [info] spam)
 float rpm411Pressure = 0.0;
 float rpm411InternalTemperature = 0.0;
 uint8_t RPM411ReadingsData[33];
-
-
-
-
 
 //===== Radio config functions
 
@@ -1182,8 +658,6 @@ void radioDisableTx() {
   writeRegister(0x07, 0x40);
 }
 
-
-
 //===== Low-Level SPI Communication for Si4032
 
 void writeRegister(uint8_t address, uint8_t data) {
@@ -1254,8 +728,6 @@ void setRadioModulation(int modulationNumber) {
   }
 }
 
-
-
 //===== Radio modes functions
 
 //rtty
@@ -1276,14 +748,11 @@ void rttySendBit(bool bitValue) {
   delayMicroseconds(rttyBitDelay);  // Fixed delay according to baud rate
 }
 
-
-
 void rttySendStopBits() {
   // Send stop bits
   setRadioSmallOffset(RTTY_RADIO_MARK_OFFSET);
   delayMicroseconds(int(rttyStopBits * rttyBitDelay));  // Delay of stop bits
 }
-
 
 void rttySendCharacter(char character) {
   // Encode character to RTTY format (assuming default encoding and no special encoding needed for . and -)
@@ -1299,7 +768,6 @@ void rttySendCharacter(char character) {
   // Send stop bits (1.5 stop bits)
   rttySendStopBits();  // stop bit
 }
-
 
 //morse
 void transmitMorseChar(const char* morseChar, int unitTime) {
@@ -1341,7 +809,6 @@ void transmitMorseString(const char* str, int unitTime) {
     delay(3 * unitTime);
   }
 }
-
 
 //4fsk implementation for horus
 void fsk4_tone(int t) {
@@ -1399,8 +866,6 @@ size_t fsk4_write(char* buff, size_t len) {
   return (n);
 }
 
-
-
 //===== Radio payload creation
 String createRttyMorsePayload() {
   rttyFrameCounter++;
@@ -1449,7 +914,6 @@ String createRttyMorsePayload() {
   return payloada;
 }
 
-
 // Horus V3 mode - protocol and code provided by Mark VK5QI - big thanks for awesome work on code and the protocol!!!
 int buildHorusV3Packet(char* uncoded_buffer){
   // Horus v3 packets are encoded using ASN1, and are encapsulated in packets
@@ -1469,6 +933,15 @@ int buildHorusV3Packet(char* uncoded_buffer){
   // Need to check how this is allocated in memory. how much it uses.
   // .. also does it get cleared?
 
+  // Clamp all fields to their ASN.1-schema limits before encoding.
+  // Exceeding any limit causes the encoder to return an error and drop the packet.
+  const uint8_t  asn_sats      = constrain(gpsSats,                                  0,      31);
+  const int32_t  asn_alt       = constrain((int32_t)gpsAlt,                      -1000,   50000);
+  const uint16_t asn_speed     = constrain((int32_t)gpsSpeedKph,                     0,     512);
+  const uint16_t asn_pressure  = constrain((int32_t)(pressureValue*10),              0,   12000);
+  const int16_t  asn_tempExt   = constrain((int32_t)(mainTemperatureValue*10),    -1023,    1023);
+  const int16_t  asn_tempCust1 = constrain((int32_t)(extHeaterTemperatureValue*10), -1023,  1023);
+  const uint8_t  asn_humidity  = constrain((int32_t)humidityValue,                   0,     100);
 
   horusTelemetry asnMessage = {
         .payloadCallsign  = HORUS_V3_CALLSIGN,
@@ -1476,59 +949,24 @@ int buildHorusV3Packet(char* uncoded_buffer){
         .timeOfDaySeconds  = gpsHours*3600 + gpsMinutes*60 + gpsSeconds,
         .latitude = (int)(gpsLat*100000),
         .longitude = (int)(gpsLong*100000),
-        .altitudeMeters = gpsAlt,
-        // Example of adding some custom fields.
+        .altitudeMeters = asn_alt,
         .extraSensors = {
-          .nCount=1, // Number of custom fields. CHANGE IT IF YOU WANT TO ADD FOR EXAMPLE HEATERS DATA COMMENTED OUT
+          .nCount = (xdataPortMode == 3 && horusV3ExtraSensorsEnable) ? 3 : 1,
           .arr = {
-            // Example of an array of integers 
-            {
-                .name = "gps", // This is transmitted in the packet if .exist/name is true
-                .values = {
-                    .kind = horusInt_PRESENT,
-                    .u = {
-                        .horusInt = {
-                          .nCount = 2,
-                            .arr = {gpsStatus, gpsHdop},
-                        }
-                    }
-                },
-                .exist = {
-                    .name = true,
-                    .values = true,
-                },
-                
-                
-            }/*,
-            {
-                .name = "heat", // This is transmitted in the packet if .exist/name is true
-                .values = {
-                    .kind = horusInt_PRESENT,
-                    .u = {
-                        .horusInt = {
-                          .nCount = 2,
-                            .arr = {referenceHeaterStatus, extHeaterPwmStatus},
-                        }
-                    }
-                },
-                .exist = {
-                    .name = true,
-                    .values = true,
-                },
-                
-                
-            }*/
+            { .name = "gpspwr", .values = { .kind = horusInt_PRESENT, .u = { .horusInt = { .nCount = 1, .arr = {gpsStatus} } } }, .exist = { .name = true, .values = true } },
+            { .name = "p3",     .values = { .kind = horusReal_PRESENT, .u = { .horusReal = { .nCount = 1, .arr = { xdataOzonePartialPressure } } } }, .exist = { .name = xdataPortMode == 3, .values = xdataPortMode == 3 } },
+            { .name = "o3ppb",  .values = { .kind = horusInt_PRESENT, .u = { .horusInt = { .nCount = 1, .arr = { (int)xdataOzonePpb } } } },        .exist = { .name = xdataPortMode == 3, .values = xdataPortMode == 3 } },
           },
         },
-        .velocityHorizontalKilometersPerHour = gpsSpeedKph,
-        .gnssSatellitesVisible = gpsSats,
-        .ascentRateCentimetersPerSecond = vVCalc * 100, // m/s -> cm/s
-        .pressurehPa_x10 = (int)(pressureValue*10),
+        .velocityHorizontalKilometersPerHour = asn_speed,
+        .gnssSatellitesVisible = asn_sats,
+        .ascentRateCentimetersPerSecond = vVCalc * 100,
+        .pressurehPa_x10 = asn_pressure,
         .temperatureCelsius_x10 = {
             .internal = readAvgIntTemp()*10,
-            .external = mainTemperatureValue*10,
-            .custom1 = extHeaterTemperatureValue*10,
-            // I'm not sure we need to explicitly indicate which of these fields exist, but just to be safe...
+            .external = asn_tempExt,
+            .custom1 = asn_tempCust1,
+            .custom2 = 0,
             .exist = {
                 .internal = true,
                 .external = true,
@@ -1536,7 +974,7 @@ int buildHorusV3Packet(char* uncoded_buffer){
                 .custom2 = false
             }
         },
-        .humidityPercentage = humidityValue,
+        .humidityPercentage = asn_humidity,
         .milliVolts = {
             .battery = (int)(readBatteryVoltage()*1000),
             // I'm not sure we need to explicitly indicate which of these fields exist, but just to be safe...
@@ -1560,19 +998,17 @@ int buildHorusV3Packet(char* uncoded_buffer){
         }
     };
 
-    if(!horusV3LongerPacket) {
-      asnMessage.temperatureCelsius_x10.exist.custom1 = false;
-      // Disable the extraSensors array
+    if (!horusV3ExtraSensorsEnable) {
       asnMessage.exist.extraSensors = false;
+      asnMessage.temperatureCelsius_x10.exist.custom1 = false;
     }
 
-    // Conditionally disable some of the fields if we have no valid data source for them
-
-    // Don't send external temp and humidity data if the sensor boom isn't in use
-    if (sensorBoomEnable == false){
+    if (sensorBoomEnable == false) {
       asnMessage.temperatureCelsius_x10.exist.external = false;
       asnMessage.exist.humidityPercentage = false;
-      asnMessage.temperatureCelsius_x10.exist.custom1 = false;
+      if (horusV3ExtraSensorsEnable) {
+        asnMessage.temperatureCelsius_x10.exist.custom1 = false;
+      }
     }
 
     // The encoder needs a data structure for the serialization
@@ -1587,7 +1023,7 @@ int buildHorusV3Packet(char* uncoded_buffer){
 
     BitStream_Init (&encodedMessage,
                     (unsigned char*)(uncoded_buffer+2),
-                    HORUS_UNCODED_BUFFER_SIZE-1
+                    HORUS_UNCODED_BUFFER_SIZE-2  // buffer starts at +2, so only 126 bytes are available
     );
     // Originally this function call used a MUCH larger value for count
     //horusTelemetry_REQUIRED_BYTES_FOR_ENCODING);
@@ -1608,11 +1044,11 @@ int buildHorusV3Packet(char* uncoded_buffer){
         // us when debugging!   
         if (xdataPortMode == 1) {
           if(errCode > 0){
-            xdataSerial.print("[ERR]: HORUS v3 Encoding Failed: ");
+            xdataSerial.print("[err]: HORUS v3 Encoding Failed: ");
             xdataSerial.println(errCode);
           }
           if(assert_value != 0){
-            xdataSerial.println("[ERR]: HORUS v3 Assert Failure, maybe hit buffer size limit");
+            xdataSerial.println("[err]: HORUS v3 Assert Failure, maybe hit buffer size limit");
           }
         }
         // Need to check what happens here.
@@ -1642,7 +1078,7 @@ int buildHorusV3Packet(char* uncoded_buffer){
         // Calculate CRC16 over the frame, starting at byte 2
         uint16_t packetCrc = (uint16_t)crc16((unsigned char *)(uncoded_buffer + 2),
                                      frameSize - 2);
-        // Write CRC into bytes 0–1 of the packet
+        // Write CRC into bytes 0-1 of the packet
         memcpy(uncoded_buffer, &packetCrc, sizeof(packetCrc));  // little‑endian on STM32
 
         if (xdataPortMode == 1) {
@@ -1658,9 +1094,8 @@ int buildHorusV3Packet(char* uncoded_buffer){
     return 0;
 }
 
-
-
-int buildHorusV3PacketDataRecorder(char* uncoded_buffer){
+#if defined(RSM4x4) || defined(RSM4x2)   // dataRecorder runs on both boards
+int buildHorusV3PacketDataRecorder(char* uncoded_buffer, uint8_t page){
   // Horus v3 packets are encoded using ASN1, and are encapsulated in packets
   // of sizes 32, 48, 64, 96 or 128 bytes (before coding)
   // The CRC16 for these packets is located at the *start* of the packet, still little-endian encoded
@@ -1672,6 +1107,15 @@ int buildHorusV3PacketDataRecorder(char* uncoded_buffer){
   // Increment packet count
   horusV3PacketCount++;
 
+  // Clamp all ASN.1-constrained fields
+  const uint8_t  dr_sats      = constrain(gpsSats,                                  0,     31);
+  const int32_t  dr_alt       = constrain((int32_t)gpsAlt,                      -1000,  50000);
+  const uint16_t dr_speed     = constrain((int32_t)gpsSpeedKph,                     0,    512);
+  const uint16_t dr_pressure  = constrain((int32_t)(pressureValue*10),              0,  12000);
+  const int16_t  dr_tempInt   = constrain((int32_t)(readAvgIntTemp()*10),        -1023,   1023);
+  const int16_t  dr_tempExt   = constrain((int32_t)(mainTemperatureValue*10),    -1023,   1023);
+  const int16_t  dr_tempCust1 = constrain((int32_t)(extHeaterTemperatureValue*10), -1023, 1023);
+  const uint8_t  dr_humidity  = constrain((int32_t)humidityValue,                   0,    100);
 
   horusTelemetry asnMessage = {
       .payloadCallsign = HORUS_V3_CALLSIGN,
@@ -1679,73 +1123,71 @@ int buildHorusV3PacketDataRecorder(char* uncoded_buffer){
       .timeOfDaySeconds = gpsHours * 3600 + gpsMinutes * 60 + gpsSeconds,
       .latitude = (int)(gpsLat * 100000),
       .longitude = (int)(gpsLong * 100000),
-      .altitudeMeters = gpsAlt,
-      
-      .extraSensors = {
-          .nCount = 3,
-          .arr = {
-              {
-                  .name = "gps",
-                  .values = {
-                      .kind = horusInt_PRESENT,
-                      .u = {
-                          .horusInt = {
-                              .nCount = 4,
-                              .arr = {gpsHdop, gpsJamWarning, gpsResetCounter, currentGPSPowerMode}
-                          }
-                      }
-                  },
-                  .exist = { .name = true, .values = true }
-              },
-              {
-                  .name = "stats",
-                  .values = {
-                      .kind = horusInt_PRESENT,
-                      .u = {
-                          .horusInt = {
-                              .nCount = 3,
-                              .arr = {maxAlt, maxSpeed, burstDetected}
-                          }
-                      }
-                  },
-                  .exist = { .name = true, .values = true }
-              },
-              {
-                  .name = "temps-heat",
-                  .values = {
-                      .kind = horusInt_PRESENT,
-                      .u = {
-                          .horusInt = {
-                              .nCount = 4,
-                              .arr = { (int)extHeaterPwmStatus, (int)referenceHeaterStatus, (int)readRadioTemp(), (int)rpm411InternalTemperature }
-                          }
-                      }
-                  },
-                  .exist = { .name = true, .values = true }
-              }
-          }
-      },
-      
-      .velocityHorizontalKilometersPerHour = gpsSpeedKph,
-      .gnssSatellitesVisible = gpsSats,
+      .altitudeMeters = dr_alt,
+
+      // 4 individually named sensors per packet (ASN.1 hard limit: max 4 per packet)
+      // page 0 = A: GPS diagnostics  page 1 = B: flight stats  page 2 = C: thermal/heater
+      .extraSensors = [&]() -> horusAdditionalSensors {
+        if (page == 0) {
+          return { .nCount = 4, .arr = {
+            { .name = "hdop",   .values = { .kind = horusInt_PRESENT, .u = { .horusInt = { .nCount = 1, .arr = { (int)gpsHdop          } } } }, .exist = { .name = true, .values = true } },
+            { .name = "jam",    .values = { .kind = horusInt_PRESENT, .u = { .horusInt = { .nCount = 1, .arr = { (int)gpsJamWarning    } } } }, .exist = { .name = true, .values = true } },
+            { .name = "resets", .values = { .kind = horusInt_PRESENT, .u = { .horusInt = { .nCount = 1, .arr = { (int)gpsResetCounter  } } } }, .exist = { .name = true, .values = true } },
+            { .name = "gpspwr", .values = { .kind = horusInt_PRESENT, .u = { .horusInt = { .nCount = 1, .arr = { (int)gpsStatus        } } } }, .exist = { .name = true, .values = true } },
+          }};
+        } else if (page == 1) {
+          return { .nCount = 4, .arr = {
+            { .name = "flying", .values = { .kind = horusInt_PRESENT, .u = { .horusInt = { .nCount = 1, .arr = { (int)beganFlying      } } } }, .exist = { .name = true, .values = true } },
+            { .name = "burst",  .values = { .kind = horusInt_PRESENT, .u = { .horusInt = { .nCount = 1, .arr = { (int)burstDetected    } } } }, .exist = { .name = true, .values = true } },
+            { .name = "hmax",   .values = { .kind = horusInt_PRESENT, .u = { .horusInt = { .nCount = 1, .arr = { (int)maxAlt           } } } }, .exist = { .name = true, .values = true } },
+            { .name = "vmax",   .values = { .kind = horusInt_PRESENT, .u = { .horusInt = { .nCount = 1, .arr = { (int)maxSpeed         } } } }, .exist = { .name = true, .values = true } },
+          }};
+        } else if (page == 3) {
+          // Physical measurements go out as floats (horusReal) so a decoder shows the
+          // real value (17.1 C), not a scaled integer (171). Only flags/versions stay int.
+          return { .nCount = 4, .arr = {
+            { .name = "pumpt",  .values = { .kind = horusReal_PRESENT, .u = { .horusReal = { .nCount = 1, .arr = { xdataOzonePumpTemperature } } } }, .exist = { .name = true, .values = true } },
+            { .name = "o3c",    .values = { .kind = horusReal_PRESENT, .u = { .horusReal = { .nCount = 1, .arr = { xdataOzoneCurrent         } } } }, .exist = { .name = true, .values = true } },
+            { .name = "pumpu",  .values = { .kind = horusReal_PRESENT, .u = { .horusReal = { .nCount = 1, .arr = { xdataOzoneBatteryVoltage  } } } }, .exist = { .name = true, .values = true } },
+            { .name = "pumpc",  .values = { .kind = horusReal_PRESENT, .u = { .horusReal = { .nCount = 1, .arr = { xdataOzonePumpCurrent     } } } }, .exist = { .name = true, .values = true } },
+          }};
+        } else if (page == 4) {
+          return { .nCount = 4, .arr = {
+            { .name = "oifu",    .values = { .kind = horusReal_PRESENT, .u = { .horusReal = { .nCount = 1, .arr = { xdataOzoneExtVoltage                 } } } }, .exist = { .name = true, .values = true } },
+            { .name = "oiferr",  .values = { .kind = horusInt_PRESENT,  .u = { .horusInt  = { .nCount = 1, .arr = { (xdataOzoneDiagnostics != 0) ? 1 : 0 } } } }, .exist = { .name = true, .values = true } },
+            { .name = "oifver",  .values = { .kind = horusInt_PRESENT,  .u = { .horusInt  = { .nCount = 1, .arr = { (int)xdataOzoneFwVersion             } } } }, .exist = { .name = true, .values = true } },
+            { .name = "o3ppb",   .values = { .kind = horusInt_PRESENT, .u = { .horusInt = { .nCount = 1, .arr = { (int)xdataOzonePpb                   } } } }, .exist = { .name = true, .values = true } },
+          }};
+        } else {
+          return { .nCount = 4, .arr = {
+            { .name = "radiotemp", .values = { .kind = horusInt_PRESENT, .u = { .horusInt = { .nCount = 1, .arr = { (int)readRadioTemp()           } } } }, .exist = { .name = true, .values = true } },
+            { .name = "rpmtemp",  .values = { .kind = horusInt_PRESENT, .u = { .horusInt = { .nCount = 1, .arr = { (int)rpm411InternalTemperature  } } } }, .exist = { .name = true, .values = true } },
+            { .name = "extpwr",   .values = { .kind = horusInt_PRESENT, .u = { .horusInt = { .nCount = 1, .arr = { (int)extHeaterPwmStatus         } } } }, .exist = { .name = true, .values = true } },
+            { .name = "refpwr",   .values = { .kind = horusInt_PRESENT, .u = { .horusInt = { .nCount = 1, .arr = { (int)referenceHeaterStatus      } } } }, .exist = { .name = true, .values = true } },
+          }};
+        }
+      }(),
+
+      .velocityHorizontalKilometersPerHour = dr_speed,
+      .gnssSatellitesVisible = dr_sats,
       .ascentRateCentimetersPerSecond = vVCalc * 100,
-      .pressurehPa_x10 = (int)(pressureValue * 10),
-      
+      .pressurehPa_x10 = dr_pressure,
+
       .temperatureCelsius_x10 = {
-          .internal = readAvgIntTemp() * 10,
-          .external = mainTemperatureValue * 10,
-          .custom1 = extHeaterTemperatureValue * 10,
-          .custom2 = readThermistorTemp() * 10,
-          .exist = { .internal = true, .external = true, .custom1 = true, .custom2 = true }
+          .internal = dr_tempInt,
+          .external = dr_tempExt,
+          .custom1  = dr_tempCust1,
+          .custom2  = 0,
+          .exist = { .internal = true, .external = true, .custom1 = true, .custom2 = false }
       },
-      
-      .humidityPercentage = humidityValue,
-      
+
+      .humidityPercentage = dr_humidity,
+
       .milliVolts = {
           .battery = (int)(readBatteryVoltage() * 1000),
           .exist = { .battery = true, .solar = false, .custom1 = false, .custom2 = false }
       },
-      
+
       .exist = {
           .extraSensors = true,
           .velocityHorizontalKilometersPerHour = true,
@@ -1757,7 +1199,6 @@ int buildHorusV3PacketDataRecorder(char* uncoded_buffer){
           .milliVolts = true
       }
   };
-
 
     // The encoder needs a data structure for the serialization
     // Again - how much memory is allocated here?
@@ -1771,7 +1212,7 @@ int buildHorusV3PacketDataRecorder(char* uncoded_buffer){
 
     BitStream_Init (&encodedMessage,
                     (unsigned char*)(uncoded_buffer+2),
-                    HORUS_UNCODED_BUFFER_SIZE-1
+                    HORUS_UNCODED_BUFFER_SIZE-2  // buffer starts at +2, so only 126 bytes are available
     );
     // Originally this function call used a MUCH larger value for count
     //horusTelemetry_REQUIRED_BYTES_FOR_ENCODING);
@@ -1826,7 +1267,7 @@ int buildHorusV3PacketDataRecorder(char* uncoded_buffer){
         // Calculate CRC16 over the frame, starting at byte 2
         uint16_t packetCrc = (uint16_t)crc16((unsigned char *)(uncoded_buffer + 2),
                                      frameSize - 2);
-        // Write CRC into bytes 0–1 of the packet
+        // Write CRC into bytes 0-1 of the packet
         memcpy(uncoded_buffer, &packetCrc, sizeof(packetCrc));  // little‑endian on STM32
 
         if (xdataPortMode == 1) {
@@ -1841,17 +1282,15 @@ int buildHorusV3PacketDataRecorder(char* uncoded_buffer){
 
     return 0;
 }
+#endif  // dataRecorder (buildHorusV3PacketDataRecorder) - both boards
 
-
-
+#ifdef RSM4x4
 int build_horus_binary_packet_v2(char* buffer) {
-  // Generate a Horus Binary v2 packet, and populate it with data.
-  // The assignments in this function should be replaced with real data
   horusPacketCount++;
 
   struct HorusBinaryPacketV2 BinaryPacketV2;
 
-  BinaryPacketV2.PayloadID = horusPayloadId;  // 256 = 4FSKTEST-V2. Refer https://github.com/projecthorus/horusdemodlib/blob/master/payload_id_list.txt | You can attempt to modify this according to Your needs
+  BinaryPacketV2.PayloadID = horusPayloadId;
   BinaryPacketV2.Counter = horusPacketCount;
   BinaryPacketV2.Hours = gpsHours;
   BinaryPacketV2.Minutes = gpsMinutes;
@@ -1863,16 +1302,12 @@ int build_horus_binary_packet_v2(char* buffer) {
   BinaryPacketV2.BattVoltage = map(readBatteryVoltage() * 100, 0, 5 * 100, 0, 255);
   BinaryPacketV2.Sats = gpsSats;
   BinaryPacketV2.Temp = readAvgIntTemp();
-  // Custom section. This is an example only, and the 9 bytes in this section can be used in other
-  // ways. Refer here for details: https://github.com/projecthorus/horusdemodlib/wiki/5-Customising-a-Horus-Binary-v2-
 
-  //default, matching rs41ng
-  BinaryPacketV2.dummy1 = vVCalc * 100;               //-32768 - 32767 int16_t
-  BinaryPacketV2.dummy2 = mainTemperatureValue * 10;  //-32768 - 32767 int16_t
-  BinaryPacketV2.dummy3 = humidityValue;              //0 - 255 uint8_t
-  BinaryPacketV2.dummy4 = pressureValue * 10;         //0 - 65535 uint16_t
+  BinaryPacketV2.dummy1 = vVCalc * 100;
+  BinaryPacketV2.dummy2 = mainTemperatureValue * 10;
+  BinaryPacketV2.dummy3 = humidityValue;
+  BinaryPacketV2.dummy4 = pressureValue * 10;
   BinaryPacketV2.dummy5 = 0;
-
 
   BinaryPacketV2.Checksum = (uint16_t)crc16((unsigned char*)&BinaryPacketV2, sizeof(BinaryPacketV2) - 2);
 
@@ -1880,8 +1315,7 @@ int build_horus_binary_packet_v2(char* buffer) {
 
   return sizeof(struct HorusBinaryPacketV2);
 }
-
-
+#endif
 
 //===== Function-only algorythms (for horus modem etc.)
 
@@ -1942,27 +1376,23 @@ void PrintHex(char* data, uint8_t length, char* tmp) {
   tmp[length * 2] = 0;
 }
 
-
 //===== System operation handlers
 
 void hardwarePowerShutdown() {
   radioDisableTx();
 
   if (xdataPortMode == 1) {
-    xdataSerial.println("\n SHUTDOWN, bye!");
+    xdataSerial.println("[info]: SHUTDOWN - powering off");
   }
 
-  for (int i = 0; i < 5; i++) {
+  for (int i = 0; i < 3; i++) {
     redLed();
     delay(200);
     bothLedOff();
     delay(200);
   }
-
-  delay(2000);
   digitalWrite(PSU_SHUTDOWN_PIN, HIGH);
 }
-
 
 void buttonHandlerSimplified() {  //no special effects compared to normal button handler
   if (analogRead(VBTN_PIN) + 50 > analogRead(VBAT_PIN) && analogRead(VBAT_PIN) > 80) {
@@ -1990,7 +1420,6 @@ void buttonHandler() {
         }
         btnCounter++;
       }
-
 
       if (btnCounter == 1) {
         //empty, except canceling some functions:
@@ -2041,23 +1470,19 @@ void buttonHandler() {
   }
 }
 
-
 void deviceStatusHandler() {
-  // Temporary flags for each check
+  // Status model is intentionally simple: only OK or ERR (no 'warn' state).
   vBatWarn = false;
   gpsFixWarn = false;
 
   err = false;
-  warn = false;
   ok = true;  // Default to ok until proven otherwise
 
-  // Evaluate battery voltage
   float vBat = readBatteryVoltage();
   if (vBat < vBatWarnValue) {
     vBatWarn = true;
   }
 
-  // Evaluate GPS status
   if (gpsSats < gpsSatsWarnValue) {
     if (gpsOperationMode == 0) {
       gpsFixWarn = false;
@@ -2065,43 +1490,41 @@ void deviceStatusHandler() {
     } else {
       gpsFixWarn = true;
 
-      if (xdataPortMode == 4 && !improvedGpsPerformance) {
-        xdataSerial.println("stage: 50");
-      }
+      setStage("50");
     }
   } else {
-    if (xdataPortMode == 4) {
-      xdataSerial.println("stage: 59");
+    if (xdataPortMode == 1 || xdataPortMode == 3) {
+      setStage("59");
     }
   }
 
-  // Combine the results to determine the final state
-  if (sensorBoomFault || calibrationError || rpm411Error) {
+  // OIF411 error: only internal diagnostics faults (0x0004, 0x0400) light the red LED.
+  // Connection timeout is informational only - not an LED error (timeouts are normal at boot).
+  bool oif411Err = (xdataPortMode == 3) &&
+                   (xdataOzoneDiagnostics != 0 && xdataOzoneDiagnostics != 0xFFFF);
+  if (sensorBoomFault || calibrationError || rpm411Error || vBatWarn || oif411Err) {
     err = true;
     ok = false;
-  } else if (vBatWarn || gpsFixWarn) {
-    warn = true;
-    ok = false;
   } else {
-    // Explicitly clear warning if no errors or warnings are active
-    warn = false;
+    err = false;
     ok = true;
   }
 
-  // LED Handling
   if (ledStatusEnable) {
-    if (gpsAlt > ledAutoDisableHeight) {  // disable leds after launch
+    if (gpsAlt > ledAutoDisableHeight) {
       ledsEnable = false;
     } else {
       ledsEnable = true;
     }
 
     if (ledsEnable) {
+      bool noGpsFix = (gpsOperationMode != 0 && gpsSats < 5);
+
       if (err) {
         redLed();
-      } else if (warn) {
+      } else if (noGpsFix) {
         orangeLed();
-      } else if (ok) {
+      } else {
         greenLed();
       }
     }
@@ -2110,23 +1533,16 @@ void deviceStatusHandler() {
   }
 }
 
-
 void serialStatusHandler() {
-  if (xdataPortMode == 1) {
-    if (vBatWarn) {
-      xdataSerial.println("[WARN]: vBatWarn - low voltage");
-    }
+  if (xdataPortMode != 1) return;
 
-    if (gpsFixWarn) {
-      xdataSerial.println("[WARN]: gpsFix - gps isn't locked on position, give sky clearance, waiting for fix...");
-    }
-
-    if (ok) {
-      xdataSerial.println("[ok]: Device working properly");
-    }
-  }
+  if (sensorBoomFault)  xdataSerial.println(F("[err]: sensorBoom - sensor boom fault"));
+  if (calibrationError) xdataSerial.println(F("[err]: calibration - calibration error"));
+  if (rpm411Error)      xdataSerial.println(F("[err]: rpm411 - RPM411 connection error"));
+  if (vBatWarn)         xdataSerial.println(F("[warn]: vBat - low battery voltage"));
+  if (gpsFixWarn)       xdataSerial.println(F("[warn]: gpsFix - no GPS fix, waiting..."));
+  if (ok)               xdataSerial.println(F("[ok]: all systems nominal"));
 }
-
 
 float readBatteryVoltage() {
   float batV;
@@ -2151,7 +1567,6 @@ float readThermistorTemp() {
   } else {
     voltage = adcValue * (3.0 / 1023);  //10bit adc
   }
-
 
   // Convert voltage to thermistor resistance
   float resistance = (3.0 / voltage - 1) * THERMISTOR_R25;
@@ -2225,7 +1640,6 @@ void sendUblox(int Size, uint8_t* Buffer) {
     ackWait();
   }
 }
-
 
 void GPSManagement() {
   if(gpsOperationMode == 0) { // GPS disabled
@@ -2348,6 +1762,148 @@ void GPSManagement() {
   }
 }
 
+
+// ─── OIF411 Ozone Sonde Handler ───────────────────────────────────────────────
+
+static const float OIF411_CEF_P[]  = {2.0f,   3.0f,   5.0f,  10.0f,  20.0f,  30.0f,  50.0f, 100.0f, 200.0f, 300.0f, 500.0f, 1000.0f};
+static const float OIF411_CEF_V[]  = {1.1655f, 1.1275f, 1.0895f, 1.0545f, 1.0325f, 1.0230f, 1.0150f, 1.0105f, 1.0075f, 1.0055f, 1.0030f, 1.0000f};
+static const uint8_t OIF411_CEF_N  = 12;
+
+float ozoneCef(float p_hPa) {
+  if (p_hPa <= OIF411_CEF_P[0])             return OIF411_CEF_V[0];
+  if (p_hPa >= OIF411_CEF_P[OIF411_CEF_N-1]) return OIF411_CEF_V[OIF411_CEF_N-1];
+  for (uint8_t i = 1; i < OIF411_CEF_N; i++) {
+    if (p_hPa <= OIF411_CEF_P[i]) {
+      float t = (p_hPa - OIF411_CEF_P[i-1]) / (OIF411_CEF_P[i] - OIF411_CEF_P[i-1]);
+      return OIF411_CEF_V[i-1] + t * (OIF411_CEF_V[i] - OIF411_CEF_V[i-1]);
+    }
+  }
+  return 1.0f;
+}
+
+float ozoneIbg(float p_hPa) {
+  const float A0 =  0.00122504f;
+  const float A1 =  0.0001241115f;
+  const float A2 = -2.687066e-8f;
+  float P0 = (ozone_P0 > 0) ? ozone_P0 : 1013.25f;
+  float num = A0 + A1*p_hPa  + A2*p_hPa*p_hPa;
+  float den = A0 + A1*P0     + A2*P0*P0;
+  return (den > 0) ? (num / den) * ozoneBackgroundCurrent : ozoneBackgroundCurrent;
+}
+
+void ozoneComputeValues() {
+  float p_hPa = (pressureValue > 0) ? pressureValue : 1013.25f;
+  float Tp_K  = xdataOzonePumpTemperature + 273.15f;
+  float I_eff = xdataOzoneCurrent - ozoneIbg(p_hPa);
+  if (I_eff < 0) I_eff = 0;
+  float cef = ozoneCef(p_hPa);
+  xdataOzonePartialPressure = 4.3087e-4f * I_eff * Tp_K * ozonePumpTime * cef;
+  xdataOzonePpb = (p_hPa > 0) ? (xdataOzonePartialPressure * 10000.0f / p_hPa) : 0;
+}
+
+static uint16_t parseHex(const char* s, uint8_t len) {
+  uint16_t v = 0;
+  for (uint8_t i = 0; i < len; i++) {
+    char c = s[i];
+    uint8_t d = (c >= '0' && c <= '9') ? c-'0' : (c >= 'A' && c <= 'F') ? c-'A'+10 : (c >= 'a' && c <= 'f') ? c-'a'+10 : 0;
+    v = (v << 4) | d;
+  }
+  return v;
+}
+static uint32_t parseHex32(const char* s, uint8_t len) {
+  uint32_t v = 0;
+  for (uint8_t i = 0; i < len; i++) {
+    char c = s[i];
+    uint8_t d = (c >= '0' && c <= '9') ? c-'0' : (c >= 'A' && c <= 'F') ? c-'A'+10 : (c >= 'a' && c <= 'f') ? c-'a'+10 : 0;
+    v = (v << 4) | d;
+  }
+  return v;
+}
+
+// data points directly to the content after "xdata=" (already stripped)
+void ozoneParseFrame(const char* data) {
+  uint8_t dlen = strlen(data);
+  if (dlen < 4) return;
+  if (data[0] != '0' || data[1] != '5') return;
+
+  xdataInstrumentType   = 5;
+  xdataInstrumentNumber = (int)parseHex(data + 2, 2);
+  ozoneLastFrameMs      = millis();
+  ozoneConnectionError  = false;
+
+  if (dlen == 20) {
+    // Measurement frame: [type2][num2][pumpT4][I5][batV2][pumpI3][extV2]
+    ozoneFrameTotal++;
+    uint16_t rawT = parseHex(data + 4, 4);
+    float pumpT = (rawT & 0x8000) ? -(float)(rawT & 0x7FFF) * 0.01f
+                                  :  (float)(rawT)          * 0.01f;
+    xdataOzonePumpTemperature = pumpT;
+    xdataOzoneCurrent         = (float)parseHex32(data + 8, 5) * 0.0001f;
+    xdataOzoneBatteryVoltage  = (float)parseHex(data + 13, 2) * 0.1f;
+    xdataOzonePumpCurrent     = (float)parseHex(data + 15, 3);
+    xdataOzoneExtVoltage      = (float)parseHex(data + 18, 2) * 0.1f;
+    ozoneComputeValues();
+  } else if (dlen == 21 && data[20] == 'I') {
+    // ID frame: [type2][num2][serial8][diag4][swver4][I]
+    ozoneFrameTotal++;
+    memcpy(xdataOzoneSerial, data + 4, 8);
+    xdataOzoneSerial[8] = '\0';
+    xdataOzoneDiagnostics = parseHex(data + 12, 4);
+    xdataOzoneFwVersion   = (uint8_t)parseHex(data + 16, 4);
+  }
+}
+
+// State-machine approach: scan stream for "xdata=", then collect until CR/LF.
+// This re-syncs on every frame prefix and is robust against leading garbage.
+void ozoneHandler() {
+  if (xdataPortMode != 3) return;
+  static char    lineBuf[96];
+  static uint8_t lineLen = 0;
+  static unsigned long lastByteMs = 0;
+
+  unsigned long _ozStart = millis();
+  do {
+  while (xdataSerial.available()) {
+    char c = xdataSerial.read();
+    ozoneRxByteTotal++;
+
+    // Bytes lost to RX-buffer overflow leave a stale partial line behind;
+    // a long pause between bytes means a new frame, not a continuation.
+    if (lineLen > 0 && (millis() - lastByteMs) > 500UL) lineLen = 0;
+    lastByteMs = millis();
+
+    if (c == '\r' || c == '\n') {
+      if (lineLen > 0) {
+        lineBuf[lineLen] = '\0';
+        // Take the LAST "xdata=" in the line: if a clipped frame got merged
+        // with a complete one, the payload after the last header is intact.
+        const char* x = NULL;
+        for (const char* p = strstr(lineBuf, "xdata="); p != NULL; p = strstr(p + 1, "xdata=")) x = p;
+        if (x != NULL) {
+          x += 6;  // skip "xdata=" header, payload starts after '='
+          strncpy(ozoneDbgRaw, x, sizeof(ozoneDbgRaw) - 1);
+          ozoneDbgRaw[sizeof(ozoneDbgRaw) - 1] = '\0';
+          ozoneDbgLen = (uint8_t)strlen(x);
+          ozoneParseFrame(x);
+        } else if (strstr(lineBuf, "CMD:") != NULL) {
+          // GCS command interleaved with OIF411 data on the shared RX stream.
+          runXdataCommand(lineBuf);
+        }
+        lineLen = 0;
+      }
+    } else if (lineLen < sizeof(lineBuf) - 1) {
+      lineBuf[lineLen++] = c;
+    } else {
+      lineLen = 0;  // line overflow without terminator - discard
+    }
+  }
+  } while (millis() - _ozStart < 1150);
+
+  if (ozoneLastFrameMs > 0 && (millis() - ozoneLastFrameMs) > 3000UL) {
+    ozoneConnectionError = true;
+  }
+}
+
 void gpsHandler() {
 
   GPSManagement();
@@ -2375,13 +1931,12 @@ void gpsHandler() {
         char c = gpsSerial.read();
         gps.encode(c);
         
-        if(xdataPortMode == 5) {
+        if(xdataPortMode == 2) {   // GPS bridge mode: echo raw NMEA to the xdata port
           xdataSerial.print(c);
         }
       }
         
     } while (millis() - start < gpsNmeaMsgWaitTime);
-
 
     gpsTime = gps.time.value() / 100;
     gpsHours = gps.time.hour();
@@ -2398,9 +1953,19 @@ void gpsHandler() {
     verticalVelocityCalculationHandler();
 
     if (xdataPortMode == 1) {
-      xdataSerial.println("[info]: GPS data obtained and updated");
+      static unsigned long _lastGpsLog = 0;
+      if (millis() - _lastGpsLog >= 30000UL) {
+        _lastGpsLog = millis();
+        xdataSerial.print(F("[gps]: "));
+        xdataSerial.print(gpsLat, 6); xdataSerial.print(F(","));
+        xdataSerial.print(gpsLong, 6);
+        xdataSerial.print(F(" alt=")); xdataSerial.print((int)gpsAlt);
+        xdataSerial.print(F("m sats=")); xdataSerial.print(gpsSats);
+        xdataSerial.print(F(" hdop=")); xdataSerial.print(gpsHdop, 1);
+        xdataSerial.print(F(" vv=")); xdataSerial.print(vVCalc, 1);
+        xdataSerial.println(F("m/s"));
+      }
     }
-
 
     if (gpsTimeoutWatchdog > 0) {
       // Check if GPS timer counter is inactive and no fix
@@ -2424,12 +1989,11 @@ void gpsHandler() {
       }
     }
 
-
     if (beganFlying && (gpsHdop > 15 || abs(vVCalc) > 300)) {
       gpsJamWarning = true;
 
       if (xdataPortMode == 1) {
-        xdataSerial.println("[WARN]: GPS Jam warning is active!");
+        xdataSerial.println("[warn]: GPS Jam warning is active!");
       }
     } else {
       gpsJamWarning = false;
@@ -2526,7 +2090,6 @@ void initGPS() {
 #endif
 }
 
-
 // Function to select heater and change its state (on/off)
 void selectReferencesHeater(int heatingMode) {
   referenceHeaterStatus = heatingMode;
@@ -2582,8 +2145,6 @@ void selectReferencesHeater(int heatingMode) {
   }
 }
 
-
-
 /*
 void refHeaterHandler() {
   unsigned long currentMillis = millis();
@@ -2610,7 +2171,7 @@ void refHeaterHandler() {
       disableRefHeaterRing();  // Turn off the heater
 
       if (xdataPortMode == 1) {
-        xdataSerial.print("[ERR]: Heater has been turned OFF because temp exceeds threshold of (*C): ");
+        xdataSerial.print("[err]: Heater OFF - overheat threshold (*C): ");
         xdataSerial.println(refHeaterCriticalDisableTemp);
       }
 
@@ -2626,7 +2187,7 @@ void refHeaterHandler() {
     // Re-enable the heater if it was paused due to overheating and the temperature drops below the re-enable threshold
     if (isHeaterPausedOvht && currentTemp <= refHeaterCriticalReenableTemp) {
       if (xdataPortMode == 1) {
-        xdataSerial.print("[info]: Temperature dropped below re-enable threshold of (*C): ");
+        xdataSerial.print("[info]: Temp below re-enable threshold (*C): ");
         xdataSerial.println(refHeaterCriticalReenableTemp);
       }
 
@@ -2648,7 +2209,7 @@ void refHeaterHandler() {
     if (isReferenceHeaterOn && currentMillis - heaterOnTime >= heaterWorkingTimeSec * 1000) {
       disableRefHeaterRing();  // Turn off the heater
       if (xdataPortMode == 1) {
-        xdataSerial.print("[info]: Heater OFF due to timer, cooldown for (seconds): ");
+        xdataSerial.print("[info]: Heater OFF - cooldown (s): ");
         xdataSerial.println(heaterCooldownTimeSec);
       }
 
@@ -2657,7 +2218,7 @@ void refHeaterHandler() {
       heaterDebugState = 10;
     } else if (isReferenceHeaterOn) {
       if (xdataPortMode == 1) {
-        xdataSerial.print("[info]: Heater is currently ON, at (*C): ");
+        xdataSerial.print("[info]: Heater ON (*C): ");
         xdataSerial.println(currentTemp);
       }
 
@@ -2667,7 +2228,7 @@ void refHeaterHandler() {
       if (currentMillis - heaterOffTime >= heaterCooldownTimeSec * 1000) {
         if (currentTemp < autoHeaterThreshold) {
           if (xdataPortMode == 1) {
-            xdataSerial.print("[info]: Cooldown time passed, thermistor temp is under threshold of (*C): ");
+            xdataSerial.print("[info]: Cooldown done, T under threshold (*C): ");
             xdataSerial.println(autoHeaterThreshold);
             xdataSerial.println("[info]: HEATER ON!");
           }
@@ -2679,7 +2240,7 @@ void refHeaterHandler() {
           heaterDebugState = 11;
         } else {
           if (xdataPortMode == 1) {
-            xdataSerial.println("[info]: autoRefHeating is enabled, but the temperature is higher than the threshold.");
+            xdataSerial.println("[info]: autoRefHeat: T above threshold, skip");
           }
 
           heaterDebugState = 10;
@@ -2696,7 +2257,7 @@ void refHeaterHandler() {
       disableRefHeaterRing();  // Turn off the heater
 
       if (xdataPortMode == 1) {
-        xdataSerial.print("[ERR]: Heater has been turned OFF because temp exceeds threshold of (*C): ");
+        xdataSerial.print("[err]: Heater OFF - overheat threshold (*C): ");
         xdataSerial.println(refHeaterCriticalDisableTemp);
       }
 
@@ -2711,7 +2272,7 @@ void refHeaterHandler() {
     // Re-enable the heater immediately after temperature drops below re-enable threshold
     if (isHeaterPausedOvht && currentTemp <= refHeaterCriticalReenableTemp) {
       if (xdataPortMode == 1) {
-        xdataSerial.print("[info]: Temperature dropped below re-enable threshold of (*C): ");
+        xdataSerial.print("[info]: Temp below re-enable threshold (*C): ");
         xdataSerial.println(refHeaterCriticalReenableTemp);
       }
 
@@ -2755,11 +2316,10 @@ void refHeaterHeightActivator() {
 }
 */
 
-
 void powerHandler() {
   if (readBatteryVoltage() < batteryCutOffVoltage && batteryCutOffVoltage != 0) {
     if (xdataPortMode == 1) {
-      xdataSerial.println("[ERR] BATTERY CUT-OFF VOLTAGE, SYSTEM WILL POWER OFF");
+      xdataSerial.println("[err]: BATTERY CUT-OFF VOLTAGE, SYSTEM WILL POWER OFF");
     }
 
     radioDisableTx();
@@ -2797,7 +2357,6 @@ void xdataInstrumentHandler() {
   }
 }
 
-
 void decodeXdataOif411(String xdataString) {
   // Check if the input string starts with "xdata="
   if (xdataString.startsWith("xdata=")) {
@@ -2826,7 +2385,6 @@ void decodeXdataOif411(String xdataString) {
     xdataOzonePumpCurrent = strtol(data.substring(15, 18).c_str(), NULL, 16);
   }
 }*/
-
 
 // Function to select reading of a sensor and set its state (on/off)
 void selectSensorBoom(int sensorNum, int state) {
@@ -2895,7 +2453,6 @@ void selectSensorBoom(int sensorNum, int state) {
       break;
   }
 }
-
 
 float getSensorBoomFreq(int sensorNum) {
   static uint32_t firstEdge, lastEdge, prevCapture, currentCapture;
@@ -3056,7 +2613,7 @@ void sensorBoomHandler() {
       sensorBoomMainTempError = true;  // Error if frequency is invalid
 
       if (xdataPortMode == 1) {
-        xdataSerial.println("[WARN]: Main temperature hook sensor boom error! MEAS frequency invalid. The hook may have snapped.");
+        xdataSerial.println("[warn]: Main temp sensor boom error (freq invalid)");
       }
 
     } else {
@@ -3074,7 +2631,7 @@ void sensorBoomHandler() {
       sensorBoomHumidityModuleError = true;  // Error if frequency is invalid
 
       if (xdataPortMode == 1) {
-        xdataSerial.println("[WARN]: External humidity heater temperature sensor error! MEAS frequency invalid.");
+        xdataSerial.println("[warn]: ExtHeater temp sensor boom error (freq invalid)");
       }
 
     } else {
@@ -3084,8 +2641,6 @@ void sensorBoomHandler() {
     }
 
     selectSensorBoom(0, 0);
-
-
 
   humidityFrequency = getSensorBoomFreq(5);
   refCapHighFrequency = getSensorBoomFreq(6); // 47pF Ref (Lower Frequency)
@@ -3136,17 +2691,30 @@ void sensorBoomHandler() {
     humidityValue = 110;
   }
 
-
-
     // Check overall sensor status
     sensorBoomFault = sensorBoomMainTempError || sensorBoomHumidityModuleError;
 
     if (sensorBoomMainTempError && sensorBoomHumidityModuleError) {
       if (xdataPortMode == 1) {
-        xdataSerial.println("[ERR]: The sensor boom seems disconnected!");
+        xdataSerial.println("[err]: The sensor boom seems disconnected!");
       }
     }
 
+    if (xdataPortMode == 1) {
+      static unsigned long _lastBoomLog = 0;
+      if (millis() - _lastBoomLog >= 15000UL) {
+        _lastBoomLog = millis();
+        xdataSerial.print(F("[boom]: T="));
+        xdataSerial.print(mainTemperatureValue, 1);
+        xdataSerial.print(F("C H="));
+        xdataSerial.print(humidityValue, 0);
+        xdataSerial.print(F("% xT="));
+        xdataSerial.print(extHeaterTemperatureValue, 1);
+        xdataSerial.print(F("C pcb="));
+        xdataSerial.print(readThermistorTemp(), 1);
+        xdataSerial.println(F("C"));
+      }
+    }
     selectSensorBoom(0, 0);
     selectReferencesHeater(lastReferenceHeaterStatus);
   }
@@ -3154,8 +2722,6 @@ void sensorBoomHandler() {
     selectSensorBoom(0, 0);
   }
 }
-
-
 
 void verticalVelocityCalculationHandler() {
   if (gpsSats > 3) {  //calculate only if fix, else set to 0 to indicate fault
@@ -3262,7 +2828,6 @@ void sendAprsHeader(void) {
   }
   sendAprsChar_NRZI('0' << 1, HIGH);
 
-
   /********* SOURCE *********/
   temp = strlen(aprsCall);
   for (int j = 0; j < temp; j++)
@@ -3272,7 +2837,6 @@ void sendAprsHeader(void) {
       sendAprsChar_NRZI(' ' << 1, HIGH);
   }
   sendAprsChar_NRZI((aprsSsid + '0') << 1, HIGH);
-
 
   /********* DIGI ***********/
   temp = strlen(aprsDigi);
@@ -3358,7 +2922,6 @@ void sendAprsPayload(char type) {
   }
   else 
    */
-
 
   if (type == 1) {  //HAB format (compatible with RS41NG APRS packet format)
     sendAprsStringLen(aprsLocationMsg, strlen(aprsLocationMsg));
@@ -3453,7 +3016,6 @@ void sendAprsPacket(char packet_type) {
   sendAprsFlag(3);
 }
 
-
 void convert_degrees_to_dmh(long x, int16_t* degrees, uint8_t* minutes, uint8_t* h_minutes) {
   uint8_t sign = (uint8_t)(x > 0 ? 1 : 0);
   if (!sign) {
@@ -3501,7 +3063,6 @@ void aprsLocationFormat(float latitude, float longitude, char* aprsMessage) {
   // Format: !ddmm.ssN/dddmm.ssE
   sprintf(aprsMessage, "!%s/%s", latBuffer, lonBuffer);
 }
-
 
 void aprsHabFormat(char* aprsMessage) {
   // Convert gpsAlt from meters to feet
@@ -3601,7 +3162,7 @@ void aprsWxFormat(float latitude, float longitude, char* aprsMessage) {
 
 }
 
-
+#ifdef RSM4x4
 void aprsRecorderFormat(char* aprsMessage) {
   // Convert gpsAlt from meters to feet
   int gpsAltFeet = static_cast<int>(gpsAlt * 3.28084);
@@ -3615,8 +3176,6 @@ void aprsRecorderFormat(char* aprsMessage) {
   int healthStatus = 0;
   if (err) {
     healthStatus = 2;
-  } else if (warn) {
-    healthStatus = 1;
   } else {
     healthStatus = 0;
   }
@@ -3669,7 +3228,7 @@ void aprsRecorderFormat(char* aprsMessage) {
     gpsHdopInt,
     aprsComment.c_str());
 }
-
+#endif  // RSM4x4 (aprsRecorderFormat)
 
 void redLed() {
   digitalWrite(RED_LED_PIN, LOW);
@@ -3710,7 +3269,6 @@ void flightComputing() {
     }
   }
 
-
   if (mainTemperatureValue > maxMainTemperature) {
     maxMainTemperature = static_cast<int>(mainTemperatureValue);
   }
@@ -3726,19 +3284,41 @@ void flightComputing() {
     minInternalTemp = tempInternal;
   }
 
+  // Flight start: climbed flightStartClimbThreshold m above the launch baseline
+  // for 5 consecutive fixes. Works at any ascent rate; the streak rejects GPS spikes.
+  if (gpsSats >= 4) {
+    if (!flightBaselineSet) {
+      flightBaseAlt     = gpsAlt;
+      flightPrevAlt     = gpsAlt;
+      flightBaselineSet = true;
+    }
 
-  if (gpsAlt > flightDetectionAltitude && !beganFlying) {
-    beganFlying = true;
+    if (!beganFlying && gpsAlt != flightPrevAlt) {   // only act on a fresh fix value
+      if ((gpsAlt - flightBaseAlt) >= (float)flightStartClimbThreshold) {
+        if (flightSustainedRise < 255) flightSustainedRise++;
+      } else {
+        flightSustainedRise = 0;
+      }
+      flightPrevAlt = gpsAlt;
+
+      if (flightSustainedRise >= 5) {
+        beganFlying = true;
+        if (xdataPortMode == 1) xdataSerial.println(F("[flt]: liftoff!"));
+      }
+    }
   }
 
   if (gpsAlt + burstDetectionThreshold < maxAlt && !burstDetected) {
     burstDetected = true;
+    if (xdataPortMode == 1) xdataSerial.println(F("[flt]: burst!"));
   }
 
-  if (gpsAlt < flightDetectionAltitude && !hasLanded) {
-    if (beganFlying && burstDetected) {
+  // Landing: after burst, descended back below the climb threshold above baseline.
+  if (beganFlying && burstDetected && !hasLanded) {
+    if ((gpsAlt - flightBaseAlt) < (float)flightStartClimbThreshold) {
       hasLanded = true;
       landingTimeMillis = millis();
+      if (xdataPortMode == 1) xdataSerial.println(F("[flt]: landed!"));
     }
   }
 
@@ -3746,6 +3326,7 @@ void flightComputing() {
     cancelGpsImprovement = true;
   }
 
+#ifdef RSM4x4
   if (beganFlying && burstDetected) {
     if (lowAltitudeFastTxThreshold != 0 && gpsAlt < lowAltitudeFastTxThreshold) {
       if (horusEnable) {
@@ -3756,29 +3337,49 @@ void flightComputing() {
       }
     }
   }
+#endif
+
+  // Ground-level pressure P0 for ozone calc: average 5 onboard readings, or fall
+  // back to ISA sea level after 20 s if no pressure is available (e.g. no RPM411).
+  if (xdataPortMode == 3 && !ozone_P0Set) {
+    if (pressureValue > 1.0f) {
+      ozone_P0Accumulator += pressureValue;
+      ozone_P0SampleCount++;
+      if (ozone_P0SampleCount >= 5) {
+        ozone_P0    = ozone_P0Accumulator / 5.0f;
+        ozone_P0Set = true;
+      }
+    } else if (millis() > 20000UL) {
+      ozone_P0    = 1013.25f;   // ISA sea-level fallback (no onboard pressure)
+      ozone_P0Set = true;
+    }
+  }
 }
 
+#ifdef RSM4x4
 void lowAltitudeFastTxMode() {
   setRadioPower(7);
   while (millis() - lowAltitudeFastTxModeBeginTime < lowAltitudeFastTxDuration && !lowAltitudeFastTxModeEnd) {
     gpsHandler();
+    ozoneHandler();
     sensorBoomHandler();
     pressureHandler();
 
+    #ifdef RSM4x4
     if (horusEnable) {
       int pkt_len = build_horus_binary_packet_v2(rawbuffer);
       int coded_len = horus_l2_encode_tx_packet((unsigned char*)codedbuffer, (unsigned char*)rawbuffer, pkt_len);
 
-      setRadioModulation(0);  // CW modulation
+      setRadioModulation(0);
       setRadioFrequency(horusFreqTable[0]);
 
       radioEnableTx();
-
       fsk4_preamble(horusPreambleLength);
       fsk4_write(codedbuffer, coded_len);
       radioDisableTx();
     }
-    
+    #endif
+
     if (horusV3Enable) {
       int pkt_len = buildHorusV3Packet(rawbuffer);
 
@@ -3818,7 +3419,7 @@ void lowAltitudeFastTxMode() {
     delay(lowAltitudeFastTxInterval);
   }
 }
-
+#endif  // RSM4x4 (lowAltitudeFastTxMode)
 
 void autoResetHandler() {
   if (autoResetEnable && millis() >= SYSTEM_RESET_PERIOD) {
@@ -3844,7 +3445,6 @@ void initRecorderData() {
     recorderInitialized = true;
   }
 }
-
 
 void pipTx() {
   if (pipEnable) {
@@ -3895,7 +3495,11 @@ void morseTx() {
     }
 
     if (radioEnablePA) {
-      morseMsg = createRttyMorsePayload();
+      if (morseBeaconMode) {
+        morseMsg = morseBeaconText;   // beacon mode: send the fixed custom text
+      } else {
+        morseMsg = createRttyMorsePayload();   // telemetry mode: send live data
+      }
       const char* morseMsgCstr = morseMsg.c_str();
       if (xdataPortMode == 1) {
         xdataSerial.println("[info]: Morse payload created: ");
@@ -3916,7 +3520,10 @@ void morseTx() {
         xdataSerial.println("[info]: Transmitting morse...");
       }
 
-      transmitMorseString(morseMsgCstr, morseUnitTime);
+      uint8_t morseRepeats = morseBeaconMode ? (morseBeaconRepeat == 0 ? 1 : morseBeaconRepeat) : 1;
+      for (uint8_t r = 0; r < morseRepeats; r++) {
+        transmitMorseString(morseMsgCstr, morseUnitTime);
+      }
       radioDisableTx();
 
       if (xdataPortMode == 1) {
@@ -3931,6 +3538,7 @@ void morseTx() {
   }
 }
 
+#ifdef RSM4x4
 void rttyTx() {
   if (rttyEnable) {
     if (xdataPortMode == 1) {
@@ -3975,10 +3583,10 @@ void rttyTx() {
     }
   }
 }
+#endif  // RSM4x4 (rttyTx)
 
-
+#ifdef RSM4x4
 void horusTx() {
-  // Calculate the number of frequencies in the table automatically
   int freqTableSize = sizeof(horusFreqTable) / sizeof(horusFreqTable[0]);
 
   if (horusEnable) {
@@ -3987,7 +3595,6 @@ void horusTx() {
     }
 
     if (radioEnablePA) {
-      // 1. Prepare the payload once
       int pkt_len = build_horus_binary_packet_v2(rawbuffer);
       int coded_len = horus_l2_encode_tx_packet((unsigned char*)codedbuffer, (unsigned char*)rawbuffer, pkt_len);
 
@@ -3995,36 +3602,26 @@ void horusTx() {
         xdataSerial.println("[info]: HORUS V2 payload created.");
       }
 
-      // 2. Loop through every frequency in the table
       for (int i = 0; i < freqTableSize; i++) {
         float currentFreq = horusFreqTable[i];
 
-        // Configure Radio for this specific hop
         setRadioPower(horusRadioPower);
-        setRadioModulation(0);  // CW modulation
+        setRadioModulation(0);
         setRadioFrequency(currentFreq);
 
         if (xdataPortMode == 1) {
-          xdataSerial.print("[info]: Transmitting on (MHz): ");
+          xdataSerial.print("[info]: TX HORUS V2 ");
           xdataSerial.println(currentFreq);
         }
 
-        // 3. Physical Transmission
         radioEnableTx();
-
         fsk4_preamble(horusPreambleLength);
         fsk4_write(codedbuffer, coded_len);
-
         radioDisableTx();
-
-        if (xdataPortMode == 1) {
-          xdataSerial.print("[info]: Done on ");
-          xdataSerial.println(currentFreq);
-        }
       }
 
       if (xdataPortMode == 1) {
-        xdataSerial.println("[info]: All HORUS V2 frequencies transmitted");
+        xdataSerial.println("[info]: HORUS V2 done");
       }
 
     } else {
@@ -4034,10 +3631,11 @@ void horusTx() {
     }
   }
 }
+#endif
 
 void horusV3Tx() {
   // Calculate the number of frequencies in the table automatically
-  int freqTableSize = sizeof(horusFreqTable) / sizeof(horusFreqTable[0]);
+  int freqTableSize = sizeof(horusV3FreqTable) / sizeof(horusV3FreqTable[0]);
 
   if (horusV3Enable) {
     if (xdataPortMode == 1) {
@@ -4113,7 +3711,6 @@ void horusV3Tx() {
   }
 }
 
-
 void aprsTx() {
   if (aprsEnable) {
     // Calculate size locally from the global array
@@ -4177,80 +3774,73 @@ void aprsTx() {
   }
 }
 
+#if defined(RSM4x4) || defined(RSM4x2)   // dataRecorder runs on both boards
 void dataRecorderTx() {
-  if (dataRecorderEnable && millis() - lastDataRecorderTransmission > dataRecorderInterval) {    
-    if (horusV3Enable) {
-    if (xdataPortMode == 1) {
-      xdataSerial.println("[info]: HORUS V3 mode enabled");
+  if (!dataRecorderEnable || millis() - lastDataRecorderTransmission <= dataRecorderInterval) {
+    return;
+  }
+  lastDataRecorderTransmission = millis();
+
+  if (!horusV3Enable || !radioEnablePA) {
+    return;
+  }
+
+  if (xdataPortMode == 1) {
+    xdataSerial.println("[info]: dataRecorder TX start");
+  }
+
+  setRadioPower(horusV3RadioPower);
+  setRadioModulation(0);
+  setRadioFrequency(horusV3FreqTable[0]);
+
+  // Send 3 standard pages (A=GPS, B=stats, C=thermal) + 2 OIF411 pages (D=pump, E=oif) when in ozone mode
+  const uint8_t totalDrPages = (xdataPortMode == 3) ? 5 : 3;
+  for (uint8_t page = 0; page < totalDrPages; page++) {
+    int pkt_len = buildHorusV3PacketDataRecorder(rawbuffer, page);
+    if (pkt_len == 0) {
+      if (xdataPortMode == 1) {
+        xdataSerial.print("[error]: dataRecorder page ");
+        xdataSerial.print(page);
+        xdataSerial.println(" encoding failed, skipping");
+      }
+      continue;
     }
 
-    if (radioEnablePA) {
-      // 1. Prepare the payload once
-      int pkt_len = buildHorusV3PacketDataRecorder(rawbuffer);
-      // Bomb out if we can't encode
-      if (pkt_len == 0){
-        return;
-      }
+    int coded_len = horus_l2_encode_tx_packet((unsigned char*)codedbuffer, (unsigned char*)rawbuffer, pkt_len);
 
-      int coded_len = horus_l2_encode_tx_packet((unsigned char*)codedbuffer, (unsigned char*)rawbuffer, pkt_len);
+    if (xdataPortMode == 1) {
+      const char* labels[] = {"A(gps)", "B(stats)", "C(heat)", "D(ozone)", "E(oif)"};
+      xdataSerial.print("[info]: dataRecorder ");
+      xdataSerial.print(labels[page]);
+      xdataSerial.print(" uncoded=");
+      xdataSerial.print(pkt_len);
+      xdataSerial.print("B coded=");
+      xdataSerial.print(coded_len);
+      xdataSerial.println("B");
+    }
 
-      if (xdataPortMode == 1) {
-        xdataSerial.println("[info]: HORUS V3 payload created.");
-      }
+    radioEnableTx();
+    fsk4_preamble(horusPreambleLength);
+    fsk4_write(codedbuffer, coded_len);
+    radioDisableTx();
 
-      if (xdataPortMode == 1) {
-        xdataSerial.print("[info]: HORUS V3 payload created.");
-
-        xdataSerial.print(F("Uncoded Length (bytes): "));
-        xdataSerial.println(pkt_len);
-        xdataSerial.print("Uncoded: ");
-        PrintHex(rawbuffer, pkt_len, debugbuffer);
-        xdataSerial.println(debugbuffer);
-        xdataSerial.print(F("Encoded Length (bytes): "));
-        xdataSerial.println(coded_len);
-        xdataSerial.print("Coded: ");
-        PrintHex(codedbuffer, coded_len, debugbuffer);
-        xdataSerial.println(debugbuffer);
-      }
-
-
-        // Configure Radio for this specific hop
-        setRadioPower(horusV3RadioPower);
-        setRadioModulation(0);  // CW modulation
-        setRadioFrequency(horusV3FreqTable[0]);
-
-
-        // 3. Physical Transmission
-        radioEnableTx();
-
-        fsk4_preamble(horusPreambleLength);
-        fsk4_write(codedbuffer, coded_len);
-
-        radioDisableTx();
-
-        delay(500);
-
-        radioEnableTx();
-
-        fsk4_preamble(horusPreambleLength);
-        fsk4_write(codedbuffer, coded_len);
-
-        radioDisableTx();
-
-      
-
-      if (xdataPortMode == 1) {
-        xdataSerial.println("[info]: All HORUS V3 frequencies transmitted");
-      }
-
-    } 
+    // Refresh GPS time and the sensors between every page except the last. Without this
+    // the later pages (C/D/E in ozone mode) reuse the timestamp captured before page A,
+    // so a decoder sees several frames with an identical time and drops them as repeats.
+    if (page < totalDrPages - 1) {
+      gpsHandler();
+      sensorBoomHandler();
+      if (!rpm411Error) readRPM411();
+    }
   }
 
-
-    lastDataRecorderTransmission = millis();
+  if (xdataPortMode == 1) {
+    xdataSerial.println("[info]: dataRecorder TX done");
   }
 }
+#endif  // dataRecorder (dataRecorderTx) - both boards
 
+#ifdef RSM4x4
 void ultraPowerSaveHandler() {
   if (ultraPowerSaveAfterLanding) {
     if (hasLanded && millis() - landingTimeMillis > 1200000) {  //20 minutes after landing
@@ -4260,19 +3850,20 @@ void ultraPowerSaveHandler() {
       selectSensorBoom(0, 0);
       setRadioPower(6);  //NOTE: power save mode changes the power to 50mW, which may not be what a powersave is meant to be. However, sonde laying on the ground has a very poor radio propagation and range, therefore a couple second long transmission won't impact it much
       for (;;) {
+        #ifdef RSM4x4
         if (horusEnable) {
           int pkt_len = build_horus_binary_packet_v2(rawbuffer);
           int coded_len = horus_l2_encode_tx_packet((unsigned char*)codedbuffer, (unsigned char*)rawbuffer, pkt_len);
 
-          setRadioModulation(0);  // CW modulation
+          setRadioModulation(0);
           setRadioFrequency(horusFreqTable[0]);
 
           radioEnableTx();
-
           fsk4_preamble(horusPreambleLength);
           fsk4_write(codedbuffer, coded_len);
           radioDisableTx();
         }
+        #endif
 
         if (horusV3Enable) {
           int pkt_len = buildHorusV3Packet(rawbuffer);
@@ -4293,7 +3884,6 @@ void ultraPowerSaveHandler() {
           radioDisableTx();
         }
 
-
         if (aprsEnable) {
           setRadioModulation(2);
           setRadioFrequency((aprsFreqTable[0] - 0.002));  //its lower due to the deviation in FSK adding 0.002MHz when the signal is in total 10kHz wide
@@ -4309,7 +3899,6 @@ void ultraPowerSaveHandler() {
           }
           sendAprsPacket(aprsOperationMode);  //send HAB APRS format packet
           radioDisableTx();
-
 
           if (dataRecorderEnable) {
             aprsLocationFormat(gpsLat, gpsLong, aprsLocationMsg);
@@ -4344,21 +3933,38 @@ void ultraPowerSaveHandler() {
     }
   }
 }
+#endif  // RSM4x4 (ultraPowerSaveHandler)
+
+// Update the stage code and announce it: "[stage]: XX" in mode 1, "$STG|XX" in
+// mode 3 (mode 3 needs the beacon since $NFW frames only start once the scheduler runs).
+void setStage(const char* code) {
+  if (strcmp(nfwCurrentStage, code) == 0) return;
+  memcpy(nfwCurrentStage, code, 3);
+  if (xdataPortMode == 1) {
+    xdataSerial.print(F("[stage]: "));
+    xdataSerial.println(nfwCurrentStage);
+  } else if (xdataPortMode == 3) {
+    xdataSerial.print(F("$STG|"));
+    xdataSerial.println(nfwCurrentStage);
+  }
+}
 
 void temperatureCalibration() {
   if (xdataPortMode == 1) {
-    xdataSerial.println("[info]: Automatic temperature calibration - performing readings...");
+    xdataSerial.println("[info]: Temp cal - reading sensors...");
   }
 
   if (autoTemperatureCalibration) {
 
     if (autoTemperatureCalibrationMethod == 1) {  //using constant start environment temperature
-      if (xdataPortMode == 4) {
-        xdataSerial.println("stage: 11");
+      setStage("11");
+      if (xdataPortMode == 1) {
+        xdataSerial.println("[info]: temp cal: method 1 (const env T)");
       }
     } else if (autoTemperatureCalibrationMethod == 2) {  //based on the PCB temperature
-      if (xdataPortMode == 4) {
-        xdataSerial.println("stage: 12");
+      setStage("12");
+      if (xdataPortMode == 1) {
+        xdataSerial.println("[info]: temp cal: method 2 (PCB poly)");
       }
     }
 
@@ -4369,7 +3975,7 @@ void temperatureCalibration() {
       mainTemperatureCorrectionC = environmentStartupAirTemperature - mainTemperatureValue;
 
       if (xdataPortMode == 1) {
-        xdataSerial.println("[info]: Method 1 - via environment constant");
+        xdataSerial.println("[info]: temp cal: env constant applied");
       }
     } else if (autoTemperatureCalibrationMethod == 2) {  //based on the PCB temperature
       float internalTemperature = readAvgIntTemp();
@@ -4377,12 +3983,11 @@ void temperatureCalibration() {
       mainTemperatureCorrectionC = selfHeatingCorrectedInternalTemperature - mainTemperatureValue;
 
       if (xdataPortMode == 1) {
-        xdataSerial.println("[info]: Method 2 - via PCB temperature.");
-        xdataSerial.print("[info]: Average PCB temperature = ");
+        xdataSerial.print("[info]: PCB=");
         xdataSerial.print(internalTemperature);
-        xdataSerial.print("*C, estimated air temperature (empirical, polynomial self-heating and heat-capacity -assumed correction) = ");
+        xdataSerial.print("C est_air=");
         xdataSerial.print(selfHeatingCorrectedInternalTemperature);
-        xdataSerial.println("*C");
+        xdataSerial.println("C");
       }
     }
 
@@ -4393,37 +3998,31 @@ void temperatureCalibration() {
     }
   }
   if (autoHumidityModuleTemperatureCorrection) {  //automatically correct the humidity module readings - simple calibration
-    if (xdataPortMode == 4) {
-      xdataSerial.println("stage: 15");
-    }
-
+    setStage("15");
 
     extHeaterTemperatureCorrectionC = 0;
     sensorBoomHandler();
     extHeaterTemperatureCorrectionC = mainTemperatureValue - extHeaterTemperatureValue;
 
-
     if (xdataPortMode == 1) {
-      xdataSerial.print("[info]: Automatic humidity module temperature calibration - extHeaterTemperatureCorrectionC = ");
+      xdataSerial.print("[info]: extHeater cal offset = ");
       xdataSerial.print(extHeaterTemperatureCorrectionC);
       xdataSerial.println("*C");
     }
   }
 
   if (xdataPortMode == 1) {
-    xdataSerial.println("[info]: Automatic temperature calibration and correction complete");
+    xdataSerial.println("[info]: Temp cal complete");
   }
 }
 
 void reconditioningPhase() {
   if (xdataPortMode == 1) {
-    xdataSerial.println("[info]: Entering reconditioning phase...");
-    xdataSerial.println("[WARN]: The humidity module WILL GET HOT SOON! Don't touch it with anything.");
+    xdataSerial.println("[info]: Reconditioning phase start");
+    xdataSerial.println("[warn]: Humidity module heating soon - don't touch sensor");
   }
 
-  if (xdataPortMode == 4) {
-    xdataSerial.println("stage: 20");
-  }
+  setStage("20");
 
   unsigned long reconBeginMillis = millis();
   delay(500);
@@ -4449,21 +4048,16 @@ void reconditioningPhase() {
       calibrationError = true;
 
       if (xdataPortMode == 1) {
-        xdataSerial.println("[ERR]: Sensor boom measurement error (check boom and connection) - exiting reconditioning...");
-      }
-
-      if (xdataPortMode == 4) {
-        xdataSerial.println("e: 220");
+        xdataSerial.println("[err]: e220 - sensor boom error during reconditioning");
       }
 
       return;
     }
 
-
     extHeaterHandler(true, reconditioningTemperature, extHeaterTemperatureValue);
 
     if (xdataPortMode == 1) {
-      xdataSerial.print("[WARN]: Current humidity module temperature = ");
+      xdataSerial.print("[warn]: Current humidity module temperature = ");
       xdataSerial.print(extHeaterTemperatureValue);
       xdataSerial.println("*C");
     }
@@ -4478,14 +4072,11 @@ void reconditioningPhase() {
 
 void zeroHumidityCheck() {
   if (xdataPortMode == 1) {
-    xdataSerial.println("[info]: Entering zero-humidity calibration...");
-    xdataSerial.println("[WARN]: The humidity module WILL GET HOT! During 0-humidity check, please keep the device in a stable environment, with little to no wind, RH < 70%, temperature > 0*C and don't touch, submerge, blow, lick or do anything with the sensor.");
+    xdataSerial.println("[info]: Zero-humidity cal start...");
+    xdataSerial.println("[warn]: Sensor heats! Keep device still: no wind, RH<70%, T>0C, don't touch sensor");
   }
 
-  if (xdataPortMode == 4) {
-    xdataSerial.println("stage: 21");
-  }
-
+  setStage("21");
 
   unsigned long measurement = 0;
   float capMeasurement = 0;
@@ -4509,11 +4100,7 @@ void zeroHumidityCheck() {
     extHeaterHandler(false, 0, 0);
 
     if (xdataPortMode == 1) {
-      xdataSerial.println("[ERR]: Sensor boom measurement error (check boom and connection) - exiting calibration...");
-    }
-
-    if (xdataPortMode == 4) {
-      xdataSerial.println("e: 221");
+      xdataSerial.println("[err]: e221 - sensor boom error before zero-humidity measurement");
     }
 
     return;
@@ -4530,11 +4117,7 @@ void zeroHumidityCheck() {
     extHeaterHandler(0, 0, 0);
 
     if (xdataPortMode == 1) {
-      xdataSerial.println("[ERR]: Wrong measurement conditions read from humidity temperature sensor - verify the envorionment, temperature calibration and settings. Exiting calibration...");
-    }
-
-    if (xdataPortMode == 4) {
-      xdataSerial.println("e: 222");
+      xdataSerial.println("[err]: e222 - wrong meas conditions (check T cal and env)");
     }
 
     return;
@@ -4543,7 +4126,7 @@ void zeroHumidityCheck() {
       sensorBoomHandler();
       buttonHandlerSimplified();
       interfaceHandler();
-      extHeaterHandler(true, 160, extHeaterTemperatureValue);
+      extHeaterHandler(true, humidityCalibrationMeasurementTemperature + 15, extHeaterTemperatureValue);  // preheat straight to the hold target (~140 °C)
 
       orangeLed();
       delay(100);
@@ -4560,13 +4143,12 @@ void zeroHumidityCheck() {
   buttonHandlerSimplified();
   bothLedOff();
 
-
   measurementBeginMillis = millis();
 
-  while (measurementCount < 8) {
+  while (measurementCount < 10) {
     buttonHandlerSimplified();
     sensorBoomHandler();
-    extHeaterHandler(true, humidityCalibrationMeasurementTemperature + 12, extHeaterTemperatureValue);
+    extHeaterHandler(true, humidityCalibrationMeasurementTemperature + 15, extHeaterTemperatureValue);  // maintain ~140 °C (125 + 15)
     interfaceHandler();
 
     if (sensorBoomHumidityModuleError) {
@@ -4582,11 +4164,7 @@ void zeroHumidityCheck() {
       calibrationError = true;
 
       if (xdataPortMode == 1) {
-        xdataSerial.println("[ERR]: Sensor boom measurement error (check boom and connection) - exiting calibration...");
-      }
-
-      if (xdataPortMode == 4) {
-        xdataSerial.println("e: 221");
+        xdataSerial.println("[err]: e221 - sensor boom error during zero-humidity measurement");
       }
 
       return;
@@ -4610,7 +4188,7 @@ void zeroHumidityCheck() {
       if (xdataPortMode == 1) {
         xdataSerial.print("[info]: Taking measurement ");
         xdataSerial.print(measurementCount);
-        xdataSerial.println("/8.");
+        xdataSerial.println("/10.");
       }
     } else {
       orangeLed();
@@ -4630,11 +4208,7 @@ void zeroHumidityCheck() {
       }
 
       if (xdataPortMode == 1) {
-        xdataSerial.println("[WARN]: Calibration timeout. This could be due to unstable environment parameters, bad settings, hardware or user error.");
-      }
-
-      if (xdataPortMode == 4) {
-        xdataSerial.println("e: 221");
+        xdataSerial.println("[warn]: e221 - cal timeout (unstable env or HW issue)");
       }
 
       return;
@@ -4674,9 +4248,8 @@ void flightHeatingHandler() {
       selectReferencesHeater(0);
     }
 
-
     if (xdataPortMode == 1) {
-      xdataSerial.print("[info]: Reference area heating handler, cut-out temperature = ");
+      xdataSerial.print("[info]: RefHeat T=");
       xdataSerial.println(cutOutTemp);
     }
   }
@@ -4691,7 +4264,6 @@ void flightHeatingHandler() {
     }
   }
 }
-
 
 int readAvgIntTemp() {
   int radioTemp = static_cast<int>(readRadioTemp());
@@ -4747,7 +4319,6 @@ void foxHuntMiscHandler() {
   }
 }
 
-
 void foxHuntModeLoop() {
   setRadioPower(foxHuntRadioPower);
   for (;;) {
@@ -4784,7 +4355,6 @@ void foxHuntModeLoop() {
     delay(foxHuntTransmissionDelay);
     foxHuntMiscHandler();
 
-
     if (foxHuntMorseMarker) {
       morseMsg = String(foxMorseMsg) + String(" Vb=") + String(readBatteryVoltage());
       const char* morseMsgCstr = morseMsg.c_str();
@@ -4814,7 +4384,6 @@ void foxHuntModeLoop() {
     foxHuntMiscHandler();
   }
 }
-
 
 void humidityModuleHeaterPowerControl(unsigned int heaterPower) {  //0 - OFF, 1-255 - only low power heater PWM, 256-500 - low power heater at max and high power heater PWM-controlled
   extHeaterPwmStatus = heaterPower;
@@ -4856,35 +4425,33 @@ void humidityModuleHeaterPowerControl(unsigned int heaterPower) {  //0 - OFF, 1-
 void gpsQuietMode() {
     if (xdataPortMode == 1) xdataSerial.println(F("[info]: Entering GPS Quiet Mode"));
 
-    unsigned long startQuietMillis = millis();
-    unsigned long lastUpdateMillis = startQuietMillis;
+    setStage("31");
 
-    // Block execution while radioSilenceDuration not elapsed or cancelled
-    while ((millis() - startQuietMillis < radioSilenceDuration) && !cancelGpsImprovement) {
+    unsigned long startQuietMillis = millis();
+    unsigned long lastUpdate = startQuietMillis;
+
+    // Stay quiet until the silence window elapses, a fix is acquired (gpsSats >= 4),
+    // or it is cancelled - so TX resumes immediately on fix instead of wasting the window.
+    while ((millis() - startQuietMillis < radioSilenceDuration) && gpsSats < 4 && !cancelGpsImprovement) {
 
         unsigned long now = millis();
-        unsigned long elapsed = now - lastUpdateMillis;
+        unsigned long elapsed = now - lastUpdate;
 
-        // Update monotonic system time
+        // Keep sch_sysMs advancing while waiting
         if (elapsed > 0) {
-            systemTimeMillis += elapsed;
-            lastUpdateMillis = now;
+            sch_sysMs += elapsed;
+            lastUpdate = now;
         }
 
-        if (gpsSats < 5) {
-          bothLedOff(); delay(100);
-          orangeLed();  delay(100);
-          bothLedOff(); delay(100);
-          orangeLed();  delay(100);
-        }
-        else if (gpsSats >= 5) {
-          greenLed();
-          delay(80);
-          bothLedOff();
+        if (sensorBoomFault || calibrationError || rpm411Error || vBatWarn) {
+          redLed();
+        } else {
+          orangeLed();
         }
 
         // Run handlers to keep system responsive
         gpsHandler();
+        ozoneHandler();
         buttonHandler();
         interfaceHandler();
         sensorBoomHandler();
@@ -4892,510 +4459,601 @@ void gpsQuietMode() {
         pressureHandler();
     }
 
+    if (gpsSats >= 4) setStage("32");
+
     if (xdataPortMode == 1) xdataSerial.println(F("[info]: Exiting GPS Quiet Mode"));
 
-    // Resync reference after blocking loop
-    lastMillisUpdate = millis();
+    sch_lastMillis = millis();
 }
 
+static void sch_tickTime() {
+  unsigned long now = millis();
+  sch_sysMs += (now >= sch_lastMillis) ? (now - sch_lastMillis) : now;
+  sch_lastMillis = now;
+}
+
+static unsigned long sch_nextSlot(unsigned long nowMs, uint16_t periodSec, uint16_t offsetSec) {
+  if (periodSec == 0) return 0xFFFFFFFFUL;
+  const unsigned long pMs = (unsigned long)periodSec * 1000UL;
+  const unsigned long oMs = (unsigned long)offsetSec * 1000UL;
+  unsigned long base = (nowMs >= oMs) ? (nowMs - oMs) : 0UL;
+  unsigned long next = (base / pMs) * pMs + oMs;
+  if (next <= nowMs) next += pMs;
+  return next;
+}
+
+static void sch_syncGps() {
+  if (gpsSats < 4 || !gps.time.isValid() || gps.time.age() > 1100) {
+    if (sch_gpsSynced && xdataPortMode == 1)
+      xdataSerial.println(F("[sch]: GPS sync lost"));
+    sch_gpsSynced = false;
+    return;
+  }
+
+  unsigned long gpsTodMs =
+      (unsigned long)gps.time.hour()   * 3600000UL +
+      (unsigned long)gps.time.minute() * 60000UL   +
+      (unsigned long)gps.time.second() * 1000UL;
+
+  long diffMs = (long)gpsTodMs - (long)(sch_sysMs % 86400000UL);
+  if (diffMs >  43200000L) diffMs -= 86400000L;
+  if (diffMs < -43200000L) diffMs += 86400000L;
+
+  if (labs(diffMs) >= 2000) {
+    sch_sysMs = (unsigned long)((long)sch_sysMs + diffMs);
+    sch_lastMillis = millis();
+    sch_nextPipMs = sch_nextHorusV3Ms = sch_nextHorusMs =
+    sch_nextAprsMs = sch_nextRttyMs = sch_nextMorseMs = 0;
+    if (xdataPortMode == 1) {
+      xdataSerial.print(F("[sch]: GPS large adj ")); xdataSerial.print(diffMs);
+      xdataSerial.println(F("ms -> rescheduled"));
+    }
+  } else if (labs(diffMs) >= 100) {
+    sch_sysMs = (unsigned long)((long)sch_sysMs + diffMs);
+    sch_lastMillis = millis();
+  }
+
+  if (!sch_gpsSynced) {
+    if (xdataPortMode == 1) {
+      xdataSerial.print(F("[sch]: GPS synced UTC "));
+      if (gps.time.hour()   < 10) xdataSerial.print('0'); xdataSerial.print(gps.time.hour());   xdataSerial.print(':');
+      if (gps.time.minute() < 10) xdataSerial.print('0'); xdataSerial.print(gps.time.minute()); xdataSerial.print(':');
+      if (gps.time.second() < 10) xdataSerial.print('0'); xdataSerial.println(gps.time.second());
+    }
+    sch_gpsSynced = true;
+  }
+}
 
 void schedulerInit() {
-  lastMillisUpdate = millis();
-  systemTimeMillis = 0;
-  gpsTimeSynced = false;
-  
-  // Initialize all next transmission times to 0 (will transmit immediately on first run)
-  nextPipTxTime = 0;
-  nextHorusV3TxTime = 0;
-  nextHorusTxTime = 0;
-  nextAprsTxTime = 0;
-  nextRttyTxTime = 0;
-  nextMorseTxTime = 0;
+  sch_lastMillis = millis();
+  sch_sysMs      = 0;
+  sch_gpsSynced  = false;
+  sch_nextPipMs = sch_nextHorusV3Ms = sch_nextHorusMs =
+  sch_nextAprsMs = sch_nextRttyMs = sch_nextMorseMs = 0;
+  sch_lastSensorBoom = sch_lastPressure = sch_lastInterface = 0;
+  sch_lastGps = sch_lastOzone = 0;
 }
 
 void schedulerLoop() {
 
-  static unsigned long lastSensorUpdate = 0;
-  static unsigned long lastSyncPrint = 0;
-  static unsigned long previousSeconds = 0;
-
-  const unsigned long SENSOR_UPDATE_INTERVAL = 30000UL;
-
-  unsigned long nowMillis = millis();
-  unsigned long elapsed = nowMillis - lastMillisUpdate;
-
-  // millis() rollover safe
-  if (nowMillis < lastMillisUpdate) {
-    elapsed = nowMillis;
-  }
-
-  if (elapsed > 0) {
-    systemTimeMillis += elapsed;
-    lastMillisUpdate = nowMillis;
-  }
-
-  unsigned long currentSeconds = systemTimeMillis / 1000UL;
-
-  if (currentSeconds < previousSeconds) {
-    nextPipTxTime      = 0;
-    nextHorusV3TxTime  = 0;
-    nextHorusTxTime    = 0;
-    nextAprsTxTime     = 0;
-    nextRttyTxTime     = 0;
-    nextMorseTxTime    = 0;
-
-    if (xdataPortMode == 1) {
-      xdataSerial.println(F("[warn]: Time anomaly detected, schedules reset"));
-    }
-  }
-  previousSeconds = currentSeconds;
-
-  if (gpsSats >= 4 && gps.time.isValid() && gps.time.age() < 1000) {
-
-    unsigned long gpsSeconds =
-        (unsigned long)gps.time.hour()   * 3600UL +
-        (unsigned long)gps.time.minute() * 60UL +
-        (unsigned long)gps.time.second();
-
-    // Compare only within 24h window
-    long localDaySeconds = (long)(currentSeconds % 86400UL);
-    long diff = (long)gpsSeconds - localDaySeconds;
-
-    // Wrap correction
-    if (diff > 43200L)  diff -= 86400L;
-    if (diff < -43200L) diff += 86400L;
-
-    if (labs(diff) >= 2) {
-      systemTimeMillis += diff * 1000L;
-      lastMillisUpdate = millis();
-      currentSeconds = systemTimeMillis / 1000UL;
-
-      if (xdataPortMode == 1) {
-        xdataSerial.print(F("[info]: GPS clock adjust "));
-        xdataSerial.print(diff);
-        xdataSerial.println(F("s"));
+  if (xdataPortMode == 1) {
+    static unsigned long _hbMs = 0;
+    if (millis() - _hbMs >= 60000UL) {
+      _hbMs = millis();
+      xdataSerial.print(F("[info]: up="));
+      xdataSerial.print(millis() / 60000UL);
+      xdataSerial.print(F("m sats="));
+      xdataSerial.print(gpsSats);
+      xdataSerial.print(F(" bat="));
+      xdataSerial.print(readBatteryVoltage(), 2);
+      xdataSerial.print(F("V T="));
+      xdataSerial.print(mainTemperatureValue, 1);
+      xdataSerial.print(F("C H="));
+      xdataSerial.print(humidityValue, 0);
+      if (err) {
+        xdataSerial.print(F("% ERR"));
+        if (sensorBoomFault)  xdataSerial.print(F(" sensorBoom"));
+        if (calibrationError) xdataSerial.print(F(" calibration"));
+        if (rpm411Error)      xdataSerial.print(F(" rpm411"));
+        if (vBatWarn)         xdataSerial.print(F(" vBat"));
+        xdataSerial.println();
+      } else {
+        xdataSerial.println(F("% OK"));
       }
+      serialStatusHandler();
     }
-
-    if (!gpsTimeSynced || millis() - lastSyncPrint >= 5000) {
-      if (xdataPortMode == 1 && !gpsTimeSynced) {
-        xdataSerial.print(F("[info]: GPS synced "));
-        if (gps.time.hour() < 10) xdataSerial.print('0');
-        xdataSerial.print(gps.time.hour());
-        xdataSerial.print(':');
-        if (gps.time.minute() < 10) xdataSerial.print('0');
-        xdataSerial.print(gps.time.minute());
-        xdataSerial.print(':');
-        if (gps.time.second() < 10) xdataSerial.print('0');
-        xdataSerial.println(gps.time.second());
-      }
-      lastSyncPrint = millis();
-    }
-
-    gpsTimeSynced = true;
-
-  } else {
-    if (gpsTimeSynced && xdataPortMode == 1) {
-      xdataSerial.println(F("[info]: GPS sync lost"));
-    }
-    gpsTimeSynced = false;
   }
 
+  sch_tickTime();
+  sch_syncGps();
 
   if (improvedGpsPerformance && !cancelGpsImprovement && gpsSats < 4) {
     gpsQuietMode();
+    sch_tickTime();
   }
 
+  unsigned long nowMs = sch_sysMs;
+  if (pipEnable     && sch_nextPipMs     == 0) sch_nextPipMs     = sch_nextSlot(nowMs, pipTimeSyncSeconds,     pipTimeSyncOffsetSeconds);
+  if (horusV3Enable && sch_nextHorusV3Ms == 0) sch_nextHorusV3Ms = sch_nextSlot(nowMs, horusV3TimeSyncSeconds, horusV3TimeSyncOffsetSeconds);
+  #ifdef RSM4x4
+  if (horusEnable   && sch_nextHorusMs   == 0) sch_nextHorusMs   = sch_nextSlot(nowMs, horusTimeSyncSeconds,   horusTimeSyncOffsetSeconds);
+  #endif
+  if (aprsEnable    && sch_nextAprsMs    == 0) sch_nextAprsMs    = sch_nextSlot(nowMs, aprsTimeSyncSeconds,    aprsTimeSyncOffsetSeconds);
+  #ifdef RSM4x4
+  if (rttyEnable    && sch_nextRttyMs    == 0) sch_nextRttyMs    = sch_nextSlot(nowMs, rttyTimeSyncSeconds,    rttyTimeSyncOffsetSeconds);
+  #endif
+  if (morseEnable   && sch_nextMorseMs   == 0) sch_nextMorseMs   = sch_nextSlot(nowMs, morseTimeSyncSeconds,   morseTimeSyncOffsetSeconds);
 
-  unsigned long minTimeUntilTx = 0xFFFFFFFFUL;
-  unsigned long targetTxTime = 0;
+  unsigned long minToTxMs = 0xFFFFFFFFUL;
+  {
+    auto track = [&](bool en, unsigned long nxt) {
+      if (!en || nxt == 0 || nxt == 0xFFFFFFFFUL) return;
+      unsigned long d = (nxt > nowMs) ? (nxt - nowMs) : 0UL;
+      if (d < minToTxMs) minToTxMs = d;
+    };
+    track(pipEnable,     sch_nextPipMs);
+    track(horusV3Enable, sch_nextHorusV3Ms);
+    #ifdef RSM4x4
+    track(horusEnable,   sch_nextHorusMs);
+    #endif
+    track(aprsEnable,    sch_nextAprsMs);
+    #ifdef RSM4x4
+    track(rttyEnable,    sch_nextRttyMs);
+    #endif
+    track(morseEnable,   sch_nextMorseMs);
+  }
 
-  #define CHECK_NEXT_TX(t) \
-    if ((t) > currentSeconds) { \
-      unsigned long d = (t) - currentSeconds; \
-      if (d < minTimeUntilTx) { minTimeUntilTx = d; targetTxTime = (t); } \
+  {
+    unsigned long hw       = millis();
+    unsigned long boomAge  = hw - sch_lastSensorBoom;
+    unsigned long pressAge = hw - sch_lastPressure;
+    unsigned long ifaceAge = hw - sch_lastInterface;
+
+    const bool txImminent = (minToTxMs < 2000UL);
+    const bool boomStale  = (boomAge  > 10000UL);
+    const bool pressStale = (pressAge > 10000UL);
+    const bool ifaceStale = (ifaceAge > 10000UL);
+
+    // Two independent sensor-boom read policies:
+    //   power saving OFF - CPU/freshness policy: read whenever there is spare time
+    //     (between transmissions, as often as possible). If the scheduler has been too
+    //     busy to do that, boomStale forces a read once the data is older than 10s.
+    //   power saving ON  - energy policy: read strictly every
+    //     sensorBoomPowerSavingInterval (default 30s), independent of CPU load and TX
+    //     timing. This deliberately accepts older data to spend less on the boom.
+    if (sensorBoomPowerSaving) {
+      if (boomAge >= sensorBoomPowerSavingInterval) {
+        sensorBoomHandler();
+        sch_lastSensorBoom = millis();
+      }
+    } else {
+      if (!txImminent || boomStale) {
+        sensorBoomHandler();
+        sch_lastSensorBoom = millis();
+      }
     }
 
-  CHECK_NEXT_TX(nextPipTxTime);
-  CHECK_NEXT_TX(nextHorusV3TxTime);
-  CHECK_NEXT_TX(nextHorusTxTime);
-  CHECK_NEXT_TX(nextAprsTxTime);
-  CHECK_NEXT_TX(nextRttyTxTime);
-  CHECK_NEXT_TX(nextMorseTxTime);
-  
-  if (minTimeUntilTx > 0 && minTimeUntilTx <= 3) {
-
-    unsigned long waitStart = millis();
-
-    if (xdataPortMode == 1) {
-      xdataSerial.println(F("[info]: Syncing TX"));
+    if (!txImminent || pressStale) {
+      pressureHandler();
+      sch_lastPressure = millis();
     }
 
-    while (currentSeconds < targetTxTime) {
-
-      if (millis() - waitStart > 4000UL) break;
-
-      unsigned long lNow = millis();
-      unsigned long lElapsed = lNow - lastMillisUpdate;
-      systemTimeMillis += lElapsed;
-      lastMillisUpdate = lNow;
-      currentSeconds = systemTimeMillis / 1000UL;
-
-      buttonHandler();
-      delay((targetTxTime - currentSeconds > 1) ? 50 : 5);
+    if ((!txImminent && ifaceAge > 3000UL) || ifaceStale) {
+      interfaceHandler();
+      sch_lastInterface = millis();
     }
   }
 
+  // GPS (~1.2 s) and ozone (~1.15 s) are the two long blocking reads, and the data
+  // recorder burst is even longer. Running any of them right before a scheduled slot is
+  // what pushed transmissions a few seconds off time. Gate them like the sensor boom
+  // above: while a TX is imminent, skip the long work so the dispatch below hits the
+  // slot precisely, but a staleness fallback still forces the read so data never goes
+  // cold. GPS keeps a short 2 s freshness floor (it drives the clock sync); ozone uses
+  // the "every 15 s if there is no spare time" rule, matching the Horus cadence.
+  {
+    const bool txImminent = (minToTxMs < 2500UL);
+    const unsigned long hw2    = millis();
+    const unsigned long gpsAge = hw2 - sch_lastGps;
+    const unsigned long ozAge  = hw2 - sch_lastOzone;
 
-  #define SCHEDULE_TX(enable, nextVar, offset, period, txFunc) \
-    if (enable) { \
-      if ((nextVar) == 0) { \
-        unsigned long p = (currentSeconds - (offset)) % (period); \
-        (nextVar) = currentSeconds - p + (period); \
-      } \
-      if (currentSeconds >= (nextVar)) { \
-        txFunc(); \
-        unsigned long p = (currentSeconds - (offset)) % (period); \
-        (nextVar) = currentSeconds - p + (period); \
-      } \
+    if (!txImminent) {
+      dataRecorderTx();   // dataRecorder on both boards (RSM4x4 + RSM4x2); self-gated by its own interval
     }
 
-  SCHEDULE_TX(pipEnable,     nextPipTxTime,     pipTimeSyncOffsetSeconds,     pipTimeSyncSeconds,     pipTx);
-  SCHEDULE_TX(horusV3Enable, nextHorusV3TxTime, horusV3TimeSyncOffsetSeconds, horusV3TimeSyncSeconds, horusV3Tx);
-  SCHEDULE_TX(horusEnable,   nextHorusTxTime,   horusTimeSyncOffsetSeconds,   horusTimeSyncSeconds,   horusTx);
-  SCHEDULE_TX(aprsEnable,    nextAprsTxTime,    aprsTimeSyncOffsetSeconds,    aprsTimeSyncSeconds,    aprsTx);
-  SCHEDULE_TX(rttyEnable,    nextRttyTxTime,    rttyTimeSyncOffsetSeconds,    rttyTimeSyncSeconds,    rttyTx);
-  SCHEDULE_TX(morseEnable,   nextMorseTxTime,   morseTimeSyncOffsetSeconds,   morseTimeSyncSeconds,   morseTx);
+    if (!txImminent || gpsAge > 2000UL) {
+      gpsHandler();
+      sch_lastGps = millis();
+    }
 
-  dataRecorderTx();
-  gpsHandler();
+    if (!txImminent || ozAge > 15000UL) {
+      ozoneHandler();     // returns immediately when xdataPortMode != 3
+      sch_lastOzone = millis();
+    }
+  }
+  xdataCmdDrain();
   deviceStatusHandler();
   flightComputing();
   buttonHandler();
   powerHandler();
   initRecorderData();
   flightHeatingHandler();
+  #ifdef RSM4x4
   ultraPowerSaveHandler();
+  #endif
   autoResetHandler();
 
 
-  unsigned long cm = millis();
-  bool forceUpdate = (cm - lastSensorUpdate >= SENSOR_UPDATE_INTERVAL);
+  {
+    sch_tickTime();
+    nowMs = sch_sysMs;
 
-  if (minTimeUntilTx > 3 || forceUpdate) {
-    if (sensorBoomPowerSaving && (cm - lastSensorUpdate >= 30000UL)) {
-      sensorBoomHandler();
-      lastSensorUpdate = cm;
+    unsigned long nearestMs = 0xFFFFFFFFUL;
+    auto findNearest = [&](bool en, unsigned long nxt) {
+      if (!en || nxt == 0 || nxt == 0xFFFFFFFFUL) return;
+      if (nxt < nearestMs) nearestMs = nxt;
+    };
+    findNearest(pipEnable,     sch_nextPipMs);
+    findNearest(horusV3Enable, sch_nextHorusV3Ms);
+    #ifdef RSM4x4
+    findNearest(horusEnable,   sch_nextHorusMs);
+    #endif
+    findNearest(aprsEnable,    sch_nextAprsMs);
+    #ifdef RSM4x4
+    findNearest(rttyEnable,    sch_nextRttyMs);
+    #endif
+    findNearest(morseEnable,   sch_nextMorseMs);
+
+    if (nearestMs != 0xFFFFFFFFUL && nearestMs > nowMs) {
+      unsigned long toWait = nearestMs - nowMs;
+      // Matches the 2500 ms gating window above: once the long reads are being skipped,
+      // busy-wait precisely to the slot so the TX lands on time instead of a loop late.
+      if (toWait < 2500UL) {
+        if (xdataPortMode == 1) {
+          xdataSerial.print(F("[sch]: pre-TX wait ")); xdataSerial.print(toWait); xdataSerial.println(F("ms"));
+        }
+        unsigned long bailAt = millis() + toWait + 1500UL;
+        while (sch_sysMs < nearestMs) {
+          sch_tickTime();
+          if (millis() > bailAt) break;
+          if ((millis() - sch_lastSensorBoom) > 10000UL) {
+            sensorBoomHandler(); sch_lastSensorBoom = millis();
+            pressureHandler();   sch_lastPressure   = millis();
+          }
+          buttonHandler();
+          delayMicroseconds(200);
+        }
+      }
     }
-    else if (!sensorBoomPowerSaving) {
-      sensorBoomHandler();
-      lastSensorUpdate = cm;
-    }
+  }
 
-    pressureHandler();
-    interfaceHandler();
+  {
+    bool anyDone;
+    do {
+      anyDone = false;
+      sch_tickTime();
+      nowMs = sch_sysMs;
 
+      unsigned long pickMs  = 0xFFFFFFFFUL;
+      int           pickIdx = -1;  // 0=pip 1=horusV3 2=horus 3=aprs 4=rtty 5=morse
+
+      auto checkMode = [&](bool en, unsigned long &nxt, uint16_t per, uint16_t off, int idx) {
+        if (!en || nxt == 0 || nxt == 0xFFFFFFFFUL) return;
+        if (nowMs < nxt) return;
+        long overdue  = (long)(nowMs - nxt);
+        long periodMs = (long)per * 1000L;
+        if (overdue >= periodMs) {
+          if (xdataPortMode == 1) {
+            xdataSerial.print(F("[sch]: skip (late ")); xdataSerial.print(overdue / 1000); xdataSerial.println(F("s)"));
+          }
+          nxt = sch_nextSlot(nowMs, per, off);
+          anyDone = true;
+        } else if (nxt < pickMs) {
+          pickMs  = nxt;
+          pickIdx = idx;
+        }
+      };
+
+      checkMode(pipEnable,     sch_nextPipMs,     pipTimeSyncSeconds,     pipTimeSyncOffsetSeconds,     0);
+      checkMode(horusV3Enable, sch_nextHorusV3Ms, horusV3TimeSyncSeconds, horusV3TimeSyncOffsetSeconds, 1);
+      #ifdef RSM4x4
+      checkMode(horusEnable,   sch_nextHorusMs,   horusTimeSyncSeconds,   horusTimeSyncOffsetSeconds,   2);
+      #endif
+      checkMode(aprsEnable,    sch_nextAprsMs,    aprsTimeSyncSeconds,    aprsTimeSyncOffsetSeconds,    3);
+      #ifdef RSM4x4
+      checkMode(rttyEnable,    sch_nextRttyMs,    rttyTimeSyncSeconds,    rttyTimeSyncOffsetSeconds,    4);
+      #endif
+      checkMode(morseEnable,   sch_nextMorseMs,   morseTimeSyncSeconds,   morseTimeSyncOffsetSeconds,   5);
+
+      if (pickIdx >= 0) {
+        if ((millis() - sch_lastSensorBoom) > 2000UL) {
+          sensorBoomHandler(); sch_lastSensorBoom = millis();
+        }
+        if ((millis() - sch_lastPressure) > 2000UL) {
+          pressureHandler(); sch_lastPressure = millis();
+        }
+
+        if (xdataPortMode == 1) {
+          const char* modeNames[] = {"PIP","HorusV3","HorusV2","APRS","RTTY","Morse"};
+          xdataSerial.print(F("[sch]: TX ")); xdataSerial.println(modeNames[pickIdx]);
+        }
+
+        switch (pickIdx) {
+          case 0: pipTx();     sch_tickTime(); sch_nextPipMs     = sch_nextSlot(sch_sysMs, pipTimeSyncSeconds,     pipTimeSyncOffsetSeconds);     break;
+          case 1: horusV3Tx(); sch_tickTime(); sch_nextHorusV3Ms = sch_nextSlot(sch_sysMs, horusV3TimeSyncSeconds, horusV3TimeSyncOffsetSeconds); break;
+          #ifdef RSM4x4
+          case 2: horusTx();   sch_tickTime(); sch_nextHorusMs   = sch_nextSlot(sch_sysMs, horusTimeSyncSeconds,   horusTimeSyncOffsetSeconds);   break;
+          #endif
+          case 3: aprsTx();    sch_tickTime(); sch_nextAprsMs    = sch_nextSlot(sch_sysMs, aprsTimeSyncSeconds,    aprsTimeSyncOffsetSeconds);    break;
+          #ifdef RSM4x4
+          case 4: rttyTx();    sch_tickTime(); sch_nextRttyMs    = sch_nextSlot(sch_sysMs, rttyTimeSyncSeconds,    rttyTimeSyncOffsetSeconds);    break;
+          #endif
+          case 5: morseTx();   sch_tickTime(); sch_nextMorseMs   = sch_nextSlot(sch_sysMs, morseTimeSyncSeconds,   morseTimeSyncOffsetSeconds);   break;
+        }
+        if (xdataPortMode == 1) {
+          const char* modeNames[] = {"PIP","HorusV3","HorusV2","APRS","RTTY","Morse"};
+          xdataSerial.print(F("[sch]: done ")); xdataSerial.println(modeNames[pickIdx]);
+        }
+        anyDone = true;
+      }
+
+    } while (anyDone);
   }
 
 }
 
+// Runs a GCS command found in a line (from "CMD:" onward). Shared by xdataCmdDrain
+// (mode 1) and the ozone parser (mode 3). Returns true if a command matched.
+bool runXdataCommand(const char* line) {
+  const char* cmd = strstr(line, "CMD:");
+  if (cmd == NULL) return false;
 
+  if (strncmp(cmd, "CMD:REBOOT", 10) == 0) {
+    xdataSerial.println(F("[info]: Rebooting on command..."));
+    delay(100);
+    NVIC_SystemReset();
+  } else if (strncmp(cmd, "CMD:SHUTDOWN", 12) == 0) {
+    hardwarePowerShutdown();
+  } else if (strncmp(cmd, "CMD:RECONDITION", 15) == 0 && sensorBoomEnable) {
+    xdataSerial.println(F("[info]: Starting reconditioning..."));
+    reconditioningPhase();
+  } else if (strncmp(cmd, "CMD:ZEROHUM", 11) == 0 && sensorBoomEnable && humidityModuleEnable) {
+    xdataSerial.println(F("[info]: Starting zero-humidity calibration..."));
+    zeroHumidityCheck();
+    maxHumidityCapacitance = zeroHumidityCapacitance + humidityCapacitanceRangeDelta;
+  } else if (strncmp(cmd, "CMD:TEMPCAL", 11) == 0 && sensorBoomEnable) {
+    xdataSerial.println(F("[info]: Starting temperature calibration..."));
+    temperatureCalibration();
+  } else if (strncmp(cmd, "CMD:HUMDEBUG", 12) == 0 && sensorBoomEnable) {
+    xdataSerial.println(F("[info]: Starting humidity range debug..."));
+    humidityCalibrationDebug = true;
+    humidityDeltaCalibrationDebug();
+    humidityCalibrationDebug = false;
+  } else if (strncmp(cmd, "CMD:STOP", 8) == 0) {
+    _hrdStopRequested = true;
+    xdataSerial.println(F("[info]: Stop requested."));
+  } else {
+    return false;
+  }
+  return true;
+}
 
-
-
-
-
+// Mode-1 command drain (mode 3 drains the shared RX stream in ozoneHandler instead).
+void xdataCmdDrain() {
+  if (xdataPortMode != 1) return;
+  static char _cmdBuf[40];
+  static uint8_t _cmdLen = 0;
+  while (xdataSerial.available()) {
+    char c = (char)xdataSerial.read();
+    if (c == '\n' || c == '\r') {
+      if (_cmdLen > 0) {
+        _cmdBuf[_cmdLen] = '\0';
+        runXdataCommand(_cmdBuf);
+        _cmdLen = 0;
+      }
+    } else if (_cmdLen < sizeof(_cmdBuf) - 1) {
+      _cmdBuf[_cmdLen++] = c;
+    } else {
+      _cmdLen = 0;
+    }
+  }
+}
 
 void interfaceHandler() {
-  #ifndef RSM4x2
-  if (xdataPortMode != 4 || gpsAlt > flightDetectionAltitude) return;
+  if (xdataPortMode != 1 && xdataPortMode != 3) return;
 
-  // --- 1. SYSTEM & HARDWARE ---
-  xdataSerial.print("isRSM4x2: ");
-  xdataSerial.println(rsm4x2);
-  xdataSerial.print("isRSM4x4: ");
-  xdataSerial.println(rsm4x4);
-  xdataSerial.print("fwVer: ");
-  xdataSerial.println(NFW_VERSION);
-  xdataSerial.print("millis: ");
-  xdataSerial.println(millis());
-  xdataSerial.print("autoResetEnable: ");
-  xdataSerial.println(autoResetEnable);
-  xdataSerial.print("buttonMode: ");
-  xdataSerial.println(buttonMode);
-  xdataSerial.print("ledStatusEnable: ");
-  xdataSerial.println(ledStatusEnable);
-  xdataSerial.print("ledAutoDisableHeight: ");
-  xdataSerial.println(ledAutoDisableHeight);
+  xdataCmdDrain();
 
-  // --- 2. GPS CONFIG & DATA ---
-  xdataSerial.print("ubloxGpsAirborneMode: ");
-  xdataSerial.println(ubloxGpsAirborneMode);
-  xdataSerial.print("gpsTimeoutWatchdog: ");
-  xdataSerial.println(gpsTimeoutWatchdog);
-  xdataSerial.print("improvedGpsPerformance: ");
-  xdataSerial.println(improvedGpsPerformance);
-  xdataSerial.print("disableGpsImprovementInFlight: ");
-  xdataSerial.println(disableGpsImprovementInFlight);
-  xdataSerial.print("gpsOperationMode: ");
-  xdataSerial.println(gpsOperationMode);
-  xdataSerial.print("gpsLat: ");
-  xdataSerial.print(gpsLat, 6);
-  xdataSerial.println();
-  xdataSerial.print("gpsLong: ");
-  xdataSerial.print(gpsLong, 6);
-  xdataSerial.println();
-  xdataSerial.print("gpsAlt: ");
-  xdataSerial.println(gpsAlt);
-  xdataSerial.print("gpsSats: ");
-  xdataSerial.println(gpsSats);
-  xdataSerial.print("gpsHours: ");
-  xdataSerial.println(gpsHours);
-  xdataSerial.print("gpsMinutes: ");
-  xdataSerial.println(gpsMinutes);
-  xdataSerial.print("gpsSeconds: ");
-  xdataSerial.println(gpsSeconds);
-  xdataSerial.print("gpsSpeedKph: ");
-  xdataSerial.println(gpsSpeedKph);
-  xdataSerial.print("gpsHdop: ");
-  xdataSerial.println(gpsHdop);
-  xdataSerial.print("vVCalc: ");
-  xdataSerial.println(vVCalc);
-  xdataSerial.print("currentGPSPowerMode: ");
-  xdataSerial.println(gpsStatus);
-  xdataSerial.print("gpsJamWarning: ");
-  xdataSerial.println(gpsJamWarning);
+  // Mode 3: the xdata UART is full-duplex, so NFW frames (GCS link) and the OIF411
+  // instrument share it full-time at 9600 baud; the ozone parser runs separately.
+  static uint16_t nfw_seq = 0;
+  static char buf[1024];
+  uint16_t pos = 0;
+  uint8_t  chk = 0;
 
-  // --- 3. RADIO GENERAL ---
-  xdataSerial.print("radioEnablePA: ");
-  xdataSerial.println(radioEnablePA);
-  xdataSerial.print("callsign: ");
-  xdataSerial.println(CALLSIGN);
-  xdataSerial.print("radioTemp: ");
-  xdataSerial.println(readRadioTemp());
+  #define NW_S(s)   do { const char *_p=(s); while(*_p){buf[pos++]=*_p;chk^=(uint8_t)*_p++;} } while(0)
+  #define NW_D()    do { buf[pos++]='|'; chk^='|'; } while(0)
+  #define NW_I(v)   do { char _t[16]; snprintf(_t,sizeof(_t),"%ld",(long)(v)); NW_S(_t); } while(0)
+  #define NW_F(v,d) do { char _t[16]; dtostrf((float)(v),1,(d),_t); NW_S(_t); } while(0)
 
-  // --- 4. PIP MODE ---
-  xdataSerial.print("pipEnable: ");
-  xdataSerial.println(pipEnable);
-  xdataSerial.print("pipFrequencyMhz: ");
-  xdataSerial.println(pipFrequencyMhz, 3);
-  xdataSerial.print("pipTimeSyncSeconds: ");
-  xdataSerial.println(pipTimeSyncSeconds);
-  xdataSerial.print("pipTimeSyncOffsetSeconds: ");
-  xdataSerial.println(pipTimeSyncOffsetSeconds);
-  xdataSerial.print("pipRadioPower: ");
-  xdataSerial.println(pipRadioPower);
+  buf[pos++] = '$';
+  NW_S("NFW");
+  NW_D(); NW_I(nfw_seq++);
+  // 1 - System
+  NW_D(); NW_I(rsm4x2);
+  NW_D(); NW_I(rsm4x4);
+  NW_D(); NW_S(NFW_VERSION);
+  NW_D(); NW_I(millis());
+  NW_D(); NW_I(autoResetEnable);
+  NW_D(); NW_I(buttonMode);
+  NW_D(); NW_I(ledStatusEnable);
+  NW_D(); NW_I(ledAutoDisableHeight);
+  // 2 - GPS
+  NW_D(); NW_I(ubloxGpsAirborneMode);
+  NW_D(); NW_I(gpsTimeoutWatchdog);
+  NW_D(); NW_I(improvedGpsPerformance);
+  NW_D(); NW_I(disableGpsImprovementInFlight);
+  NW_D(); NW_I(gpsOperationMode);
+  NW_D(); NW_F(gpsLat,  6);
+  NW_D(); NW_F(gpsLong, 6);
+  NW_D(); NW_F(gpsAlt,  2);
+  NW_D(); NW_I(gpsSats);
+  NW_D(); NW_I(gpsHours);
+  NW_D(); NW_I(gpsMinutes);
+  NW_D(); NW_I(gpsSeconds);
+  NW_D(); NW_F(gpsSpeedKph, 2);
+  NW_D(); NW_F(gpsHdop,     2);
+  NW_D(); NW_F(vVCalc,      2);
+  NW_D(); NW_I(gpsStatus);
+  NW_D(); NW_I(gpsJamWarning);
+  // 3 - Radio General
+  NW_D(); NW_I(radioEnablePA);
+  NW_D(); NW_S(CALLSIGN);
+  NW_D(); NW_F(readRadioTemp(), 2);
+  // 4 - PIP
+  NW_D(); NW_I(pipEnable);
+  NW_D(); NW_F(pipFrequencyMhz, 3);
+  NW_D(); NW_I(pipTimeSyncSeconds);
+  NW_D(); NW_I(pipTimeSyncOffsetSeconds);
+  NW_D(); NW_I(pipRadioPower);
+  // 5 - Horus V2
+  NW_D(); NW_I(horusEnable);
+  NW_D(); NW_F(horusFreqTable[0], 3);
+  NW_D(); NW_I(horusTimeSyncSeconds);
+  NW_D(); NW_I(horusTimeSyncOffsetSeconds);
+  NW_D(); NW_I(horusPayloadId);
+  NW_D(); NW_I(horusRadioPower);
+  // 5.1 - Horus V3
+  NW_D(); NW_I(horusV3Enable);
+  NW_D(); NW_F(horusFreqTable[0], 3);
+  NW_D(); NW_I(horusTimeSyncSeconds);
+  NW_D(); NW_I(horusTimeSyncOffsetSeconds);
+  NW_D(); NW_S(HORUS_V3_CALLSIGN);
+  NW_D(); NW_I(horusV3RadioPower);
+  // 6 - APRS
+  NW_D(); NW_I(aprsEnable);
+  NW_D(); NW_F(aprsFreqTable[0], 3);
+  NW_D(); NW_I(aprsTimeSyncSeconds);
+  NW_D(); NW_I(aprsTimeSyncOffsetSeconds);
+  NW_D(); NW_S(aprsCall);
+  NW_D(); NW_S(aprsComment.c_str());
+  NW_D(); NW_I(aprsSsid);
+  NW_D(); NW_I(aprsOperationMode);
+  NW_D(); NW_I(aprsRadioPower);
+  NW_D(); NW_I(aprsToneCalibrationMode);
+  // 7 - RTTY
+  NW_D(); NW_I(rttyEnable);
+  NW_D(); NW_F(rttyFrequencyMhz, 3);
+  NW_D(); NW_I(rttyTimeSyncSeconds);
+  NW_D(); NW_I(rttyTimeSyncOffsetSeconds);
+  NW_D(); NW_I(rttyRadioPower);
+  // 7.1 - Morse
+  NW_D(); NW_I(morseEnable);
+  NW_D(); NW_F(morseFrequencyMhz, 3);
+  NW_D(); NW_I(morseTimeSyncSeconds);
+  NW_D(); NW_I(morseTimeSyncOffsetSeconds);
+  NW_D(); NW_I(morseRadioPower);
+  // 8 - Power
+  NW_D(); NW_F(readBatteryVoltage(), 2);
+  NW_D(); NW_F(vBatWarnValue,        2);
+  NW_D(); NW_F(batteryCutOffVoltage, 2);
+  NW_D(); NW_I(ultraPowerSaveAfterLanding);
+  // 9 - Flight stats
+  NW_D(); NW_I(maxAlt);
+  NW_D(); NW_I(maxSpeed);
+  NW_D(); NW_I(maxAscentRate);
+  NW_D(); NW_I(maxDescentRate);
+  NW_D(); NW_I(maxMainTemperature);
+  NW_D(); NW_I(minMainTemperature);
+  NW_D(); NW_I(maxInternalTemp);
+  NW_D(); NW_I(minInternalTemp);
+  NW_D(); NW_I(beganFlying);
+  NW_D(); NW_I(burstDetected);
+  NW_D(); NW_I(hasLanded);
+  NW_D(); NW_I(flightStartClimbThreshold);
+  NW_D(); NW_I(burstDetectionThreshold);
+  NW_D(); NW_I(lowAltitudeFastTxThreshold);
+  // 10 - Sensor boom & heating
+  NW_D(); NW_I(sensorBoomEnable);
+  NW_D(); NW_F(readThermistorTemp(), 2);
+  NW_D(); NW_F(mainTemperatureValue, 2);
+  NW_D(); NW_F(humidityValue, 1);
+  NW_D(); NW_F(pressureValue, 2);
+  NW_D(); NW_F(mainTemperatureCorrectionC, 2);
+  NW_D(); NW_F(extHeaterTemperatureCorrectionC, 2);
+  NW_D(); NW_I(autoTemperatureCalibration);
+  NW_D(); NW_I(autoTemperatureCalibrationMethod);
+  NW_D(); NW_F(environmentStartupAirTemperature, 2);
+  NW_D(); NW_I(autoHumidityModuleTemperatureCorrection);
+  NW_D(); NW_I(humidityModuleEnable);
+  NW_D(); NW_I(zeroHumidityCalibration);
+  NW_D(); NW_F(humidityCapacitanceRangeDelta, 2);
+  NW_D(); NW_F(zeroHumidityCapacitance, 2);
+  NW_D(); NW_F(tempSensorBoomCalibrationFactor, 2);
+  NW_D(); NW_I(calibrationError);
+  NW_D(); NW_I(extHeaterPwmStatus);
+  NW_D(); NW_I(referenceHeaterStatus);
+  NW_D(); NW_I(referenceAreaTargetTemperature);
+  NW_D(); NW_I(humidityModuleHeating);
+  NW_D(); NW_I(sensorBoomMainTempError);
+  NW_D(); NW_I(sensorBoomHumidityModuleError);
+  // Pressure & RPM411
+  NW_D(); NW_I(pressureMode);
+  NW_D(); NW_F(rpm411InternalTemperature, 2);
+  NW_D(); NW_S(RPM411SerialNumber);
+  NW_D(); NW_I(rpm411Error);
+  NW_D(); NW_F(seaLevelPressure, 2);
+  // 11 - Raw sensor data
+  NW_D(); NW_F(mainTemperatureFrequency,       2);
+  NW_D(); NW_F(mainTemperatureResistance,      2);
+  NW_D(); NW_F(extHeaterTemperatureFrequency,  2);
+  NW_D(); NW_F(extHeaterTemperatureResistance, 2);
+  NW_D(); NW_F(extHeaterTemperatureValue,      2);
+  NW_D(); NW_F(humidityCapacitance,            2);
+  NW_D(); NW_F(maxHumidityCapacitance,         2);
+  NW_D(); NW_I(THERMISTOR_R25);
+  NW_D(); NW_I(THERMISTOR_B);
+  // 12 - Recorder
+  NW_D(); NW_I(dataRecorderEnable);
+  NW_D(); NW_I(dataRecorderInterval);
+  NW_D(); NW_I(dataRecorderFlightNoiseFiltering);
+  NW_D(); NW_I(recorderInitialized);
+  // 13 - Status + stage  (warn field kept at 0 for frame compatibility; status is only ok/err now)
+  NW_D(); NW_I(err);
+  NW_D(); NW_I(0);
+  NW_D(); NW_I(ok);
+  NW_D(); NW_S(nfwCurrentStage);
+  // 14 - XDATA / OIF411 ozone
+  NW_D(); NW_I(xdataPortMode);
+  NW_D(); NW_F(xdataOzonePumpTemperature, 2);
+  NW_D(); NW_F(xdataOzoneCurrent,         4);
+  NW_D(); NW_F(xdataOzoneBatteryVoltage,  2);
+  NW_D(); NW_F(xdataOzonePumpCurrent,     1);
+  NW_D(); NW_F(xdataOzoneExtVoltage,      2);
+  NW_D(); NW_I(xdataOzoneDiagnostics);
+  NW_D(); NW_I(xdataOzoneFwVersion);
+  NW_D(); NW_S(xdataOzoneSerial);
+  NW_D(); NW_F(xdataOzonePartialPressure, 4);
+  NW_D(); NW_F(xdataOzonePpb,             2);
+  NW_D(); NW_F(ozone_P0,                  2);
+  NW_D(); NW_I(ozoneConnectionError);    // 142 - OIF411 connection timeout flag
+  NW_D(); NW_I(ozoneDbgLen);             // 143 - last raw frame length (0=none received yet)
+  NW_D(); NW_S(ozoneDbgRaw);             // 144 - last raw xdata= frame content (hex ASCII)
+  NW_D(); NW_I(ozoneRxByteTotal);        // 145 - total bytes received on xdata RX
+  NW_D(); NW_I(ozoneFrameTotal);         // 146 - OIF411 frames successfully parsed
 
-  // --- 5. HORUS MODE ---
-  xdataSerial.print("horusEnable: ");
-  xdataSerial.println(horusEnable);
-  xdataSerial.print("horusFrequencyMhz: ");
-  xdataSerial.println(horusFreqTable[0], 3);
-  xdataSerial.print("horusTimeSyncSeconds: ");
-  xdataSerial.println(horusTimeSyncSeconds);
-  xdataSerial.print("horusTimeSyncOffsetSeconds: ");
-  xdataSerial.println(horusTimeSyncOffsetSeconds);
-  xdataSerial.print("horusPayloadId: ");
-  xdataSerial.println(horusPayloadId);
-  xdataSerial.print("horusRadioPower: ");
-  xdataSerial.println(horusRadioPower);
+  buf[pos++] = '*';
+  buf[pos++] = "0123456789ABCDEF"[chk >> 4];
+  buf[pos++] = "0123456789ABCDEF"[chk & 0xF];
+  buf[pos++] = '\r';
+  buf[pos++] = '\n';
+  xdataSerial.write((const uint8_t*)buf, pos);
+  xdataCmdDrain();  // process commands that arrived during blocking frame TX
 
-  // --- 5.1. HORUS V3 MODE ---
-  xdataSerial.print("horusV3Enable: ");
-  xdataSerial.println(horusV3Enable);
-  xdataSerial.print("horusV3FrequencyMhz: ");
-  xdataSerial.println(horusFreqTable[0], 3);
-  xdataSerial.print("horusV3TimeSyncSeconds: ");
-  xdataSerial.println(horusTimeSyncSeconds);
-  xdataSerial.print("horusV3TimeSyncOffsetSeconds: ");
-  xdataSerial.println(horusTimeSyncOffsetSeconds);
-  xdataSerial.print("horus_v3_callsign: ");
-  xdataSerial.println(HORUS_V3_CALLSIGN);
-  xdataSerial.print("horusV3RadioPower: ");
-  xdataSerial.println(horusV3RadioPower);
-
-  // --- 6. APRS MODE ---
-  xdataSerial.print("aprsEnable: ");
-  xdataSerial.println(aprsEnable);
-  xdataSerial.print("aprsFrequencyMhz: ");
-  xdataSerial.println(aprsFreqTable[0], 3);
-  xdataSerial.print("aprsTimeSyncSeconds: ");
-  xdataSerial.println(aprsTimeSyncSeconds);
-  xdataSerial.print("aprsTimeSyncOffsetSeconds: ");
-  xdataSerial.println(aprsTimeSyncOffsetSeconds);
-  xdataSerial.print("aprsCall: ");
-  xdataSerial.println(aprsCall);
-  xdataSerial.print("aprsComment: ");
-  xdataSerial.println(aprsComment);
-  xdataSerial.print("aprsSsid: ");
-  xdataSerial.println(aprsSsid);
-  xdataSerial.print("aprsOperationMode: ");
-  xdataSerial.println(aprsOperationMode);
-  xdataSerial.print("aprsRadioPower: ");
-  xdataSerial.println(aprsRadioPower);
-  xdataSerial.print("aprsToneCalibrationMode: ");
-  xdataSerial.println(aprsToneCalibrationMode);
-
-  // --- 7. RTTY & MORSE ---
-  xdataSerial.print("rttyEnable: ");
-  xdataSerial.println(rttyEnable);
-  xdataSerial.print("rttyFrequencyMhz: ");
-  xdataSerial.println(rttyFrequencyMhz, 3);
-  xdataSerial.print("rttyTimeSyncSeconds: ");
-  xdataSerial.println(rttyTimeSyncSeconds);
-  xdataSerial.print("rttyTimeSyncOffsetSeconds: ");
-  xdataSerial.println(rttyTimeSyncOffsetSeconds);
-  xdataSerial.print("rttyRadioPower: ");
-  xdataSerial.println(rttyRadioPower);
-  xdataSerial.print("morseEnable: ");
-  xdataSerial.println(morseEnable);
-  xdataSerial.print("morseFrequencyMhz: ");
-  xdataSerial.println(morseFrequencyMhz, 3);
-  xdataSerial.print("morseTimeSyncSeconds: ");
-  xdataSerial.println(morseTimeSyncSeconds);
-  xdataSerial.print("morseTimeSyncOffsetSeconds: ");
-  xdataSerial.println(morseTimeSyncOffsetSeconds);
-  xdataSerial.print("morseRadioPower: ");
-  xdataSerial.println(morseRadioPower);
-
-  // --- 8. BATTERY & POWER ---
-  xdataSerial.print("batV: ");
-  xdataSerial.println(readBatteryVoltage());
-  xdataSerial.print("vBatWarnValue: ");
-  xdataSerial.println(vBatWarnValue);
-  xdataSerial.print("batteryCutOffVoltage: ");
-  xdataSerial.println(batteryCutOffVoltage);
-  xdataSerial.print("ultraPowerSaveAfterLanding: ");
-  xdataSerial.println(ultraPowerSaveAfterLanding);
-
-  // --- 9. FLIGHT STATISTICS ---
-  xdataSerial.print("maxAlt: ");
-  xdataSerial.println(maxAlt);
-  xdataSerial.print("maxSpeed: ");
-  xdataSerial.println(maxSpeed);
-  xdataSerial.print("maxAscentRate: ");
-  xdataSerial.println(maxAscentRate);
-  xdataSerial.print("maxDescentRate: ");
-  xdataSerial.println(maxDescentRate);
-  xdataSerial.print("maxMainTemperature: ");
-  xdataSerial.println(maxMainTemperature);
-  xdataSerial.print("minMainTemperature: ");
-  xdataSerial.println(minMainTemperature);
-  xdataSerial.print("maxInternalTemp: ");
-  xdataSerial.println(maxInternalTemp);
-  xdataSerial.print("minInternalTemp: ");
-  xdataSerial.println(minInternalTemp);
-  xdataSerial.print("beganFlying: ");
-  xdataSerial.println(beganFlying);
-  xdataSerial.print("burstDetected: ");
-  xdataSerial.println(burstDetected);
-  xdataSerial.print("hasLanded: ");
-  xdataSerial.println(hasLanded);
-  xdataSerial.print("flightDetectionAltitude: ");
-  xdataSerial.println(flightDetectionAltitude);
-  xdataSerial.print("burstDetectionThreshold: ");
-  xdataSerial.println(burstDetectionThreshold);
-  xdataSerial.print("lowAltitudeFastTxThreshold: ");
-  xdataSerial.println(lowAltitudeFastTxThreshold);
-
-  // --- 10. SENSOR BOOM & HEATING ---
-  xdataSerial.print("sensorBoomEnable: ");
-  xdataSerial.println(sensorBoomEnable);
-  xdataSerial.print("thermistorTemp: ");
-  xdataSerial.println(readThermistorTemp());
-  xdataSerial.print("mainTemperatureValue: ");
-  xdataSerial.println(mainTemperatureValue);
-  xdataSerial.print("humidityValue: ");
-  xdataSerial.println(humidityValue);
-  xdataSerial.print("pressureValue: ");
-  xdataSerial.println(pressureValue);
-  xdataSerial.print("mainTemperatureCorrectionC: ");
-  xdataSerial.println(mainTemperatureCorrectionC);
-  xdataSerial.print("extHeaterTemperatureCorrectionC: ");
-  xdataSerial.println(extHeaterTemperatureCorrectionC);
-  xdataSerial.print("autoTemperatureCalibration: ");
-  xdataSerial.println(autoTemperatureCalibration);
-  xdataSerial.print("autoTemperatureCalibrationMethod: ");
-  xdataSerial.println(autoTemperatureCalibrationMethod);
-  xdataSerial.print("environmentStartupAirTemperature: ");
-  xdataSerial.println(environmentStartupAirTemperature);
-  xdataSerial.print("autoHumidityModuleTemperatureCorrection: ");
-  xdataSerial.println(autoHumidityModuleTemperatureCorrection);
-  xdataSerial.print("humidityModuleEnable: ");
-  xdataSerial.println(humidityModuleEnable);
-  xdataSerial.print("zeroHumidityCalibration: ");
-  xdataSerial.println(zeroHumidityCalibration);
-  xdataSerial.print("humidityCapacitanceRangeDelta: ");
-  xdataSerial.println(humidityCapacitanceRangeDelta);
-  xdataSerial.print("zeroHumidityCapacitance: ");
-  xdataSerial.println(zeroHumidityCapacitance);
-  xdataSerial.print("tempSensorBoomCalibrationFactor: ");
-  xdataSerial.println(tempSensorBoomCalibrationFactor);
-  xdataSerial.print("calibrationError: ");
-  xdataSerial.println(calibrationError);
-  xdataSerial.print("extHeaterPwmStatus: ");
-  xdataSerial.println(extHeaterPwmStatus);
-  xdataSerial.print("referenceHeaterStatus: ");
-  xdataSerial.println(referenceHeaterStatus);
-  xdataSerial.print("referenceAreaTargetTemperature: ");
-  xdataSerial.println(referenceAreaTargetTemperature);
-  xdataSerial.print("humidityModuleHeating: ");
-  xdataSerial.println(humidityModuleHeating);
-  xdataSerial.print("sensorBoomMainTempError: ");
-  xdataSerial.println(sensorBoomMainTempError);
-  xdataSerial.print("sensorBoomHumidityModuleError: ");
-  xdataSerial.println(sensorBoomHumidityModuleError);
-  xdataSerial.print("pressureMode: ");
-  xdataSerial.println(pressureMode);
-  xdataSerial.print("pressureValue: ");
-  xdataSerial.println(pressureValue);
-  xdataSerial.print("rpm411InternalTemperature: ");
-  xdataSerial.println(rpm411InternalTemperature);
-  xdataSerial.print("RPM411SerialNumber: ");
-  xdataSerial.println(RPM411SerialNumber);
-  xdataSerial.print("rpm411Error: ");
-  xdataSerial.println(rpm411Error);
-  xdataSerial.print("seaLevelPressure: ");
-  xdataSerial.println(seaLevelPressure);
-
-  // --- 11. RAW SENSOR DATA & CONSTANTS ---
-  xdataSerial.print("mainTemperatureFrequency: ");
-  xdataSerial.println(mainTemperatureFrequency);
-  xdataSerial.print("mainTemperatureResistance: ");
-  xdataSerial.println(mainTemperatureResistance);
-  xdataSerial.print("extHeaterTemperatureFrequency: ");
-  xdataSerial.println(extHeaterTemperatureFrequency);
-  xdataSerial.print("extHeaterTemperatureResistance: ");
-  xdataSerial.println(extHeaterTemperatureResistance);
-  xdataSerial.print("extHeaterTemperatureValue: ");
-  xdataSerial.println(extHeaterTemperatureValue);
-  xdataSerial.print("humidityCapacitance: ");
-  xdataSerial.println(humidityCapacitance);
-  xdataSerial.print("maxHumidityCapacitance: ");
-  xdataSerial.println(maxHumidityCapacitance);
-  xdataSerial.print("THERMISTOR_R25: ");
-  xdataSerial.println(THERMISTOR_R25);
-  xdataSerial.print("THERMISTOR_B: ");
-  xdataSerial.println(THERMISTOR_B);
-
-  // --- 12. RECORDER & LOGIC FLAGS ---
-  xdataSerial.print("dataRecorderEnable: ");
-  xdataSerial.println(dataRecorderEnable);
-  xdataSerial.print("dataRecorderInterval: ");
-  xdataSerial.println(dataRecorderInterval);
-  xdataSerial.print("dataRecorderFlightNoiseFiltering: ");
-  xdataSerial.println(dataRecorderFlightNoiseFiltering);
-  xdataSerial.print("recorderInitialized: ");
-  xdataSerial.println(recorderInitialized);
-
-  // --- 13. SUMMARY FLAGS ---
-  xdataSerial.print("err: ");
-  xdataSerial.println(err);
-  xdataSerial.print("warn: ");
-  xdataSerial.println(warn);
-  xdataSerial.print("ok: ");
-  xdataSerial.println(ok);
-  #endif
+  #undef NW_S
+  #undef NW_D
+  #undef NW_I
+  #undef NW_F
 }
 
 void extHeaterHandler(bool enable, float targetTemp, float currentTemp) {
@@ -5438,17 +5096,14 @@ void extHeaterHandler(bool enable, float targetTemp, float currentTemp) {
 
 void humidityDeltaCalibrationDebug() {
   if (humidityCalibrationDebug) {
-    if (xdataPortMode == 4) {
-      xdataSerial.println("stage: 25");
-    }
-
+    setStage("25");
     if (xdataPortMode == 1) {
-      xdataSerial.println("[info]: Entering calibration adjustment mode...");
+      xdataSerial.println("[info]: entering humidity delta calibration debug mode");
     }
 
     while (extHeaterTemperatureValue > 40) {
       if (xdataPortMode == 1) {
-        xdataSerial.print("Waiting for the humidity module to cool down (<40C) after calibration - T=");
+        xdataSerial.print("[info]: Cooldown (<40C) T=");
         xdataSerial.print(extHeaterTemperatureValue);
         xdataSerial.println(" *C");
       }
@@ -5460,14 +5115,14 @@ void humidityDeltaCalibrationDebug() {
       sensorBoomHandler();
     }
 
+    humidityCapacitanceRangeDelta = 0;
+
+    setStage("26");
     if (xdataPortMode == 1) {
-      xdataSerial.println("Hardware ready - place the sensor in 100%RH environment and observe the suggested humidityRangeDelta value.");
+      xdataSerial.println("[info]: Ready - place sensor at 100%RH, observe humidityCapacitanceRangeDelta");
     }
 
-    if (xdataPortMode == 4) {
-      xdataSerial.println("stage: 26");
-    }
-
+    float _capDeltaMax = 0.0f;
     for (;;) {
       greenLed();
       delay(50);
@@ -5475,25 +5130,38 @@ void humidityDeltaCalibrationDebug() {
 
       sensorBoomHandler();
 
-      humidityCapacitanceRangeDelta = (humidityCapacitance - zeroHumidityCapacitance) * 0.9;
+      float _liveDelta = (humidityCapacitance - zeroHumidityCapacitance) * 0.9f;
+      if (_liveDelta > _capDeltaMax) _capDeltaMax = _liveDelta;
+      // humidityCapacitanceRangeDelta holds the PEAK - that is the value to record and
+      // put in CONFIG.h. The ground station shows the live value too: it computes it
+      // from the raw humidityCapacitance and zeroHumidityCapacitance (both in the frame).
+      humidityCapacitanceRangeDelta = _capDeltaMax;
 
       if (xdataPortMode == 1) {
         xdataSerial.print("humidityCapacitance = ");
         xdataSerial.print(humidityCapacitance);
-        xdataSerial.print("uF,  humidityCapacitanceRangeDelta = ");
-        xdataSerial.print(humidityCapacitanceRangeDelta);
-        xdataSerial.println("Hz");
+        xdataSerial.print(" uF,  live delta = ");
+        xdataSerial.print(_liveDelta);
+        xdataSerial.print(",  peak (record this) = ");
+        xdataSerial.println(_capDeltaMax);
       }
 
       interfaceHandler();
+      xdataCmdDrain();   // mode 1: GCS commands (CMD:STOP)
+      ozoneHandler();    // mode 3: GCS commands ride the shared OIF411 RX stream
+
+      if (_hrdStopRequested) {
+        _hrdStopRequested = false;
+        if (xdataPortMode == 1) {
+          xdataSerial.println("[info]: Humidity range debug stopped by command.");
+        }
+        break;
+      }
 
       if (analogRead(VBTN_PIN) + 50 > analogRead(VBAT_PIN) && analogRead(VBAT_PIN) > 100) {
+        setStage("27");
         if (xdataPortMode == 1) {
-          xdataSerial.print("Turning the sonde OFF. Reprogram it with an average humidityRangeDelta calculated for this sensor boom and disable the humidityCalibrationDebug.");
-        }
-
-        if (xdataPortMode == 4) {
-          xdataSerial.print("stage: 27");
+          xdataSerial.println("[info]: Power off - reprogram humidityCapacitanceRangeDelta, disable humidityCalibrationDebug");
         }
 
         hardwarePowerShutdown();
@@ -5501,8 +5169,6 @@ void humidityDeltaCalibrationDebug() {
     }
   }
 }
-
-
 
 void initRPM411() {
   bool isDataReceived = false;
@@ -5543,19 +5209,20 @@ void initRPM411() {
     delay(10);
   }
 
-
   if (!isDataReceived) {
     rpm411Error = true;
-    if (xdataPortMode == 1) {
-      xdataSerial.println("[info]: RPM411 connection error");
+    if (xdataPortMode == 1 && !lastRpm411ErrorState) {
+      xdataSerial.println("[err]: RPM411 connection error");
     }
+    lastRpm411ErrorState = true;
   }
   else {
     rpm411Error = false;
     RPM411ParseConfigData();
-    if (xdataPortMode == 1) {
+    if (xdataPortMode == 1 && lastRpm411ErrorState) {
       xdataSerial.println("[info]: RPM411 OK");
     }
+    lastRpm411ErrorState = false;
   }
 }
 
@@ -5573,7 +5240,6 @@ void readRPM411() {
   }
 
   delay(250);
-
 
   for (int j = 0; j < 5; j++) {
     digitalWrite(CS_SPI, LOW);
@@ -5605,26 +5271,26 @@ void readRPM411() {
     delayMicroseconds(100);
   }
 
-
   if (!isDataReceived) {
     rpm411Error = true;
-    
-    if (xdataPortMode == 1) {
-      xdataSerial.println("[info]: RPM411 connection error");
+
+    if (xdataPortMode == 1 && !lastRpm411ErrorState) {
+      xdataSerial.println("[err]: RPM411 connection error");
     }
+    lastRpm411ErrorState = true;
 
   }
   else {
     rpm411Error = false;
     RPM411ParseReadings();
-    
-    if (xdataPortMode == 1) {
+
+    if (xdataPortMode == 1 && lastRpm411ErrorState) {
       xdataSerial.println("[info]: RPM411 OK");
     }
+    lastRpm411ErrorState = false;
 
   }
 }
-
 
 void RPM411ParseConfigData() {
   for (int i = 0; i < 8; i++) {
@@ -5633,7 +5299,6 @@ void RPM411ParseConfigData() {
 
   RPM411SerialNumber[8] = '\0';
 }
-
 
 void RPM411ParseReadings() {
   if(!rpm411Error) {
@@ -5657,7 +5322,6 @@ void RPM411ParseReadings() {
     memcpy(&rpm411Pressure, pressureBytes, 4);
   }
 }
-
 
 void pressureHandler() {
   if(pressureMode == 1) {
@@ -5692,13 +5356,13 @@ void pressureHandler() {
     double P0 = seaLevelPressure;
 
     // --- 2. Precompute base pressures for each ISA layer ---
-    // Layer 0–11 km (lapse)
+    // Layer 0-11 km (lapse)
     double P11 = P0 * pow(1.0 + (-0.0065 * 11000.0) / 288.15, -gMR / -0.0065);
 
-    // Layer 11–20 km (isothermal)
+    // Layer 11-20 km (isothermal)
     double P20 = P11 * exp(-gMR * (20000.0 - 11000.0) / 216.65);
 
-    // Layer 20–32 km (lapse)
+    // Layer 20-32 km (lapse)
     double P32 = P20 * pow(1.0 + (0.0010 * (32000.0 - 20000.0)) / 216.65, -gMR / 0.0010);
 
     // --- 3. Select layer ---
@@ -5744,6 +5408,16 @@ void pressureHandler() {
     pressureValue = 0;
   }
 
+  if (xdataPortMode == 1 && pressureMode != 0) {
+    static unsigned long _lastPresLog = 0;
+    if (millis() - _lastPresLog >= 15000UL) {
+      _lastPresLog = millis();
+      xdataSerial.print(F("[pres]: "));
+      xdataSerial.print(pressureValue, 1);
+      xdataSerial.println(F(" hPa"));
+    }
+  }
+
 }
 
 float kalmanFilter(float measurement, float &est, float &err_est, float err_meas, float q) {
@@ -5759,8 +5433,6 @@ float kalmanFilter(float measurement, float &est, float &err_est, float err_meas
 
   return est;
 }
-
-
 
 void setup() {
   pinMode(RED_LED_PIN, OUTPUT);
@@ -5801,12 +5473,13 @@ void setup() {
     xdataSerial.begin(115200);
   } else if (xdataPortMode == 3) {
     xdataSerial.begin(9600);
-  } else if (xdataPortMode == 4 || xdataPortMode == 5) {
+  } else if (xdataPortMode == 2) {   // GPS bridge mode
     xdataSerial.begin(115200);
   }
 
-  if (xdataPortMode == 4) {
-    xdataSerial.println("stage: 01");
+  setStage("01");
+  if (xdataPortMode == 1) {
+    xdataSerial.println("[info]: stage 01 - HW init");
   }
 
   if (rsm4x4) {
@@ -5816,24 +5489,24 @@ void setup() {
   }
 
   if (xdataPortMode == 1) {
-    xdataSerial.println("[info]: Serial interfaces initialized");
+    xdataSerial.println("[info]: Serial init ok");
   }
 
   if (rsm4x4) {
     analogReadResolution(12);
     if (xdataPortMode == 1) {
-      xdataSerial.println("[info]: ADC resolution set to 12 bits");
+      xdataSerial.println("[info]: ADC 12bit ok");
     }
   }
 
   analogWriteResolution(8);    // Set PWM resolution
   analogWriteFrequency(1000);  // Set PWM frequency
   if (xdataPortMode == 1) {
-    xdataSerial.println("[info]: PWM timer initialized - 8bit, 1kHz");
+    xdataSerial.println("[info]: PWM 8bit 1kHz ok");
   }
 
   if (xdataPortMode == 1) {
-    xdataSerial.println("[info]: Enabling clock output pins...");
+    xdataSerial.println("[info]: MCO init...");
   }
 
   HAL_RCC_MCOConfig(RCC_MCO1, RCC_MCO1SOURCE_HSI, RCC_MCODIV_1); // MCO1 with divider 1 from HSI clock source, output on PA8
@@ -5842,13 +5515,13 @@ void setup() {
   digitalWrite(CS_RADIO_SPI, HIGH);  // Deselect the SI4432 CS pin
   digitalWrite(CS_SPI, HIGH);
 
-
   if (xdataPortMode == 1) {
-    xdataSerial.println("[info]: SPI_2 interface initialized, clock ok");
+    xdataSerial.println("[info]: SPI2 ok");
   }
 
-  if (xdataPortMode == 4) {
-    xdataSerial.println("stage: 02");
+  setStage("02");
+  if (xdataPortMode == 1) {
+    xdataSerial.println("[info]: stage 02 - GPS/radio init");
   }
 
   if (improvedGpsPerformance && gpsOperationMode != 0) {
@@ -5862,29 +5535,29 @@ void setup() {
   digitalWrite(CS_RADIO_SPI, LOW);
   initSi4032();
   if (xdataPortMode == 1) {
-    xdataSerial.println("[info]: Si4032 radio register initialization complete");
+    xdataSerial.println("[info]: Si4032 regs ok");
   }
 
   setRadioPower(6);
   if (xdataPortMode == 1) {
-    xdataSerial.print("[info]: Si4032 PA power set to default 6 (50mW): ");
-    xdataSerial.println(6);
+    xdataSerial.println("[info]: Si4032 PA=6 (50mW)");
   }
 
   writeRegister(0x72, 0x05);
 
   if (xdataPortMode == 1) {
-    xdataSerial.println("[info]: Si4032 deviation set to 0x07, not used for now?...");
+    xdataSerial.println("[info]: Si4032 dev=0x07");
   }
 
   fsk4_bitDuration = (uint32_t)1000000 / horusBdr;  //horus 100baud delay calculation
-  
-  if (xdataPortMode == 4) {
-    xdataSerial.println("stage: 03");
+
+  setStage("03");
+  if (xdataPortMode == 1) {
+    xdataSerial.println("[info]: stage 03 - boom/heater init");
   }
 
   if (xdataPortMode == 1) {
-    xdataSerial.println("[info]: Sensor boom, heaters, RPM411 initialization...");
+    xdataSerial.println("[info]: Boom/heater/RPM411 init...");
   }
 
   selectReferencesHeater(0);  //turn off reference heating
@@ -5902,7 +5575,7 @@ void setup() {
   orangeLed();
 
   if (xdataPortMode == 1) {
-    xdataSerial.println("[info]: Hardware init seems done");
+    xdataSerial.println("[info]: HW init done");
   }
 
   if (foxHuntMode) {
@@ -5920,11 +5593,11 @@ void setup() {
 
   if (sensorBoomEnable && humidityModuleEnable && zeroHumidityCalibration) {
     if (xdataPortMode == 1) {
-      xdataSerial.println("[info]: Starting humidity calibration...");
+      xdataSerial.println("[info]: Humidity cal start");
     }
     zeroHumidityCheck();
     if (xdataPortMode == 1) {
-      xdataSerial.println("[info]: Exiting calibration.");
+      xdataSerial.println("[info]: Humidity cal done");
     }
   }
 
@@ -5946,9 +5619,8 @@ void setup() {
     initGPS();
   }
 
-
   if (xdataPortMode == 1) {
-    xdataSerial.println("[info]: Exiting setup and entering main program loop...");
+    xdataSerial.println("[info]: Setup done, entering main loop");
   }
 
   for (int i = 0; i < 5; i++) {
@@ -5967,8 +5639,9 @@ void setup() {
     delay(5); 
   }*/
 
-  if (xdataPortMode == 4) {
-    xdataSerial.println("stage: 04");
+  setStage("04");
+  if (xdataPortMode == 1) {
+    xdataSerial.println("[info]: stage 04 - main loop start");
   }
 
   interfaceHandler();
@@ -5979,7 +5652,6 @@ void setup() {
 
   bothLedOff();
 }
-
 
 void loop() {
   schedulerLoop();
