@@ -1288,8 +1288,8 @@ select.input-base option { background: #1e293b; }
       </div>
     </div>
     <div class="flex justify-end gap-2">
-      <button class="btn btn-red text-xs" onclick="sendCommand('CMD:STOP')">Stop & Exit</button>
-      <button class="btn btn-slate text-xs" onclick="document.getElementById('hrd-modal').classList.add('hidden')">Close</button>
+      <button class="btn btn-red text-xs" onclick="hrdClose()">Stop &amp; Exit</button>
+      <button class="btn btn-slate text-xs" onclick="hrdClose()">Close</button>
     </div>
   </div>
 </div>
@@ -2665,27 +2665,39 @@ function hrdOpen() {
   hrdUpdate();
 }
 
+function hrdClose() {
+  // Always stop the sonde-side debug loop on exit. Without this the firmware would keep
+  // spinning in its blocking range-debug loop, and the stage would stay stuck at 25/26 so
+  // the dialog could not be reopened for the next session without reloading the page.
+  sendCommand('CMD:STOP');
+  document.getElementById('hrd-modal').classList.add('hidden');
+}
+
 function hrdUpdate() {
   const modal = document.getElementById('hrd-modal');
   if (modal.classList.contains('hidden')) return;
 
   const cap  = tel.humidityCapacitance      ? parseFloat(tel.humidityCapacitance)      : null;
   const zero = tel.zeroHumidityCapacitance  ? parseFloat(tel.zeroHumidityCapacitance)  : null;
-  // Live instantaneous delta, computed exactly like the firmware does. This moves up
-  // and down as you expose/remove the sensor, so you can see it settle and peak.
-  const live = (cap !== null && zero !== null) ? (cap - zero) * 0.9 : null;
-  // The firmware tracks and sends the PEAK in humidityCapacitanceRangeDelta - that is
-  // the calibration value to record.
+  // Live instantaneous delta vs the zero-humidity capacitance, just for the moving display
+  // so you can watch it settle and peak. The 0.95 calibration factor MUST match the one the
+  // firmware applies in humidityDeltaCalibrationDebug() so this preview lines up with the
+  // recorded peak below. The value actually recorded is always the firmware's own figure.
+  const HRD_CAL_FACTOR = 0.95;
+  const live = (cap !== null && zero !== null) ? (cap - zero) * HRD_CAL_FACTOR : null;
+  // Authoritative range delta: the firmware tracks the calibrated PEAK and sends it in
+  // humidityCapacitanceRangeDelta (field 98). This - not a value recomputed here - is what
+  // gets recorded into CONFIG.h, so the sonde and the builder always agree.
   const peak = tel.humidityCapacitanceRangeDelta ? parseFloat(tel.humidityCapacitanceRangeDelta) : null;
 
   document.getElementById('hrd-cap').textContent   = cap  !== null ? cap.toFixed(2)  : '--';
   document.getElementById('hrd-delta').textContent = live !== null ? live.toFixed(4) : '--';
 
   if (peak !== null) {
-    if (peak > hrdMaxDelta) hrdMaxDelta = peak;
-    document.getElementById('hrd-max').textContent = peak.toFixed(4);
+    if (peak > hrdMaxDelta) hrdMaxDelta = peak;   // track the maximum the firmware has reported
+    document.getElementById('hrd-max').textContent = hrdMaxDelta.toFixed(4);
     if (tel.stage === '27') {
-      document.getElementById('hrd-copy-val').textContent = peak.toFixed(4);
+      document.getElementById('hrd-copy-val').textContent = hrdMaxDelta.toFixed(4);
       document.getElementById('hrd-copy-row').classList.remove('hidden');
     }
   }

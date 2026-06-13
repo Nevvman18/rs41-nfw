@@ -4826,9 +4826,12 @@ bool runXdataCommand(const char* line) {
     temperatureCalibration();
   } else if (strncmp(cmd, "CMD:HUMDEBUG", 12) == 0 && sensorBoomEnable) {
     xdataSerial.println(F("[info]: Starting humidity range debug..."));
+    char _prevStage[4];
+    memcpy(_prevStage, nfwCurrentStage, sizeof(_prevStage));
     humidityCalibrationDebug = true;
     humidityDeltaCalibrationDebug();
     humidityCalibrationDebug = false;
+    setStage(_prevStage);   // restore the pre-debug stage so the stage leaves 25/26 and Ground Control can reopen the dialog next time
   } else if (strncmp(cmd, "CMD:STOP", 8) == 0) {
     _hrdStopRequested = true;
     xdataSerial.println(F("[info]: Stop requested."));
@@ -5130,11 +5133,10 @@ void humidityDeltaCalibrationDebug() {
 
       sensorBoomHandler();
 
-      float _liveDelta = (humidityCapacitance - zeroHumidityCapacitance) * 0.9f;
+      float _liveDelta = (humidityCapacitance - zeroHumidityCapacitance) * 0.95f;  // delta vs zero-humidity capacitance, with calibration factor
       if (_liveDelta > _capDeltaMax) _capDeltaMax = _liveDelta;
-      // humidityCapacitanceRangeDelta holds the PEAK - that is the value to record and
-      // put in CONFIG.h. The ground station shows the live value too: it computes it
-      // from the raw humidityCapacitance and zeroHumidityCapacitance (both in the frame).
+      // humidityCapacitanceRangeDelta holds the PEAK delta - that is the value to record and
+      // put in CONFIG.h.
       humidityCapacitanceRangeDelta = _capDeltaMax;
 
       if (xdataPortMode == 1) {
