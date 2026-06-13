@@ -299,6 +299,7 @@ unsigned int aprsPacketNum = 0;
 unsigned long sch_sysMs    = 0;   // UTC time-of-day in ms (GPS-synced when available)
 unsigned long sch_lastMillis = 0; // Previous millis() snapshot used for time tracking
 bool          sch_gpsSynced  = false; // True when GPS time is valid and locked
+bool          sch_everSeeded = false; // True once the clock has been seeded from GPS at least once (stays set across GPS losses)
 
 // Next scheduled TX times in sch_sysMs units (ms since UTC midnight).
 // Value 0 = uninitialized → compute first slot on the next scheduler pass.
@@ -4495,6 +4496,31 @@ static void sch_syncGps() {
       (unsigned long)gps.time.minute() * 60000UL   +
       (unsigned long)gps.time.second() * 1000UL;
 
+  if (!sch_everSeeded) {
+    // First fix ever: seed the scheduler clock straight to the GPS time-of-day. Seeding
+    // absolutely (rather than applying the full diff against the tiny since-boot value)
+    // keeps sch_sysMs small and correct. Applying that first diff used to underflow the
+    // unsigned counter past zero; because 2^32 ms is not a whole number of days, the
+    // time-of-day reading then stayed corrupted and the clock looped forever issuing
+    // ~25,000,000 ms "large adj" corrections, wrecking the TX schedule.
+    sch_sysMs = gpsTodMs;
+    sch_lastMillis = millis();
+    sch_nextPipMs = sch_nextHorusV3Ms = sch_nextHorusMs =
+    sch_nextAprsMs = sch_nextRttyMs = sch_nextMorseMs = 0;
+    sch_everSeeded = true;
+    sch_gpsSynced  = true;
+    if (xdataPortMode == 1) {
+      xdataSerial.print(F("[sch]: GPS synced UTC "));
+      if (gps.time.hour()   < 10) xdataSerial.print('0'); xdataSerial.print(gps.time.hour());   xdataSerial.print(':');
+      if (gps.time.minute() < 10) xdataSerial.print('0'); xdataSerial.print(gps.time.minute()); xdataSerial.print(':');
+      if (gps.time.second() < 10) xdataSerial.print('0'); xdataSerial.println(gps.time.second());
+    }
+    return;
+  }
+
+  // Already seeded once. This path also handles re-acquisition after a GPS loss: while the
+  // fix was gone the clock free-ran on the MCU millis() timer, so apply only an incremental
+  // correction. sch_sysMs is already large, so it cannot underflow here.
   long diffMs = (long)gpsTodMs - (long)(sch_sysMs % 86400000UL);
   if (diffMs >  43200000L) diffMs -= 86400000L;
   if (diffMs < -43200000L) diffMs += 86400000L;
@@ -4514,13 +4540,14 @@ static void sch_syncGps() {
   }
 
   if (!sch_gpsSynced) {
+    // GPS came back after a dropout - just note it; the clock kept running on the MCU.
+    sch_gpsSynced = true;
     if (xdataPortMode == 1) {
-      xdataSerial.print(F("[sch]: GPS synced UTC "));
+      xdataSerial.print(F("[sch]: GPS resynced UTC "));
       if (gps.time.hour()   < 10) xdataSerial.print('0'); xdataSerial.print(gps.time.hour());   xdataSerial.print(':');
       if (gps.time.minute() < 10) xdataSerial.print('0'); xdataSerial.print(gps.time.minute()); xdataSerial.print(':');
       if (gps.time.second() < 10) xdataSerial.print('0'); xdataSerial.println(gps.time.second());
     }
-    sch_gpsSynced = true;
   }
 }
 
@@ -4528,6 +4555,7 @@ void schedulerInit() {
   sch_lastMillis = millis();
   sch_sysMs      = 0;
   sch_gpsSynced  = false;
+  sch_everSeeded = false;
   sch_nextPipMs = sch_nextHorusV3Ms = sch_nextHorusMs =
   sch_nextAprsMs = sch_nextRttyMs = sch_nextMorseMs = 0;
   sch_lastSensorBoom = sch_lastPressure = sch_lastInterface = 0;
