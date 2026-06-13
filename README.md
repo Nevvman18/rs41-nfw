@@ -83,25 +83,29 @@ But, currently the best way is to utilize a Software-Defined Radio (SDR, for exa
 **Kind note:** After each hunt, either successful or not, please change the radiosonde status on the previously mentioned trakcing sites. This will not only let many people save on fuel and patience, but also allow everyone to take a look on sounding statistics and other things. On the most simple site for tracking (SondeHub) you don't even need to create an account to change the sonde status, which only takes a minute. <br>
 *It's an unpleasant feeling, when after driving dozens of kilometers in search for radiosonde you come across an empty field without any balloon traces.*<br><br>
 For more details about HAB and sonde hunting, please look on google and social media, there is a ton of valuable content.
+<br>
+
 
 ## Installation guide
 A thorough, detailed project guide is available at the links below.<br>
 **The simplest path is the [NFW Sounding Software](#rs41-nfw-sounding-software) ([nfw.flada.ovh](https://nfw.flada.ovh)): configure and compile in the browser, then flash.** If you prefer to do everything by hand, read the documentation in the following header order:
 
 
-## Firmware flashing
+### Firmware flashing
 See: [fw/FLASHING.md](./fw/FLASHING.md) <br>
 Covers OpenOCD (cross-platform terminal, the recommended route) and STM32CubeProgrammer (Windows/Linux, GUI and CLI).
 
 
-## Firmware compilation
+### Firmware compilation
 See: [fw/COMPILE.md](./fw/COMPILE.md) <br>
 **Note:** with the [NFW Sounding Software](#rs41-nfw-sounding-software) you no longer need to set up Arduino IDE, the STM32 core or libraries by hand - this guide is only for those who want to build locally.
 
 
-## Firmware and device operation
+### Firmware and device operation
 See: [fw/OPERATION_MANUAL.md](./fw/OPERATION_MANUAL.md) <br>
 The manual describes how the sonde behaves and how each option works. The per-option comments in [`CONFIG.h`](./rs41-nfw_sonde-firmware/CONFIG.h) are always the authoritative, up-to-date reference.
+
+<br>
 
 ## RS41-NFW Sounding Software
 A single web application that takes you from a blank sonde to a flight-ready one, entirely in the browser, at [nfw.flada.ovh](https://nfw.flada.ovh) - ready to use, nothing to install. It is the recommended way to use RS41-NFW and it replaces three older, separate tools that used to live in this repository: the Python *Ground Control Software*, the *gcs_webserial* prototype and the standalone *dataRecorder decoder* (the data recorder now uses a different on-air format, so the old decoder no longer applies).
@@ -125,7 +129,7 @@ Connects directly to the sonde over USB and turns the pre-flight routine into a 
 * **Sensors and charts** - inline charts for the sensor and heater values (dual-axis heater power vs. temperature), a pressure readout, and a GPS minimap with a live position pin.
 * **Calibration helper** - surfaces the calibration values the firmware computes (temperature offset, zero-humidity capacitance, humidity range delta) so you can copy them straight back into the Firmware Builder for your next, fully-calibrated build.
 
-> **A note on how it was built:** the Sounding Software is "vibe-coded" - written quickly with the help of AI tooling - but with the highest standards kept for verifying its stability. Every part was reviewed, tested and hardened (input sanitisation, build sandboxing, abuse limits) before going live. The firmware itself is hand-written and unaffected by this.
+> **A note on how it was built:** the Sounding Software is "vibe-coded" - written with the help of AI tooling - but with the highest standards kept for verifying its stability. Every part was reviewed, tested and hardened (input sanitisation, build sandboxing, abuse limits) before going live. The firmware itself is hand-written. From all tools you can expect the best stability.
 
 
 ## RSM425 and RSM414 hardware
