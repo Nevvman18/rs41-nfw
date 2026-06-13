@@ -5293,11 +5293,19 @@ void readRPM411() {
 }
 
 void RPM411ParseConfigData() {
+  // Keep only printable ASCII (0x20-0x7E). The serial goes into the $NFW telemetry
+  // frame, which Ground Control decodes as UTF-8 - any non-ASCII byte (e.g. 0xFF when
+  // the RPM411 is absent or the read failed) would show up as the replacement glyph
+  // and, worse, break the frame checksum so the whole frame is dropped. Stop at the
+  // first non-printable byte, which also trims null/0xFF padding.
+  int n = 0;
   for (int i = 0; i < 8; i++) {
-    RPM411SerialNumber[i] = (char)RPM411ConfigData[1][(41 + i) % 33];
+    char c = (char)RPM411ConfigData[1][(41 + i) % 33];
+    if (c < 0x20 || c > 0x7E) break;
+    RPM411SerialNumber[n++] = c;
   }
 
-  RPM411SerialNumber[8] = '\0';
+  RPM411SerialNumber[n] = '\0';
 }
 
 void RPM411ParseReadings() {

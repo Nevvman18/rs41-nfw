@@ -121,58 +121,6 @@ SKETCH_DIR = WORKSPACE / 'sketch'   # one sketch dir per board, kept around so b
 BUILD_DIR  = WORKSPACE / 'build'    # arduino-cli build path, this is where the compile cache lives
 TMP_DIR    = WORKSPACE / 'tmp'      # scratch output, wiped after each build
 
-# ─── lightweight usage logging ───────────────────────────────────────────────
-# First-party stats only, to understand load on the self-hosted service:
-# per-day unique visitors, request counts, and the request IP where available.
-# Everything lands in LOGS_DIR/usage. Best-effort - it must never break a request.
-USAGE_DIR    = LOGS_DIR / 'usage'
-_usage_lock  = threading.Lock()
-_usage_state = {'day': None, 'ips': set(), 'count': 0}
-
-def _client_ip():
-    # Behind Cloudflare / a reverse proxy, the socket peer is the proxy, so prefer
-    # the forwarded client headers and fall back to the direct peer address.
-    for h in ('CF-Connecting-IP', 'X-Forwarded-For', 'X-Real-IP'):
-        v = request.headers.get(h, '')
-        if v:
-            return v.split(',')[0].strip()
-    return request.remote_addr or '-'
-
-def _record_usage():
-    try:
-        path = request.path or '/'
-        if path in ('/favicon.ico', '/robots.txt'):
-            return
-        now = datetime.now()
-        day = now.strftime('%Y-%m-%d')
-        ip  = _client_ip()
-        with _usage_lock:
-            if _usage_state['day'] != day:
-                _usage_state.update(day=day, ips=set(), count=0)
-            _usage_state['count'] += 1
-            new_visitor = ip not in _usage_state['ips']
-            if new_visitor:
-                _usage_state['ips'].add(ip)
-            uniques = len(_usage_state['ips'])
-            total   = _usage_state['count']
-            USAGE_DIR.mkdir(parents=True, exist_ok=True)
-            line = json.dumps({'ts': now.isoformat(timespec='seconds'), 'ip': ip,
-                               'method': request.method, 'path': path,
-                               'new_visitor': new_visitor}, ensure_ascii=False)
-            with (USAGE_DIR / f'{day}.log').open('a', encoding='utf-8') as fh:
-                fh.write(line + '\n')
-            if new_visitor:   # keep the daily summary current without rewriting it every hit
-                (USAGE_DIR / f'{day}.summary.json').write_text(
-                    json.dumps({'date': day, 'unique_visitors': uniques,
-                                'requests_since_restart': total}, indent=2),
-                    encoding='utf-8')
-    except Exception:
-        pass  # usage logging is best-effort and must never affect the response
-
-@app.before_request
-def _usage_before():
-    _record_usage()
-
 
 GITHUB_REPO = 'https://github.com/Nevvman18/rs41-nfw'
 
