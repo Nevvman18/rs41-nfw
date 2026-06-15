@@ -18,6 +18,8 @@
 #   empirical rs1729 RH model using calibU.
 #
 import base64
+import codecs
+import json
 import math
 import struct
 import requests
@@ -78,18 +80,52 @@ class RS41Subframe(object):
         return struct.unpack('<' + str(length) + 's', self.raw_data[address:address + length])[0]
 
 
-def download_subframe_data(serial, timeout=20):
+def download_subframe_data(serial, timeout=20, max_bytes=48 * 1024 * 1024):
     """Download radiosonde telemetry for a serial and return the first frame
-    carrying subframe data. Returns (subframe_bytes, telemetry_dict) or (None, None)."""
+    carrying subframe data. Returns (subframe_bytes, telemetry_dict) or (None, None).
+
+    SondeHub's /sonde/{serial} endpoint returns the sonde's *entire* telemetry
+    history as one JSON array, which for a long-lived / heavily-received serial
+    can be hundreds of MB and hundreds of thousands of frames (e.g. W4051156 is
+    ~630 MB / 680k frames). Buffering and json-parsing all of that inside a live
+    web request stalls long enough to exhaust memory or trip a timeout, which the
+    browser then reports as a generic network error. The calibration subframe is
+    only assembled after auto_rx has received the sonde for a while, so it sits a
+    few hundred frames in regardless of total history - so we stream the response
+    and stop at the first complete (800/816-byte) subframe instead of reading it
+    all. max_bytes is a giveup ceiling; in practice we stop after well under 1 MB."""
     url = "https://api.v2.sondehub.org/sonde/" + serial
-    r = requests.get(url, timeout=timeout)
-    r.raise_for_status()
-    data = r.json()
-    if not isinstance(data, list):
-        return (None, None)
-    for telem in data:
-        if isinstance(telem, dict) and 'rs41_subframe' in telem:
-            return (base64.b64decode(telem['rs41_subframe']), telem)
+    with requests.get(url, timeout=timeout, stream=True) as r:
+        r.raise_for_status()
+        dec = codecs.getincrementaldecoder('utf-8')()
+        jd = json.JSONDecoder()
+        buf = ''
+        scanned = 0
+        for chunk in r.iter_content(65536):
+            scanned += len(chunk)
+            if scanned > max_bytes:
+                break
+            buf += dec.decode(chunk)
+            while True:
+                # Skip whitespace, the opening '[' and inter-element commas so the
+                # buffer always starts at the next JSON value (a frame object).
+                i, n = 0, len(buf)
+                while i < n and buf[i] in ' \t\r\n,[':
+                    i += 1
+                if i:
+                    buf = buf[i:]
+                if not buf or buf[0] == ']':
+                    break
+                try:
+                    obj, end = jd.raw_decode(buf)
+                except ValueError:
+                    break  # object spans into the next chunk - read more
+                buf = buf[end:]
+                if isinstance(obj, dict) and 'rs41_subframe' in obj:
+                    sub = base64.b64decode(obj['rs41_subframe'])
+                    if len(sub) in (800, 816):
+                        return (sub, obj)
+                    # A partial/garbled subframe rode this frame; keep looking.
     return (None, None)
 
 
