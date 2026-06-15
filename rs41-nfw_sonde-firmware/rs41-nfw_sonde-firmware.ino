@@ -4553,6 +4553,22 @@ static unsigned long sch_nextSlot(unsigned long nowMs, uint16_t periodSec, uint1
   return next;
 }
 
+// Used to reschedule a mode right AFTER it has transmitted. Plain sch_nextSlot()
+// returns the next grid boundary, but if the transmission ran late (contended with
+// another mode, or the GPS clock was just nudged) it can finish only a second or two
+// before that boundary - so the on-grid slot would fire almost immediately, making the
+// mode transmit twice in quick succession, i.e. more often than its configured interval
+// (the APRS "every 30 s but sometimes sooner" symptom). When the next slot would land
+// less than half a period away, skip it and take the following one. This keeps the
+// configured period as a guaranteed minimum spacing while staying grid aligned.
+static unsigned long sch_nextSlotSpaced(unsigned long nowMs, uint16_t periodSec, uint16_t offsetSec) {
+  unsigned long next = sch_nextSlot(nowMs, periodSec, offsetSec);
+  if (next == 0xFFFFFFFFUL) return next;
+  const unsigned long pMs = (unsigned long)periodSec * 1000UL;
+  if ((next - nowMs) < (pMs / 2UL)) next += pMs;
+  return next;
+}
+
 static void sch_syncGps() {
   if (gpsSats < 4 || !gps.time.isValid() || gps.time.age() > 1100) {
     if (sch_gpsSynced && xdataPortMode == 1)
@@ -4877,16 +4893,16 @@ void schedulerLoop() {
         }
 
         switch (pickIdx) {
-          case 0: pipTx();     sch_tickTime(); sch_nextPipMs     = sch_nextSlot(sch_sysMs, pipTimeSyncSeconds,     pipTimeSyncOffsetSeconds);     break;
-          case 1: horusV3Tx(); sch_tickTime(); sch_nextHorusV3Ms = sch_nextSlot(sch_sysMs, horusV3TimeSyncSeconds, horusV3TimeSyncOffsetSeconds); break;
+          case 0: pipTx();     sch_tickTime(); sch_nextPipMs     = sch_nextSlotSpaced(sch_sysMs, pipTimeSyncSeconds,     pipTimeSyncOffsetSeconds);     break;
+          case 1: horusV3Tx(); sch_tickTime(); sch_nextHorusV3Ms = sch_nextSlotSpaced(sch_sysMs, horusV3TimeSyncSeconds, horusV3TimeSyncOffsetSeconds); break;
           #ifdef RSM4x4
-          case 2: horusTx();   sch_tickTime(); sch_nextHorusMs   = sch_nextSlot(sch_sysMs, horusTimeSyncSeconds,   horusTimeSyncOffsetSeconds);   break;
+          case 2: horusTx();   sch_tickTime(); sch_nextHorusMs   = sch_nextSlotSpaced(sch_sysMs, horusTimeSyncSeconds,   horusTimeSyncOffsetSeconds);   break;
           #endif
-          case 3: aprsTx();    sch_tickTime(); sch_nextAprsMs    = sch_nextSlot(sch_sysMs, aprsTimeSyncSeconds,    aprsTimeSyncOffsetSeconds);    break;
+          case 3: aprsTx();    sch_tickTime(); sch_nextAprsMs    = sch_nextSlotSpaced(sch_sysMs, aprsTimeSyncSeconds,    aprsTimeSyncOffsetSeconds);    break;
           #ifdef RSM4x4
-          case 4: rttyTx();    sch_tickTime(); sch_nextRttyMs    = sch_nextSlot(sch_sysMs, rttyTimeSyncSeconds,    rttyTimeSyncOffsetSeconds);    break;
+          case 4: rttyTx();    sch_tickTime(); sch_nextRttyMs    = sch_nextSlotSpaced(sch_sysMs, rttyTimeSyncSeconds,    rttyTimeSyncOffsetSeconds);    break;
           #endif
-          case 5: morseTx();   sch_tickTime(); sch_nextMorseMs   = sch_nextSlot(sch_sysMs, morseTimeSyncSeconds,   morseTimeSyncOffsetSeconds);   break;
+          case 5: morseTx();   sch_tickTime(); sch_nextMorseMs   = sch_nextSlotSpaced(sch_sysMs, morseTimeSyncSeconds,   morseTimeSyncOffsetSeconds);   break;
         }
         if (xdataPortMode == 1) {
           const char* modeNames[] = {"PIP","HorusV3","HorusV2","APRS","RTTY","Morse"};
