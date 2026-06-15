@@ -351,6 +351,130 @@ def parse_config(ino: str) -> dict:
     return cfg
 
 
+_EXP_TYPE = (r'(?:unsigned\s+long|unsigned\s+int|unsigned\s+char|long\s+long|'
+             r'uint8_t|uint16_t|uint32_t|uint64_t|int8_t|int16_t|int32_t|int64_t|'
+             r'int|long|float|double|bool|char|String|byte|word|size_t)')
+_EXP_DECL = re.compile(
+    r'^(?:(?:constexpr|const|static|volatile)\s+)*' + _EXP_TYPE +
+    r'\s+(\w+)\s*(\[\s*\d*\s*\])?\s*=\s*(.*)$', re.DOTALL)
+_EXP_DECL_START = re.compile(r'^(?:(?:constexpr|const|static|volatile)\s+)*' + _EXP_TYPE + r'\s+\w+')
+_EXP_DEFINE = re.compile(r'^#define\s+(\w+)(?:\s+(.+))?$')
+_EXP_SECTION = re.compile(r'SECTION\s+([0-9]+[a-z]?)\s*-\s*(.+)')
+_EXP_NUMSFX = re.compile(r'\b(\d*\.?\d+(?:[eE][+-]?\d+)?)[fFlLuU]+\b')
+# Internal / non-config identifiers that should never appear in the export.
+_EXP_SKIP = {'NFW_VERSION', 'RSM4x4', 'RSM4x2', 'RSM4x1', 'NFW_CONFIG_H', 'FACTORY_CAL_ACTIVE'}
+
+
+def _export_strip_comments(ino):
+    """Yield (section, code_only_line) for each line, with C comments removed and the
+    current 'SECTION N - NAME' header tracked (headers live inside /* ... */ blocks)."""
+    section = '(general)'
+    in_block = False
+    for raw in ino.split('\n'):
+        out = []
+        i, n = 0, len(raw)
+        while i < n:
+            if in_block:
+                end = raw.find('*/', i)
+                seg = raw[i:] if end == -1 else raw[i:end]
+                ms = _EXP_SECTION.search(seg)
+                if ms:
+                    section = 'SECTION ' + ms.group(1) + ' - ' + ms.group(2).strip().rstrip('*').strip()
+                if end == -1:
+                    break
+                in_block = False
+                i = end + 2
+                continue
+            two = raw[i:i + 2]
+            if two == '//':
+                break
+            if two == '/*':
+                in_block = True
+                i += 2
+                continue
+            out.append(raw[i])
+            i += 1
+        yield section, ''.join(out)
+
+
+def export_config_text(ino: str) -> str:
+    """Render a complete, human-readable config.txt from a build's CONFIG.h: every
+    declared variable (#define string macros, constexpr/const/plain scalars, char[]
+    and String values, arrays / calibration matrices), grouped under its section header
+    and column-aligned. Independent of parse_config so nothing is dropped - parse_config
+    stays as-is for the builder/round-trip and is not touched."""
+    platform = 'unknown'
+    if re.search(r'^#define\s+RSM4x4\b', ino, re.M):
+        platform = 'RSM4x4'
+    elif re.search(r'^#define\s+RSM4x2\b', ino, re.M):
+        platform = 'RSM4x2'
+    mv = re.search(r'#define\s+NFW_VERSION\s+"([^"]*)"', ino)
+    version = mv.group(1) if mv else '?'
+
+    order, bysec, seen = [], {}, set()
+    buf = {'text': '', 'sec': None}
+
+    def flush():
+        stmt = buf['text'].strip().rstrip(';').strip()
+        buf['text'] = ''
+        if not stmt or buf['sec'] is None:
+            return
+        name = value = None
+        md = _EXP_DEFINE.match(stmt)
+        if md:
+            name, value = md.group(1), (md.group(2) or '').strip() or '(enabled)'
+        else:
+            mm = _EXP_DECL.match(stmt)
+            if mm:
+                name, value = mm.group(1), ' '.join(mm.group(3).split()).strip()
+        if not name or name in _EXP_SKIP or name in seen:
+            return
+        seen.add(name)
+        value = _EXP_NUMSFX.sub(r'\1', value)   # drop 1.5f / 300000UL number suffixes
+        if buf['sec'] not in bysec:
+            bysec[buf['sec']] = []
+            order.append(buf['sec'])
+        bysec[buf['sec']].append((name, value))
+
+    for section, code in _export_strip_comments(ino):
+        s = code.strip()
+        if not s:
+            continue
+        if buf['text'] == '':
+            if not (s.startswith('#define') or _EXP_DECL_START.match(s)):
+                continue
+            buf['sec'] = section
+        buf['text'] += ' ' + s
+        if buf['text'].lstrip().startswith('#define') and '{' not in buf['text']:
+            flush()
+        elif ';' in buf['text'] and buf['text'].count('{') == buf['text'].count('}'):
+            flush()
+
+    lines = [
+        '# ============================================================',
+        '#  RS41-NFW Firmware Configuration',
+        '#  Platform : ' + platform,
+        '#  Firmware : ' + version,
+        '#  Exported : ' + datetime.now().isoformat(timespec='seconds'),
+        '#  A plain-text record of every option compiled into this build.',
+        '# ============================================================',
+    ]
+    total = 0
+    for sec in order:
+        items = bysec[sec]
+        if not items:
+            continue
+        width = max(len(nm) for nm, _ in items)
+        lines.append('')
+        lines.append('[' + sec + ']')
+        for nm, v in items:
+            lines.append('  ' + nm.ljust(width) + ' = ' + v)
+            total += 1
+    lines.append('')
+    lines.append('# ' + str(total) + ' variables.')
+    return '\n'.join(lines) + '\n'
+
+
 def _fmt_num(v):
     if isinstance(v, float):
         # Whole-number floats print as plain integers (750.0 -> "750"), matching
@@ -972,12 +1096,8 @@ def api_job_config(job_id):
         src = log_dir / 'config.ino'
     if not src.exists():
         return jsonify(ok=False, error='Config not available'), 404
-    cfg = parse_config(src.read_text(encoding='utf-8'))
-    lines = [f'# RS41-NFW Config Export: {datetime.now().isoformat()}', '']
-    for k, v in sorted(cfg.items()):
-        if not k.startswith('_'):
-            lines.append(f'{k} = {v}')
-    buf = BytesIO('\n'.join(lines).encode())
+    text = export_config_text(src.read_text(encoding='utf-8'))
+    buf = BytesIO(text.encode('utf-8'))
     buf.seek(0)
     return send_file(buf, as_attachment=True, download_name='rs41-nfw-config.txt',
                      mimetype='text/plain')

@@ -291,6 +291,13 @@ unsigned long sch_nextAprsMs    = 0;
 unsigned long sch_nextRttyMs    = 0;
 unsigned long sch_nextMorseMs   = 0;
 
+// Time (millis(), NOT sch_sysMs) each mode last actually transmitted, indexed
+// 0=pip 1=horusV3 2=horus 3=aprs 4=rtty 5=morse. millis() is used on purpose: it never
+// jumps, so it stays valid across a GPS clock re-alignment, which is exactly the case
+// that could otherwise reschedule a mode onto a slot just after it already transmitted
+// and make it fire twice within a few seconds. 0 = has not transmitted yet.
+unsigned long sch_lastTxHw[6] = {0, 0, 0, 0, 0, 0};
+
 // Sensor-update freshness - millis()-based (immune to GPS clock corrections)
 unsigned long sch_lastSensorBoom = 0;
 unsigned long sch_lastPressure   = 0;
@@ -3704,6 +3711,14 @@ void dataRecorderTx() {
     // the later pages (C/D/E in ozone mode) reuse the timestamp captured before page A,
     // so a decoder sees several frames with an identical time and drops them as repeats.
     if (page < totalDrPages - 1) {
+      // A full burst (pages + the GPS/boom refresh between them) blocks for several
+      // seconds. If a scheduled transmission is now close, stop here and leave the
+      // remaining pages for the next cycle rather than overrunning the slot and pushing
+      // APRS / Horus late. The pages are independent frames, so a partial burst is fine.
+      if (sch_msToNextTx() < 5000UL) {
+        if (xdataPortMode == 1) xdataSerial.println("[info]: dataRecorder yielding to scheduled TX");
+        break;
+      }
       gpsHandler();
       sensorBoomHandler();
       if (!rpm411Error) readRPM411();
@@ -4569,6 +4584,30 @@ static unsigned long sch_nextSlotSpaced(unsigned long nowMs, uint16_t periodSec,
   return next;
 }
 
+// Milliseconds from now until the nearest enabled scheduled transmission. Returns
+// 0xFFFFFFFF when nothing is scheduled. Used by long blocking work (the data recorder)
+// to check, with a fresh clock tick, whether a slot is close enough that it should hold
+// off / yield rather than overrun it.
+unsigned long sch_msToNextTx() {
+  sch_tickTime();
+  unsigned long nearest = 0xFFFFFFFFUL;
+  auto f = [&](bool en, unsigned long nxt) {
+    if (en && nxt != 0 && nxt != 0xFFFFFFFFUL && nxt < nearest) nearest = nxt;
+  };
+  f(pipEnable,     sch_nextPipMs);
+  f(horusV3Enable, sch_nextHorusV3Ms);
+  #ifdef RSM4x4
+  f(horusEnable,   sch_nextHorusMs);
+  #endif
+  f(aprsEnable,    sch_nextAprsMs);
+  #ifdef RSM4x4
+  f(rttyEnable,    sch_nextRttyMs);
+  #endif
+  f(morseEnable,   sch_nextMorseMs);
+  if (nearest == 0xFFFFFFFFUL) return 0xFFFFFFFFUL;
+  return (nearest > sch_sysMs) ? (nearest - sch_sysMs) : 0UL;
+}
+
 static void sch_syncGps() {
   if (gpsSats < 4 || !gps.time.isValid() || gps.time.age() > 1100) {
     if (sch_gpsSynced && xdataPortMode == 1)
@@ -4771,7 +4810,12 @@ void schedulerLoop() {
     const unsigned long gpsAge = hw2 - sch_lastGps;
     const unsigned long ozAge  = hw2 - sch_lastOzone;
 
-    if (!txImminent) {
+    // The data recorder is the longest blocking job (several pages + a GPS/boom refresh
+    // between each). Only begin a burst when the next scheduled transmission is clearly
+    // far off, using a fresh clock tick rather than the stale minToTxMs computed above
+    // (the sensor/pressure reads in between have already eaten into it). It also yields
+    // between pages, so this just keeps it from starting too close to a slot.
+    if (sch_msToNextTx() > 5000UL) {
       dataRecorderTx();   // dataRecorder on both boards (RSM4x4 + RSM4x2); self-gated by its own interval
     }
 
@@ -4843,6 +4887,12 @@ void schedulerLoop() {
 
   {
     bool anyDone;
+    // When several modes share a slot they are sent back to back in this loop. Refresh
+    // the sensor boom / pressure only once, before the first of them, instead of before
+    // every transmission: a redundant boom read (which briefly disables interrupts) was
+    // adding a couple of seconds between, e.g., the Horus and APRS packets of the same
+    // slot, so APRS landed noticeably after its window.
+    bool burstRefreshed = false;
     do {
       anyDone = false;
       sch_tickTime();
@@ -4854,6 +4904,17 @@ void schedulerLoop() {
       auto checkMode = [&](bool en, unsigned long &nxt, uint16_t per, uint16_t off, int idx) {
         if (!en || nxt == 0 || nxt == 0xFFFFFFFFUL) return;
         if (nowMs < nxt) return;
+        // Hard minimum-interval guard: never transmit a mode again less than half its
+        // period after it last actually transmitted. This is measured in millis() so it
+        // survives a GPS clock re-alignment - the one case that can reschedule a mode onto
+        // a slot just after a transmission and make it fire twice within a few seconds
+        // (APRS transmitting at xx:00 and then again ~10 s later). When that happens, defer
+        // this mode to its next proper grid slot instead of transmitting now.
+        if (sch_lastTxHw[idx] != 0 && (millis() - sch_lastTxHw[idx]) < ((unsigned long)per * 500UL)) {
+          nxt = sch_nextSlot(nowMs, per, off);
+          anyDone = true;
+          return;
+        }
         long overdue  = (long)(nowMs - nxt);
         long periodMs = (long)per * 1000L;
         if (overdue >= periodMs) {
@@ -4880,11 +4941,14 @@ void schedulerLoop() {
       checkMode(morseEnable,   sch_nextMorseMs,   morseTimeSyncSeconds,   morseTimeSyncOffsetSeconds,   5);
 
       if (pickIdx >= 0) {
-        if ((millis() - sch_lastSensorBoom) > 2000UL) {
-          sensorBoomHandler(); sch_lastSensorBoom = millis();
-        }
-        if ((millis() - sch_lastPressure) > 2000UL) {
-          pressureHandler(); sch_lastPressure = millis();
+        if (!burstRefreshed) {
+          if ((millis() - sch_lastSensorBoom) > 2000UL) {
+            sensorBoomHandler(); sch_lastSensorBoom = millis();
+          }
+          if ((millis() - sch_lastPressure) > 2000UL) {
+            pressureHandler(); sch_lastPressure = millis();
+          }
+          burstRefreshed = true;
         }
 
         if (xdataPortMode == 1) {
@@ -4904,6 +4968,7 @@ void schedulerLoop() {
           #endif
           case 5: morseTx();   sch_tickTime(); sch_nextMorseMs   = sch_nextSlotSpaced(sch_sysMs, morseTimeSyncSeconds,   morseTimeSyncOffsetSeconds);   break;
         }
+        sch_lastTxHw[pickIdx] = millis();   // for the minimum-interval guard in checkMode
         if (xdataPortMode == 1) {
           const char* modeNames[] = {"PIP","HorusV3","HorusV2","APRS","RTTY","Morse"};
           xdataSerial.print(F("[sch]: done ")); xdataSerial.println(modeNames[pickIdx]);
