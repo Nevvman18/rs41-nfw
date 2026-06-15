@@ -1,6 +1,6 @@
 # Firmware flashing
 
-This page explains how to upload an RS41-NFW `.bin` to a Vaisala RS41 radiosonde.
+This page explains how to upload an RS41-NFW `.bin` to a Vaisala RS41 radiosonde, and how to connect the sonde after flashing to a serial converter.
 
 > **Shortcut:** the **[NFW Sounding Software](../README.md#rs41-nfw-sounding-software)** ([nfw.flada.ovh](https://nfw.flada.ovh)) prints the exact steps for your board right after it compiles your firmware, including ready-to-paste terminal commands. This page is the full reference behind that help.
 
@@ -8,6 +8,7 @@ You only need a `.bin` file and an ST-Link programmer. There are several ways to
 
 * [Requirements](#requirements)
 * [Connecting the programmer to the sonde](#connecting-the-programmer-to-the-sonde)
+* [Connecting the serial interface to the sonde](#connecting-the-serial-interface-to-the-sonde)
 * [Method A - OpenOCD (terminal, cross-platform)](#method-a---openocd-terminal-cross-platform)
 * [Method B - STM32CubeProgrammer (GUI, Windows / Linux)](#method-b---stm32cubeprogrammer-gui-windows--linux)
 * [Method C - STM32CubeProgrammer CLI (terminal)](#method-c---stm32cubeprogrammer-cli-terminal)
@@ -76,6 +77,37 @@ Wire it as follows:
 The system should now be ready. If you have trouble at this stage, double-check the wiring and the programmer selection before going further.
 
 
+## Connecting the serial interface to the sonde
+
+To use the **RS41-NFW Sounding Software** capabitilies for **Ground Control and preparation**, after successful firmware flashing you need to connect a serial adapter to the sonde's XDATA port.
+
+The connector has a pinout like this:
+```
+Pinout of XDATA connector                                    Pinout of connected ribbon cable
+                 -------                                     
+           GND  | o   o |  XDATA_RX(PB11)                    > 1  GND
+                |       |                                      2  XDATA_RX(PB11)
+XDATA_TX(PB10)  | o   o |  +3V_MCU                             3  XDATA_TX(PB10) 
+               -        |                                      4  +3V_MCU
+       V_Boost|   o   o |  VBAT                                5  V_Boost
+               -        |                                      6  VBAT
+       MCU_RST  | o   o |  SWCLK(PA14)                         7  MCU_RST
+                |       |                                      8  SWCLK(PA14)
+   SWDIO(PA13)  | o   o |  GND                                 9  SWDIO(PA13)
+                 -------                                      10  GND
+
+PAY ATTENTION TO THE CUT-OUT
+```
+
+Wire it as follows:
+* RS41-**GND** -> UART adapter **GND** (RS41-GND is on XDATA pin 1 and 10)
+* RS41-**XDATA_RX** -> UART adapter **TX pin** (RS41-XDATA_RX is on XDATA pin 2)
+* RS41-**XDATA_TX** -> UART adapter **RX pin** (RS41-XDATA_TX is on XDATA pin 3)
+* Power the sonde via system power - for example with 2xAA batteries (as the sonde could for a while draw a larger current during reconditioning phase).
+
+The Ground Control should now be ready and the serial adapter after connecting shoud be visible in conenction settings in NFW Sounding Software.
+
+
 ## Method A - OpenOCD (terminal, cross-platform)
 
 [OpenOCD](https://openocd.org/) is a popular open-source programmer. This is exactly what the [NFW Sounding Software](../README.md#rs41-nfw-sounding-software) gives you to copy after a build, and it works the same on Linux, macOS and Windows.
@@ -138,7 +170,7 @@ Open the **Option bytes** (OB) page and set the values for your MCU:
 
 * **Older boards (`RSM4x2` / `RSM4x1`, STM32F100)** - see [this picture](./photos/mcu-unlock-rsm412.png):
   * **Read Out Protection**: set `RDP` to **unchecked / disabled** (level 0).
-  * **Write Protection**: **uncheck every** box (`WRP0`...`WRP3`) so no sector is write-protected.
+  * **Write Protection**: **check every** box (`WRP0`...`WRP3`) so no sector is write-protected.
 * **Newer boards (`RSM4x4` / `RSM4x5`, STM32L412)** - see [this picture](./photos/mcu-unlock-rsm414.png):
   * **Read Out Protection**: set the `RDP` byte to `AA` (level 0).
   * **Write Protection** (an empty region = no protection, so set start above end):

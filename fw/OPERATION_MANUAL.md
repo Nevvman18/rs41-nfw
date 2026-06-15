@@ -1,6 +1,6 @@
 # RS41-NFW Operation manual
 
-This manual describes how an RS41-NFW sonde behaves and how each feature works. It is current for **firmware v66**.
+This manual describes how an RS41-NFW sonde behaves and how each feature works. It is current for **firmware v67**.
 
 > **Where the settings live:** all user options are in a single file, [`CONFIG.h`](../rs41-nfw_sonde-firmware/CONFIG.h), grouped into clearly numbered sections with a short comment on every line. You do **not** edit the main `.ino`. The easiest way to set everything is the **[NFW Sounding Software](../README.md#rs41-nfw-sounding-software)** ([nfw.flada.ovh](https://nfw.flada.ovh)), which shows the same options as a guided form and compiles the firmware for you. The per-line comments in `CONFIG.h` are always the authoritative reference; this manual explains the *why* and the *how it behaves*.
 
@@ -23,6 +23,7 @@ This manual describes how an RS41-NFW sonde behaves and how each feature works. 
   * [Fox-hunt mode](#fox-hunt-mode)
 * [Sensors and calibration](#sensors-and-calibration)
   * [Sensor boom](#sensor-boom)
+  * [Sensor calibration mode (NFW vs Vaisala factory)](#sensor-calibration-mode-nfw-vs-vaisala-factory)
   * [Temperature calibration](#temperature-calibration)
   * [Humidity calibration](#humidity-calibration)
   * [Pressure](#pressure)
@@ -80,9 +81,9 @@ The firmware reports a numeric **operation stage** (e.g. `01`...`59`) throughout
 This is the same scheme the Sounding Software shows next to the ground-check steps.
 
 LED meaning during **normal operation**:
-* **Solid green** - all OK, a GPS fix is held and there are no warnings. Ready to launch!
-* **Solid orange** - all OK, but no GPS fix yet, wait for GPS fix...
-* **Solid red** - an error is active (sensor-boom fault, RPM411 fault, calibration error, OIF411 (if present) error or battery warning). Check the serial log / Ground Control for detailed information.
+* **Solid green** - all OK, a GPS fix is held and there are no warnings. Ready, or flying normally.
+* **Solid orange** - running OK but no GPS fix yet.
+* **Solid red** - an error is active (sensor-boom fault, RPM411 fault, calibration error or battery warning). Check the serial log / Ground Control.
 * **Off** - LEDs disabled, or the sonde climbed above the auto-disable altitude.
 
 LED meaning during **start-up and calibration**:
@@ -91,7 +92,7 @@ LED meaning during **start-up and calibration**:
 * **Red blinks** - an error during start-up or calibration (e.g. sensor-boom fault or calibration error). Check the log.
 * **5 quick green blinks** - boot complete, system started and entering normal operation.
 
-(A brief hold of the button in power-off mode is confirmed by **3 red blinks** before the sonde shuts down.)
+A brief hold of the button in power-off mode is confirmed by **3 red blinks** before the sonde shuts down.
 
 LEDs can be disabled entirely (`ledStatusEnable = false`) and turn themselves off above `ledAutoDisableHeight` (default 1000 m) to save power.
 
@@ -161,7 +162,7 @@ A standard 1200-baud AX.25 / AFSK modem (1200 Hz and 2200 Hz tones). Section 7. 
   `F=frame  S=sats  V=batt(V)  C=ascent_rate(m/s)  I=internal_temp  T=ext_temp  H=humidity  P=pressure(hPa)  J=jam_warning  R=PCB_revision`.
 * **2 - Weather station (APRS WX report).** Sends a traditional WX report built from the onboard sensors.
 
-`aprsDest` defaults to **`APRNFW`**, the registered tocall recognised by SondeHub for this firmware - leave it unchanged. Callsign, SSID, digipeater path, symbol and comment are all configurable.
+The AX.25 destination (`aprsDest`) is fixed at **`APRNFW`**, the official registered tocall for this firmware - it identifies the device as running RS41-NFW on the APRS network. It is a system value held in Section 22 of `CONFIG.h` and is **not** exposed in the Firmware Builder. Callsign, SSID, digipeater path, symbol and comment remain configurable.
 
 ### RTTY
 <p align="center">
@@ -193,15 +194,39 @@ A self-contained low-power mode (Section 10), separate from normal HAB operation
 
 ### Sensor boom
 
-Each RS41 carries a **sensor boom** - the shiny, springy arm with the characteristic hook. RS41-NFW makes full use of it. The hook holds the main **air-temperature** sensor (a thermistor), and the white plate near the base is the **humidity module** - a capacitive humidity sensor with its own temperature sensor and built-in heaters. Enable the boom with `sensorBoomEnable` (Section 15).
+Each RS41 carries a **sensor boom** - the shiny arm with the characteristic hook. RS41-NFW makes full use of it. The hook holds the main **air-temperature** sensor (resistive one), and the white plate near the base is the **humidity module** - a capacitive humidity sensor with its own temperature sensor and built-in heaters. Enable the boom with `sensorBoomEnable` (Section 15).
 
-The boom measurements are taken with **hardware timers** and custom correction algorithms, which makes the readout fast and effectively free of the measurement noise seen on simpler designs. The temperature sensor is linear and very accurate once its small per-hook offset is calibrated (see [Temperature calibration](#temperature-calibration)). Humidity is derived from the sensor's actual **capacitance**, which gives more accurate readings, especially high in the cold, dry upper atmosphere; it has about **5 seconds** of reaction time, longer at low temperatures.
+The boom measurements are taken with **hardware timers** and custom correction algorithms, which makes the readout fast and effectively free of the measurement noise seen on simpler designs. The temperature sensor is linear and very accurate. Humidity is derived from the sensor's actual **capacitance**, which gives more accurate readings, especially high in the cold, dry upper atmosphere. Both sensors provide astonishing accuracy and response-times.
 
-On start-up the firmware self-tests the boom and flags an external-temperature fault, a humidity-module fault, or a whole-boom problem with the red LED and on the serial log. `sensorBoomPowerSaving` reduces how often the boom is read to save power.
+On start-up the firmware self-tests the boom and flags a temperature fault, a humidity-module fault, or a whole-boom problem with the red LED and on the serial log.
+
+`sensorBoomPowerSaving` reduces how often the boom is read to save power, with default measurement interval of 30s.
 
 External temperature is sent in Horus V3/V2, APRS, APRS WX, Morse and RTTY; humidity is sent in Horus V3/V2 and APRS WX.
 
+The firmware also reads the **MCU's own internal temperature sensor** (both board families) and reports it as `mcuTemperature` in telemetry; it is also folded into the averaged onboard (board) temperature.
+
+### Sensor calibration mode (Vaisala calibration data vs NFW calibrations)
+
+> **Board support.** On **RSM4x4 / RSM4x5 (STM32L412)** both calibration modes are available and the switch below selects between them. On the older **RSM4x1 / RSM4x2 (STM32F100)** boards the firmware runs the **NFW calibration only**: the factory (Vaisala) chain is not compiled there at all, because the F100's 64 KB flash and 8 KB RAM cannot hold the per-boom coefficients plus the double-precision Vaisala maths. Old sondes therefore always run NFW calibration - the whole Section 15b block (`sensorCalibrationMode`, the factory coefficients and the self-checks) exists only on RSM4x4 / RSM4x5, and the Firmware Builder hides the factory option for the older boards. More advanced users can compile from source and adapt the braces, if needed.
+
+On RSM4x4 / RSM4x5 a master switch, `sensorCalibrationMode` (Section 15b), chooses how sensors are computed - it governs the whole measurement chain.
+
+* **`1` - NFW algorithms.** The in-house calibration and compensation model, available on every board (and the only mode on RSM4x2 / RSM4x1). A simplified but close approximation that brings any boom to life - even one whose factory calibration data was never received. Readings are good and usable, but not at all at the manufacturer's accuracy. This mode uses the [Temperature calibration](#temperature-calibration) and [Humidity calibration](#humidity-calibration) routines described below.
+* **`2` - Vaisala factory (default).** Reproduces the boom's **original Vaisala factory calibration**, using the per-boom coefficients (temperature polynomials and the full humidity `matrixU` surface) downloaded from SondeHub by serial number. **Expected accuracy is the same you get from a normally received factory sonde** - full manufacturer-grade temperature and humidity. The factory data belongs to one specific boom, so coefficients are never interchangeable between serials.
+
+> Factory mode is set up in the Sounding Software's sensor-boom section: choose *Factory (Vaisala)* and enter the serial **engraved on the silver measurement boom** (the central part of its structure, not the mainboard). For best results use a matching boom + sonde pair that share the same serial (printed on the styrofoam packaging and on the boom). You may also pair the boom with any mainboard and enter only the boom serial, but because the factory data also captures the original mainboard's small imperfections, expect a deviation of readings with a mismatched board (from empirical home testing) - it may equally well read perfectly, this is just the worst case to be aware of.
+
+In factory mode the NFW start-up calibrations (temperature offset, zero-humidity, capacitance range) are **not** run - the factory coefficients are absolute. Instead, two optional **self-checks** run on start-up. They never change a reading; they only raise a diagnostic flag:
+
+* **Temperature check** (`factoryTemperatureCheck`, runs first): compares the main and heater temperature sensors and flags an error if they differ by more than 3 C. It auto-retries up to twice before flagging. Start-up only - it cannot be re-run from Ground Control, because by then the humidity check may have heated the boom.
+* **Humidity check** (`factoryHumidityCheck`): runs a one-minute reconditioning pass at ~138 C, then holds ~135 C and verifies a bone-dry reading below 2 %RH (Vaisala calls it zero-humidity check). It flags an error if the sensor never exceeds 115 C within the minute, or the dry reading isn't below 2%RH. This one **can** be re-run from Ground Control if needed.
+
+Ground Control auto-detects the mode and shows the matching controls - the full NFW calibration command set, or just the original checks - plus a diagnostics panel listing each boom and check status.
+
 ### Temperature calibration
+
+> Applies to **NFW mode** only. In Vaisala factory calibrations mode the temperature comes straight from the factory polynomial and no offset calibration is run.
 
 Boom sensors are linear but each has its own offset, which you should correct (Section 16). Choose one method:
 1. **Known ambient temperature** (`autoTemperatureCalibration = true`, `autoTemperatureCalibrationMethod = 1`): set `environmentStartupAirTemperature` to the temperature where the sonde is powered on. The most accurate method - residual error is roughly **0 to 1.5 C**. You must power on in that exact environment. After it runs, read the computed `mainTemperatureCorrectionC` from the serial log or Ground Station and, for future flights, enter it manually and turn auto-cal off.
@@ -211,6 +236,8 @@ Boom sensors are linear but each has its own offset, which you should correct (S
 The humidity module's own temperature sensor is corrected automatically against the main hook when `autoHumidityModuleTemperatureCorrection` is true (recommended); otherwise set `extHeaterTemperatureCorrectionC` by hand. A correction larger than about 25 C usually means a faulty boom.
 
 ### Humidity calibration
+
+> Applies to **NFW mode** only. In Vaisala factory calibrations mode humidity comes from the factory `matrixU` calibration surface and none of the routines below are run.
 
 NFW reads humidity from the sensor's **capacitance** and derives RH from a zero-humidity reference plus a temperature compensation (Section 17). Enable the module with `humidityModuleEnable`.
 

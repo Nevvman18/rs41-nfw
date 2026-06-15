@@ -120,6 +120,7 @@ REPOS_DIR  = WORKSPACE / 'repos'    # git clones and uploads
 SKETCH_DIR = WORKSPACE / 'sketch'   # one sketch dir per board, kept around so builds are incremental
 BUILD_DIR  = WORKSPACE / 'build'    # arduino-cli build path, this is where the compile cache lives
 TMP_DIR    = WORKSPACE / 'tmp'      # scratch output, wiped after each build
+SONDES_DIR = Path(os.environ.get('SONDES_DIR', str(WORKSPACE / 'sondes')))  # per-serial factory cal library
 
 
 GITHUB_REPO = 'https://github.com/Nevvman18/rs41-nfw'
@@ -352,9 +353,13 @@ def parse_config(ino: str) -> dict:
 
 def _fmt_num(v):
     if isinstance(v, float):
-        # keep decimals for floats, strip unnecessary .0
-        s = f'{v:.6f}'.rstrip('0').rstrip('.')
-        return s if '.' in s else s
+        # Whole-number floats print as plain integers (750.0 -> "750"), matching
+        # the old behaviour. Everything else uses repr() so it round-trips at full
+        # precision - factory calibration coefficients carry tiny terms like
+        # 8.2e-06 that a fixed 6-decimal format would silently truncate.
+        if v.is_integer() and abs(v) < 1e16:
+            return str(int(v))
+        return repr(v)
     return str(int(v))
 
 
@@ -418,6 +423,13 @@ def apply_config(ino: str, user_cfg: dict, platform: str) -> str:
                     rf'\g<1>{vs}\2', c, flags=re.MULTILINE, count=1)
 
         elif isinstance(value, list):
+            # factory humidity matrix: float factoryMatrixU[42] = { ... };
+            if key == 'factoryMatrixU' and value:
+                vs = ', '.join(_fmt_num(x) for x in value)
+                c = re.sub(
+                    rf'^((?:const\s+)?float\s+{re.escape(key)}\[\d*\]\s*=\s*\{{)[^}}]*(\}})',
+                    rf'\g<1>{vs}\2', c, flags=re.MULTILINE, count=1)
+                continue
             # frequency table with one or more entries, e.g. {437.6, 434.714, 433.8}
             if 'FreqTable' in key and value:
                 vs = ', '.join(_fmt_num(x) for x in value)
@@ -471,6 +483,14 @@ def sanitize_config(user_cfg) -> dict:
                 continue
             clean[k] = v
         elif isinstance(v, list):
+            # Factory humidity matrix: exactly 42 finite floats, any magnitude.
+            if k == 'factoryMatrixU':
+                if len(v) == 42 and all(
+                        isinstance(x, (int, float)) and not isinstance(x, bool)
+                        and float(x) == float(x) and float(x) not in (float('inf'), float('-inf'))
+                        for x in v):
+                    clean[k] = [float(x) for x in v]
+                continue
             nums = []
             for x in v[:16]:
                 if isinstance(x, bool):
@@ -783,6 +803,87 @@ def api_config():
     if not src:
         return jsonify(ok=False, error='Cannot read firmware config'), 500
     return jsonify(ok=True, config=parse_config(src))
+
+
+_SERIAL_RE = re.compile(r'^[A-Za-z][A-Za-z0-9]{3,11}$')
+
+@app.route('/api/sonde_cal/<serial>')
+def api_sonde_cal(serial):
+    """Fetch a sonde's factory PTU calibration from SondeHub by serial number,
+    map it to the firmware's factory* coefficients, cache it in the per-serial
+    library, and return it for the Firmware Builder (sensor calibration mode 2)."""
+    if not _is_verified():
+        return jsonify(ok=False, error='Human verification required', need_captcha=True), 401
+
+    serial = (serial or '').strip().upper()
+    if not _SERIAL_RE.match(serial):
+        return jsonify(ok=False, error='Invalid serial number format.'), 400
+
+    # Import lazily so a missing optional dep never breaks the rest of the app.
+    try:
+        from rs41_subframe import (download_subframe_data, RS41Subframe,
+                                    extract_firmware_cal, validate_cal)
+    except Exception as e:
+        logging.exception('rs41_subframe import failed')
+        return jsonify(ok=False, error='Calibration module unavailable on the server.'), 500
+
+    cache = SONDES_DIR / serial / 'cal.json'
+
+    try:
+        sub_bytes, telem = download_subframe_data(serial)
+    except requests.exceptions.RequestException as e:
+        # Network/SondeHub problem - fall back to a cached copy if we have one.
+        if cache.exists():
+            cached = json.loads(cache.read_text(encoding='utf-8'))
+            cached['cached'] = True
+            return jsonify(ok=True, **cached)
+        return jsonify(ok=False, error=f'Could not reach SondeHub: {e}'), 502
+    except Exception:
+        logging.exception('subframe download failed')
+        return jsonify(ok=False, error='Unexpected error contacting SondeHub.'), 502
+
+    if not sub_bytes:
+        if cache.exists():
+            cached = json.loads(cache.read_text(encoding='utf-8'))
+            cached['cached'] = True
+            return jsonify(ok=True, **cached)
+        return jsonify(ok=False, error='No calibration subframe found on SondeHub for '
+                                       f'serial {serial}. The sonde may never have been '
+                                       'received, or it is not an RS41.'), 404
+
+    try:
+        sub = RS41Subframe(raw_bytes=sub_bytes)
+    except Exception as e:
+        return jsonify(ok=False, error=f'Subframe could not be parsed: {e}'), 422
+
+    ok, msg = validate_cal(sub.data)
+    if not ok:
+        return jsonify(ok=False, error=f'Calibration looks invalid: {msg}'), 422
+
+    fw_cal = extract_firmware_cal(sub.data)
+
+    # A small sanity snapshot from the telemetry frame the subframe rode on.
+    telem = telem or {}
+    snapshot = {k: telem.get(k) for k in
+                ('temp', 'humidity', 'datetime', 'subtype', 'rs41_mainboard') if telem.get(k) is not None}
+
+    result = {
+        'serial': sub.data.get('serial') or serial,
+        'cal': fw_cal,
+        'mainboard': sub.data.get('mainboard_version'),
+        'variant': sub.data.get('variant'),
+        'telemetry': snapshot,
+        'fetched': datetime.now().isoformat(timespec='seconds'),
+    }
+
+    # Persist into the per-serial library (best effort - never fail the request on IO).
+    try:
+        (SONDES_DIR / serial).mkdir(parents=True, exist_ok=True)
+        cache.write_text(json.dumps(result, indent=2), encoding='utf-8')
+    except Exception:
+        logging.exception('could not write sonde cal cache')
+
+    return jsonify(ok=True, cached=False, **result)
 
 
 @app.route('/api/compile', methods=['POST'])

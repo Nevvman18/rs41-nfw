@@ -523,8 +523,8 @@ select.input-base option { background: #1e293b; }
         </div>
         <div class="lp-card">
           <span class="lp-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4.9 19.1a10 10 0 0 1 0-14.2M7.8 16.2a6 6 0 0 1 0-8.4M19.1 4.9a10 10 0 0 1 0 14.2M16.2 7.8a6 6 0 0 1 0 8.4"/><circle cx="12" cy="12" r="1.6" fill="currentColor" stroke="none"/></svg></span>
-          <h3>Rock-solid transmission</h3>
-          <p>Stable CPU-time scheduling, synchronised to GPS and the board's external TCXO, keeps every Horus V3 and APRS slot evenly spaced.</p>
+          <h3>Vaisala factory calibration</h3>
+          <p>Reproduce the boom's original Vaisala factory calibration - precision close to the original sonde, with no calibration steps at all. Just enter the measurement-boom serial.</p>
         </div>
         <div class="lp-card">
           <span class="lp-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="m9 12 2 2 4-4"/></svg></span>
@@ -536,21 +536,17 @@ select.input-base option { background: #1e293b; }
 
     <!-- WALKTHROUGH -->
     <section class="lp-section">
-      <div class="lp-kicker"><b>04</b> First flight in 8 steps</div>
+      <div class="lp-kicker"><b>04</b> First flight in 5 steps</div>
       <h2 class="lp-h2">From bare sonde to launch-ready</h2>
       <p class="lp-sub">
-        A simple path for a typical High-Altitude Balloon flight with precise readings. No prior
-        firmware experience needed.
+        A simple path for a typical High-Altitude Balloon flight with precise readings. No prior firmware experience needed.
       </p>
       <div class="lp-steps">
         <div class="lp-step"><div class="num">1</div><div><h4>Open the Firmware Builder</h4><p>Switch to the <b>Firmware Builder</b> tab and pick your board architecture. If you have a choice, the <b>newer model (RSM4x4&nbsp;/&nbsp;RSM4x5)</b> is strongly suggested - more flash and a better GPS.</p></div></div>
         <div class="lp-step"><div class="num">2</div><div><h4>Set your callsign &amp; modes</h4><p>Enter your <b>callsign</b> and choose your transmission modes. For a HAB flight we suggest enabling <b>Horus V3</b> (efficient, weak-signal) and <b>APRS</b> (widely received).</p></div></div>
-        <div class="lp-step"><div class="num">3</div><div><h4>Configure the sensor boom</h4><p>In the sensor-boom section, set the <b>startup temperature</b> the sonde will be powered on at - this calibrates the measuring strip correctly from the first reading.</p></div></div>
+        <div class="lp-step"><div class="num">3</div><div><h4>Type the boom serial - that's it</h4><p>In the sensor-boom section choose <b>Factory (Vaisala)</b> and enter the serial printed on the silver measuring boom. The sonde's <b>original factory calibration</b> is downloaded and compiled in - temperature and humidity then read at practically the original accuracy. <b>No calibration steps, no offsets, no fiddling - it just works.</b></p></div></div>
         <div class="lp-step"><div class="num">4</div><div><h4>Compile &amp; download</h4><p>Hit <b>Compile</b> and download the ready <code>.bin</code>. No Arduino IDE, no STM32 core, no variant files - the builder does all of it in the browser.</p></div></div>
-        <div class="lp-step"><div class="num">5</div><div><h4>Flash the sonde</h4><p>Install <b>OpenOCD</b> or <b>STM32CubeProgrammer</b> and flash the binary over the XDATA / SWD pins, following the flashing instructions shown after compiling.</p></div></div>
-        <div class="lp-step"><div class="num">6</div><div><span class="opt">Optional</span><h4>Read the temperature offset</h4><p>Power the sonde at a known ambient temperature and, in <b>Ground Control</b>, read the <b>correction offset</b> of the main temperature sensor.</p></div></div>
-        <div class="lp-step"><div class="num">7</div><div><span class="opt">Optional</span><h4>Calibrate humidity</h4><p>Select a <b>humidity range delta</b> in the interface, then <b>breathe firmly onto the humidity sensor</b> (or briefly hold it over boiling water) to find its <b>maximum capacitance range</b>. Note the value down.</p></div></div>
-        <div class="lp-step"><div class="num">8</div><div><h4>Re-build with your calibration</h4><p>Power off, return to the builder, set everything the same, and replace the automatic calibrations with your measured <b>correction offset</b> and <b>humidity range</b>. Re-compile and flash - your sonde is now launch-ready.</p></div></div>
+        <div class="lp-step"><div class="num">5</div><div><h4>Flash &amp; fly</h4><p>Install <b>OpenOCD</b> or <b>STM32CubeProgrammer</b> and flash the binary over the XDATA / SWD pins, following the instructions shown after compiling. Power on, wait for the green LED - launch-ready.</p></div></div>
       </div>
     </section>
 
@@ -568,7 +564,8 @@ select.input-base option { background: #1e293b; }
 
     <div class="lp-foot">
       RS41-NFW &middot; open-source RS41 radiosonde firmware &amp; sounding software<br>
-      Source, documentation and releases on <a href="https://github.com/Nevvman18/rs41-nfw" target="_blank" rel="noopener">github.com/Nevvman18/rs41-nfw</a>
+      Source, documentation and releases on <a href="https://github.com/Nevvman18/rs41-nfw" target="_blank" rel="noopener">github.com/Nevvman18/rs41-nfw</a><br><br>
+      <span style="opacity:.85">This Sounding Software (the web tool) was developed with the help of LLM tooling. The author assures it has been through extensive testing and checking, that it delivers stable, problem-free operation, and that it was carefully refined and polished.</span>
     </div>
   </div>
 </div>
@@ -615,6 +612,7 @@ select.input-base option { background: #1e293b; }
     <button class="tab-btn tab-inactive px-4 py-2.5 text-xs font-semibold whitespace-nowrap" data-tab="heating"  onclick="switchTab(this)">Heating</button>
     <button class="tab-btn tab-inactive px-4 py-2.5 text-xs font-semibold whitespace-nowrap" data-tab="gps"      onclick="switchTab(this)">GPS</button>
     <button class="tab-btn tab-inactive px-4 py-2.5 text-xs font-semibold whitespace-nowrap" data-tab="radio"    onclick="switchTab(this)">Radio</button>
+    <button class="tab-btn tab-inactive px-4 py-2.5 text-xs font-semibold whitespace-nowrap" data-tab="power"    onclick="switchTab(this)">Power</button>
     <button class="tab-btn tab-inactive px-4 py-2.5 text-xs font-semibold whitespace-nowrap" data-tab="log"      onclick="switchTab(this)">
       Log <span id="log-badge" class="ml-1 bg-blue-100 text-blue-600 rounded px-1 py-px text-[10px]">0</span>
     </button>
@@ -651,7 +649,7 @@ select.input-base option { background: #1e293b; }
             <div class="gc-badge w-6 h-6 rounded-full bg-slate-300 text-white text-[11px] font-black flex items-center justify-center flex-shrink-0 mt-0.5">3</div>
             <div class="flex-1 min-w-0">
               <div class="font-semibold text-xs text-slate-700">Hardware Initialization</div>
-              <div class="text-[10px] text-slate-400 mt-0.5 leading-relaxed">Sonde runs its self-test and initializes GPS, radio and the sensor boom (stages 01-04). LED is constant red, then orange. No action required - just wait.</div>
+              <div class="text-[10px] text-slate-400 mt-0.5 leading-relaxed">Sonde runs its self-test and initializes GPS, radio and the sensor boom (stages 01-04). LED is constant red, then orange. No action required.</div>
               <div id="gc-s3" class="mt-1.5 text-[10px] font-semibold text-slate-400 flex items-center gap-1.5"><span class="w-1.5 h-1.5 rounded-full bg-slate-300 flex-shrink-0"></span>Waiting...</div>
             </div>
           </div>
@@ -675,7 +673,7 @@ select.input-base option { background: #1e293b; }
             <div class="gc-badge w-6 h-6 rounded-full bg-slate-300 text-white text-[11px] font-black flex items-center justify-center flex-shrink-0 mt-0.5">6</div>
             <div class="flex-1 min-w-0">
               <div class="font-semibold text-xs text-slate-700">Ready to Fly</div>
-              <div class="text-[10px] text-slate-400 mt-0.5 leading-relaxed">Operation stage <strong>59 - READY FOR FLIGHT</strong>, header badge <strong>OK</strong>, and no errors in the log. The sonde is cleared for launch. 🎈</div>
+              <div class="text-[10px] text-slate-400 mt-0.5 leading-relaxed">Operation stage <strong>59 - READY FOR FLIGHT</strong> and no errors in the log. The sonde is cleared for launch. 🎈</div>
               <div id="gc-s6" class="mt-1.5 text-[10px] font-semibold text-slate-400 flex items-center gap-1.5"><span class="w-1.5 h-1.5 rounded-full bg-slate-300 flex-shrink-0"></span>Waiting...</div>
             </div>
           </div>
@@ -752,8 +750,7 @@ select.input-base option { background: #1e293b; }
       </div>
 
       <div class="data-card bg-white rounded-xl border border-slate-200 shadow-sm p-4">
-        <h2 class="text-[11px] font-black uppercase tracking-widest text-slate-400 mb-1">Sonde Commands</h2>
-        <p class="text-[10px] text-slate-400 mb-3 leading-relaxed">Send commands to the sonde over serial. Works in <strong>both</strong> debug mode (xdataPortMode 1) and OIF411 ozone mode (xdataPortMode 3) - in mode 3 commands are buffered and decoded alongside the ozone data stream.</p>
+        <h2 class="text-[11px] font-black uppercase tracking-widest text-slate-400 mb-3">Sonde Commands</h2>
         <div class="space-y-3">
           <div>
             <p class="text-[10px] font-semibold text-slate-500 uppercase tracking-wider mb-1">System</p>
@@ -763,8 +760,9 @@ select.input-base option { background: #1e293b; }
             </div>
             <p class="text-[10px] text-slate-400 mt-1 leading-relaxed">Reboot: immediate CPU reset. Shutdown: 3 red blinks then power cut.</p>
           </div>
-          <div>
-            <p class="text-[10px] font-semibold text-slate-500 uppercase tracking-wider mb-1">Calibration</p>
+          <!-- NFW algorithms: full calibration set (shown when the sonde is in NFW mode) -->
+          <div id="cmd-nfw-cal" class="nfw-only">
+            <p class="text-[10px] font-semibold text-slate-500 uppercase tracking-wider mb-1">Calibration (NFW algorithms)</p>
             <div class="grid grid-cols-2 gap-2">
               <button onclick="sendCommand('CMD:TEMPCAL')" class="py-1.5 bg-blue-500 hover:bg-blue-600 text-white text-xs font-bold rounded-lg transition-colors">Temperature Cal.</button>
               <button onclick="sendCommand('CMD:RECONDITION')" class="py-1.5 bg-orange-500 hover:bg-orange-600 text-white text-xs font-bold rounded-lg transition-colors">Reconditioning</button>
@@ -773,6 +771,14 @@ select.input-base option { background: #1e293b; }
             </div>
             <p class="text-[10px] text-slate-400 mt-1 leading-relaxed">Calibration runs on the sonde - watch LED and stage for progress. Reconditioning &amp; zero-humidity heat the module to ~135 °C: keep clear of sensor boom.</p>
           </div>
+          <!-- Vaisala factory: only the two self-checks (shown when the sonde is in factory mode) -->
+          <div id="cmd-vaisala-check" class="vaisala-only" style="display:none">
+            <p class="text-[10px] font-semibold text-slate-500 uppercase tracking-wider mb-1">Sensors self-check</p>
+            <div class="grid grid-cols-1 gap-2">
+              <button onclick="sendCommand('CMD:HUMCHECK')" class="py-1.5 bg-orange-500 hover:bg-orange-600 text-white text-xs font-bold rounded-lg transition-colors">Humidity Check</button>
+            </div>
+            <p class="text-[10px] text-slate-400 mt-1 leading-relaxed">The humidity check runs a one-minute reconditioning phase (~138 °C) then verifies a dry reading. The temperature check runs once at start-up only - it cannot be repeated here, because by then the boom may be warm from the humidity check.</p>
+          </div>
         </div>
         <div id="cmd-confirm" class="hidden mt-3 p-3 rounded-lg border-2 border-red-400 bg-red-50">
           <div class="text-xs font-bold text-red-700 mb-2">Confirm shutdown - sonde will power off immediately (3 red blinks).</div>
@@ -780,6 +786,22 @@ select.input-base option { background: #1e293b; }
             <button onclick="sendCommand('CMD:SHUTDOWN'); document.getElementById('cmd-confirm').classList.add('hidden')" class="flex-1 py-1.5 bg-red-600 hover:bg-red-700 text-white text-xs font-bold rounded-lg transition-colors">Yes, shut down</button>
             <button onclick="document.getElementById('cmd-confirm').classList.add('hidden')" class="flex-1 py-1.5 bg-slate-200 hover:bg-slate-300 text-slate-700 text-xs font-bold rounded-lg transition-colors">Cancel</button>
           </div>
+        </div>
+      </div>
+
+      <!-- Diagnostics panel - calibration / self-check error flags -->
+      <div class="data-card bg-white rounded-xl border border-slate-200 shadow-sm p-4">
+        <h2 class="text-[11px] font-black uppercase tracking-widest text-slate-400 mb-3">Sensors diagnostics</h2>
+        <div class="text-[10px] font-semibold text-slate-500 uppercase tracking-wider mb-1.5">Sensor status</div>
+        <div class="grid grid-cols-2 gap-2 text-xs mb-3">
+          <div class="rounded-lg p-2 bg-slate-50 border border-slate-100"><div class="text-[10px] text-slate-400">Temperature sensor</div><div id="diag-maintemp" class="font-mono font-bold text-slate-400">--</div></div>
+          <div class="rounded-lg p-2 bg-slate-50 border border-slate-100"><div class="text-[10px] text-slate-400">Humidity sensor</div><div id="diag-hummodule" class="font-mono font-bold text-slate-400">--</div></div>
+        </div>
+        <div class="text-[10px] font-semibold text-slate-500 uppercase tracking-wider mb-1.5">Check / calibration status</div>
+        <div class="grid grid-cols-2 gap-2 text-xs">
+          <div class="rounded-lg p-2 bg-slate-50 border border-slate-100 nfw-only"><div class="text-[10px] text-slate-400">Calibration (NFW)</div><div id="diag-cal" class="font-mono font-bold text-slate-400">--</div></div>
+          <div class="rounded-lg p-2 bg-slate-50 border border-slate-100 vaisala-only" style="display:none"><div class="text-[10px] text-slate-400">Temperature check</div><div id="diag-tempcheck" class="font-mono font-bold text-slate-400">--</div></div>
+          <div class="rounded-lg p-2 bg-slate-50 border border-slate-100 vaisala-only" style="display:none"><div class="text-[10px] text-slate-400">Humidity check</div><div id="diag-humcheck" class="font-mono font-bold text-slate-400">--</div></div>
         </div>
       </div>
 
@@ -863,7 +885,10 @@ select.input-base option { background: #1e293b; }
     <div class="data-card bg-white rounded-xl border border-slate-200 shadow-sm p-4">
       <div class="flex items-baseline justify-between mb-1">
         <h2 class="text-[11px] font-black uppercase tracking-widest text-slate-400">Main Temperature</h2>
-        <span class="text-[10px] text-slate-400">corr: <span id="hdr-main-corr" class="font-mono">--</span>°C</span>
+        <div class="flex items-center gap-2">
+          <span id="badge-maintemp" class="hidden text-[9px] font-black uppercase tracking-wider px-1.5 py-0.5 rounded-full"></span>
+          <span class="text-[10px] text-slate-400">corr: <span id="hdr-main-corr" class="font-mono">--</span>°C</span>
+        </div>
       </div>
       <div class="text-3xl font-black font-mono text-blue-600"><span id="mainTemperatureValue">--</span> <span class="text-lg">°C</span></div>
       <div class="h-28 mt-2"><canvas id="chart-temp"></canvas></div>
@@ -871,7 +896,7 @@ select.input-base option { background: #1e293b; }
     <div class="data-card bg-white rounded-xl border border-slate-200 shadow-sm p-4">
       <div class="flex items-baseline justify-between mb-1">
         <h2 class="text-[11px] font-black uppercase tracking-widest text-slate-400">Humidity</h2>
-        <span class="text-[10px] text-slate-400">cap: <span id="hdr-hum-cap" class="font-mono">--</span></span>
+        <span id="badge-hummodule" class="hidden text-[9px] font-black uppercase tracking-wider px-1.5 py-0.5 rounded-full"></span>
       </div>
       <div class="text-3xl font-black font-mono text-cyan-600"><span id="humidityValue">--</span> <span class="text-lg">%RH</span></div>
       <div class="h-28 mt-2"><canvas id="chart-hum"></canvas></div>
@@ -887,7 +912,6 @@ select.input-base option { background: #1e293b; }
     <div class="data-card bg-white rounded-xl border border-slate-200 shadow-sm p-4">
       <div class="flex items-baseline justify-between mb-1">
         <h2 class="text-[11px] font-black uppercase tracking-widest text-slate-400">PCB Thermistor</h2>
-        <span class="text-[10px] text-slate-400">R25=<span id="hdr-therm-r25" class="font-mono">--</span></span>
       </div>
       <div class="text-3xl font-black font-mono text-emerald-600"><span id="thermistorTemp">--</span> <span class="text-lg">°C</span></div>
       <div class="h-28 mt-2"><canvas id="chart-pcb"></canvas></div>
@@ -900,7 +924,7 @@ select.input-base option { background: #1e293b; }
       <div class="text-3xl font-black font-mono text-rose-600"><span id="radioTemp">--</span> <span class="text-lg">°C</span></div>
       <div class="h-28 mt-2"><canvas id="chart-radio"></canvas></div>
     </div>
-    <div class="data-card bg-white rounded-xl border border-slate-200 shadow-sm p-4">
+    <div id="rpm411-temp-card" class="data-card bg-white rounded-xl border border-slate-200 shadow-sm p-4">
       <div class="flex items-baseline justify-between mb-1">
         <h2 class="text-[11px] font-black uppercase tracking-widest text-slate-400">RPM411 Internal Temp</h2>
         <span id="rpm411Error" class="text-[10px] font-bold text-slate-400">err:--</span>
@@ -917,6 +941,15 @@ select.input-base option { background: #1e293b; }
       </div>
       <div class="text-3xl font-black font-mono text-violet-600"><span id="pressureValueBig">--</span> <span class="text-lg">hPa</span></div>
       <div class="h-28 mt-2"><canvas id="chart-pres"></canvas></div>
+    </div>
+
+    <div class="data-card bg-white rounded-xl border border-slate-200 shadow-sm p-4">
+      <div class="flex items-baseline justify-between mb-1">
+        <h2 class="text-[11px] font-black uppercase tracking-widest text-slate-400">MCU Temperature</h2>
+        <span class="text-[10px] text-slate-400">die sensor</span>
+      </div>
+      <div class="text-3xl font-black font-mono text-fuchsia-600"><span id="mcuTemperatureBig">--</span> <span class="text-lg">°C</span></div>
+      <div class="h-28 mt-2"><canvas id="chart-mcu"></canvas></div>
     </div>
 
     <!-- OIF411 Ozone card - visible only when xdataPortMode = 3 -->
@@ -975,31 +1008,23 @@ select.input-base option { background: #1e293b; }
       <h2 class="text-[11px] font-black uppercase tracking-widest text-slate-400 mb-3">Sensor Boom &amp; Calibration</h2>
       <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 text-xs">
         <div><div class="text-[10px] text-slate-400">Sensor Boom Enabled</div><div id="sensorBoomEnable" class="font-mono font-semibold text-slate-700">--</div></div>
-        <div><div class="text-[10px] text-slate-400">Main Temp Sensor Error</div><div id="sensorBoomMainTempError" class="font-mono font-semibold text-slate-700">--</div></div>
-        <div><div class="text-[10px] text-slate-400">Humidity Module Error</div><div id="sensorBoomHumidityModuleError" class="font-mono font-semibold text-slate-700">--</div></div>
+        <div><div class="text-[10px] text-slate-400">Measurement Mode</div><div id="measurementModeDisp" class="font-mono font-semibold text-slate-700">--</div></div>
+        <div class="vaisala-only" style="display:none"><div class="text-[10px] text-slate-400">Boom Serial (Vaisala)</div><div id="boomSerialNumber" class="font-mono font-semibold text-slate-700">--</div></div>
+        <div><div class="text-[10px] text-slate-400">MCU Temperature (°C)</div><div id="mcuTemperature" class="font-mono font-semibold text-slate-700">--</div></div>
         <div><div class="text-[10px] text-slate-400">Calibration Error</div><div id="calibrationError" class="font-mono font-semibold text-slate-700">--</div></div>
-        <div><div class="text-[10px] text-slate-400">Auto Temperature Calibration</div><div id="autoTemperatureCalibration" class="font-mono font-semibold text-slate-700">--</div></div>
-        <div><div class="text-[10px] text-slate-400">Calibration Method</div><div id="autoTemperatureCalibrationMethod" class="font-mono font-semibold text-slate-700">--</div></div>
-        <div><div class="text-[10px] text-slate-400">Temp. Calibration Factor</div><div id="tempSensorBoomCalibrationFactor" class="font-mono font-semibold text-slate-700">--</div></div>
-        <div><div class="text-[10px] text-slate-400">Environment Startup Temperature</div><div id="environmentStartupAirTemperature" class="font-mono font-semibold text-slate-700">--</div></div>
+        <div class="nfw-only"><div class="text-[10px] text-slate-400">Auto Temperature Calibration</div><div id="autoTemperatureCalibration" class="font-mono font-semibold text-slate-700">--</div></div>
+        <div class="nfw-only"><div class="text-[10px] text-slate-400">Calibration Method</div><div id="autoTemperatureCalibrationMethod" class="font-mono font-semibold text-slate-700">--</div></div>
+        <div class="nfw-only"><div class="text-[10px] text-slate-400">Environment Startup Temperature</div><div id="environmentStartupAirTemperature" class="font-mono font-semibold text-slate-700">--</div></div>
         <div><div class="text-[10px] text-slate-400">Main Temp. Correction (°C)</div><div id="mainTemperatureCorrectionC" class="font-mono font-semibold text-slate-700">--</div></div>
         <div><div class="text-[10px] text-slate-400">Ext. Heater Temp. Correction (°C)</div><div id="extHeaterTemperatureCorrectionC" class="font-mono font-semibold text-slate-700">--</div></div>
-        <div><div class="text-[10px] text-slate-400">Thermistor R25 Resistance</div><div id="THERMISTOR_R25" class="font-mono font-semibold text-slate-700">--</div></div>
-        <div><div class="text-[10px] text-slate-400">Thermistor B Coefficient</div><div id="THERMISTOR_B" class="font-mono font-semibold text-slate-700">--</div></div>
       </div>
     </div>
     <div class="data-card bg-white rounded-xl border border-slate-200 shadow-sm p-4 md:col-span-2 xl:col-span-3">
-      <h2 class="text-[11px] font-black uppercase tracking-widest text-slate-400 mb-3">Raw Sensor Data &amp; Pressure</h2>
+      <h2 class="text-[11px] font-black uppercase tracking-widest text-slate-400 mb-3">Humidity &amp; Pressure</h2>
       <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 text-xs">
-        <div><div class="text-[10px] text-slate-400">Main Temp. Sensor Frequency (Hz)</div><div id="mainTemperatureFrequency" class="font-mono font-semibold text-slate-700">--</div></div>
-        <div><div class="text-[10px] text-slate-400">Main Temp. Sensor Resistance (Ω)</div><div id="mainTemperatureResistance" class="font-mono font-semibold text-slate-700">--</div></div>
-        <div><div class="text-[10px] text-slate-400">Ext. Heater Sensor Frequency (Hz)</div><div id="extHeaterTemperatureFrequency" class="font-mono font-semibold text-slate-700">--</div></div>
-        <div><div class="text-[10px] text-slate-400">Ext. Heater Sensor Resistance (Ω)</div><div id="extHeaterTemperatureResistance" class="font-mono font-semibold text-slate-700">--</div></div>
-        <div><div class="text-[10px] text-slate-400">Humidity Capacitance (raw)</div><div id="humidityCapacitance" class="font-mono font-semibold text-slate-700">--</div></div>
-        <div><div class="text-[10px] text-slate-400">Max Humidity Capacitance</div><div id="maxHumidityCapacitance" class="font-mono font-semibold text-slate-700">--</div></div>
-        <div><div class="text-[10px] text-slate-400">Zero Humidity Calibration</div><div id="zeroHumidityCalibration" class="font-mono font-semibold text-slate-700">--</div></div>
-        <div><div class="text-[10px] text-slate-400">Zero Humidity Capacitance</div><div id="zeroHumidityCapacitance" class="font-mono font-semibold text-slate-700">--</div></div>
-        <div><div class="text-[10px] text-slate-400">Humidity Capacitance Range Delta</div><div id="humidityCapacitanceRangeDelta" class="font-mono font-semibold text-slate-700">--</div></div>
+        <div class="nfw-only"><div class="text-[10px] text-slate-400">Zero Humidity Calibration</div><div id="zeroHumidityCalibration" class="font-mono font-semibold text-slate-700">--</div></div>
+        <div class="nfw-only"><div class="text-[10px] text-slate-400">Zero Humidity Capacitance</div><div id="zeroHumidityCapacitance" class="font-mono font-semibold text-slate-700">--</div></div>
+        <div class="nfw-only"><div class="text-[10px] text-slate-400">Humidity Capacitance Range Delta</div><div id="humidityCapacitanceRangeDelta" class="font-mono font-semibold text-slate-700">--</div></div>
         <div><div class="text-[10px] text-slate-400">Pressure (hPa)</div><div id="pressureValue" class="font-mono font-semibold text-slate-700">--</div></div>
         <div><div class="text-[10px] text-slate-400">Pressure Source</div><div id="pressureMode" class="font-mono font-semibold text-slate-700">--</div></div>
         <div><div class="text-[10px] text-slate-400">Sea-Level Pressure Reference (hPa)</div><div id="seaLevelPressure" class="font-mono font-semibold text-slate-700">--</div></div>
@@ -1215,14 +1240,33 @@ select.input-base option { background: #1e293b; }
         <div class="flex justify-between items-center"><span class="text-slate-400">Recorder Initialized</span><span id="recorderInitialized" class="font-mono font-bold px-1.5 py-0.5 rounded bg-slate-100 text-slate-700">--</span></div>
       </div>
     </div>
+  </div>
+</div>
 
-    <!-- Power -->
-    <div class="data-card bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden sm:col-span-2 xl:col-span-1">
+<!-- TAB: POWER -->
+<div id="tab-power" class="tab-content hidden">
+  <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+
+    <!-- Battery voltage chart -->
+    <div class="data-card bg-white rounded-xl border border-slate-200 shadow-sm p-4 md:col-span-2">
+      <div class="flex items-baseline justify-between mb-1">
+        <h2 class="text-[11px] font-black uppercase tracking-widest text-slate-400">Battery Voltage</h2>
+        <span class="text-[10px] text-slate-400">pack</span>
+      </div>
+      <div class="text-3xl font-black font-mono text-amber-600"><span id="batVBig">--</span> <span class="text-lg">V</span></div>
+      <div class="h-40 mt-2"><canvas id="chart-batt"></canvas></div>
+    </div>
+
+    <!-- Power & LEDs -->
+    <div class="data-card bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
       <div class="px-4 py-2.5 bg-gradient-to-r from-amber-500 to-amber-600 flex items-center gap-2">
         <span class="text-white text-sm">🔋</span><h2 class="text-xs font-black uppercase tracking-wider text-white">Power &amp; LEDs</h2>
       </div>
       <div class="p-4 space-y-2 text-xs">
         <div class="flex items-baseline justify-between"><span class="text-slate-400">Battery</span><span class="font-mono font-black text-base text-slate-800"><span id="batV">--</span> <span class="text-[10px] text-slate-400">V</span></span></div>
+        <div id="bat-low-warn" class="hidden flex items-start gap-1 text-[11px] font-bold text-red-600 leading-snug">
+          <span>⚠️</span><span>Low battery - pack below 2.75 V. Replace before flight.</span>
+        </div>
         <div class="flex justify-between"><span class="text-slate-400">Warn / Cut-off</span><span class="font-mono font-bold text-slate-700"><span id="vBatWarnValue">--</span> / <span id="batteryCutOffVoltage">--</span> V</span></div>
         <div class="flex justify-between"><span class="text-slate-400">Button Mode</span><span id="buttonMode" class="font-mono font-bold text-slate-700 text-right">--</span></div>
         <div class="flex justify-between items-center"><span class="text-slate-400">Ultra Power Save</span><span id="ultraPowerSaveAfterLanding" class="font-mono font-bold px-1.5 py-0.5 rounded bg-slate-100 text-slate-700">--</span></div>
@@ -1240,9 +1284,15 @@ select.input-base option { background: #1e293b; }
       <h2 class="text-[11px] font-black uppercase tracking-widest text-slate-400">
         Full Serial Log &nbsp;<span id="log-count" class="font-normal text-slate-400">0 entries</span>
       </h2>
-      <button onclick="clearLog()" class="text-xs px-2 py-1 bg-red-50 text-red-500 hover:bg-red-100 rounded transition-colors">Clear log</button>
+      <div class="flex items-center gap-2">
+        <span id="log-live-pill" class="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full bg-green-100 text-green-700"><span class="w-1.5 h-1.5 rounded-full bg-green-500"></span>Live</span>
+        <button onclick="clearLog()" class="text-xs px-2 py-1 bg-red-50 text-red-500 hover:bg-red-100 rounded transition-colors">Clear log</button>
+      </div>
     </div>
-    <div id="log-panel-full" class="overflow-y-auto bg-slate-950 rounded-lg p-3 text-[11px] space-y-px" style="height: calc(100% - 36px)"></div>
+    <div class="relative" style="height: calc(100% - 36px)">
+      <div id="log-panel-full" class="overflow-y-auto bg-slate-950 rounded-lg p-3 text-[11px] space-y-px h-full"></div>
+      <button id="log-live-btn" onclick="resumeLogLive('log-panel-full')" class="hidden absolute bottom-3 left-1/2 -translate-x-1/2 text-[11px] font-bold px-3 py-1.5 bg-blue-600 hover:bg-blue-500 text-white rounded-full shadow-lg transition-colors">↓ Live logs</button>
+    </div>
   </div>
 </div>
 
@@ -1432,7 +1482,9 @@ select.input-base option { background: #1e293b; }
           <li>• Basic GPS - limited power options</li>
           <li>• 64 KB flash · 8 KB RAM (tight)</li>
           <li>• Higher power draw</li>
-          <li>• Data Recorder not available</li>
+          <li>• Data Recorder included (via LTO)</li>
+          <li>• No Horus V2 / RTTY / Morse / fast-TX</li>
+          <li>• NFW sensor calibration (no factory cal)</li>
         </ul>
       </button>
     </div>
@@ -1455,6 +1507,7 @@ select.input-base option { background: #1e293b; }
           <tr><td class="py-1 pr-3 border-b border-slate-800">Flash</td><td class="py-1 px-3 border-b border-slate-800 font-mono text-slate-200">128 KB</td><td class="py-1 px-3 border-b border-slate-800 font-mono text-slate-200">64 KB <span class="text-yellow-400">(tight)</span></td></tr>
           <tr><td class="py-1 pr-3 border-b border-slate-800">RAM</td><td class="py-1 px-3 border-b border-slate-800 font-mono text-slate-200">40 KB</td><td class="py-1 px-3 border-b border-slate-800 font-mono text-slate-200">8 KB <span class="text-yellow-400">(tight)</span></td></tr>
           <tr><td class="py-1 pr-3 border-b border-slate-800">GPS module</td><td class="py-1 px-3 border-b border-slate-800">u-blox <strong class="text-indigo-300">M10</strong> · intelligent power mgmt</td><td class="py-1 px-3 border-b border-slate-800">basic · limited options</td></tr>
+          <tr><td class="py-1 pr-3 border-b border-slate-800">Sensor calibration</td><td class="py-1 px-3 border-b border-slate-800">NFW <span class="text-slate-500">or</span> Vaisala (factory)</td><td class="py-1 px-3 border-b border-slate-800">NFW <span class="text-[10px] text-yellow-400">only</span></td></tr>
           <tr><td class="py-1 pr-3 border-b border-slate-800">Horus V3 + extraSensors + ozone</td><td class="py-1 px-3 border-b border-slate-800 text-emerald-400">✓</td><td class="py-1 px-3 border-b border-slate-800 text-emerald-400">✓</td></tr>
           <tr><td class="py-1 pr-3 border-b border-slate-800">APRS (AX.25 / AFSK 1200)</td><td class="py-1 px-3 border-b border-slate-800 text-emerald-400">✓</td><td class="py-1 px-3 border-b border-slate-800 text-emerald-400">✓</td></tr>
           <tr><td class="py-1 pr-3 border-b border-slate-800">Data Recorder (diagnostic frames)</td><td class="py-1 px-3 border-b border-slate-800 text-emerald-400">✓</td><td class="py-1 px-3 border-b border-slate-800 text-emerald-400">✓ <span class="text-[10px] text-yellow-400">(via LTO)</span></td></tr>
@@ -1594,7 +1647,7 @@ select.input-base option { background: #1e293b; }
 </div>
 
 <!-- SECTION 6 - HORUS BINARY V2 -->
-<div class="card">
+<div class="card rsm4x4-only">
   <div class="card-header px-5 py-3 flex items-center gap-2">
     <span class="text-teal-400 text-lg">📶</span>
     <span class="font-bold text-white">6 · Horus Binary V2</span>
@@ -1639,7 +1692,7 @@ select.input-base option { background: #1e293b; }
       <p class="field-desc">Comma-separated; the sonde cycles through every entry, one per TX window. Use the APRS frequency that is standard for your region. The data recorder and low-altitude fast-TX use the first entry only.</p></div>
     <div><label class="field-label">Callsign</label><input type="text" class="input-base font-mono" id="cfg-aprsCall" value="N0CALL" maxlength="10" onchange="cfgChanged()"><p class="field-desc">The station callsign the packet is sent from. Shown as the tracked object on the map.</p></div>
     <div><label class="field-label">SSID</label><input type="number" class="input-base" id="cfg-aprsSsid" value="11" min="0" max="15" onchange="cfgChanged()"><p class="field-desc">Number appended to the callsign (CALL-11). By convention 11 means a balloon / high-altitude tracker.</p></div>
-    <div class="md:col-span-2"><label class="field-label">Comment</label><input type="text" class="input-base font-mono" id="cfg-aprsComment" value=" NFWv66" maxlength="64" onchange="cfgChanged()"><p class="field-desc">Free text added to the end of every packet (visible next to the station on the map).</p></div>
+    <div class="md:col-span-2"><label class="field-label">Comment</label><input type="text" class="input-base font-mono" id="cfg-aprsComment" value=" NFWv67" maxlength="64" onchange="cfgChanged()"><p class="field-desc">Free text added to the end of every packet (visible next to the station on the map).</p></div>
     <div><label class="field-label">Map icon</label>
       <select class="input-base" id="aprs-symbol-preset" onchange="aprsSymbolPreset()">
         <option value="O">🎈 Balloon</option>
@@ -1649,7 +1702,6 @@ select.input-base option { background: #1e293b; }
       <input type="text" class="input-base font-mono mt-2 hidden" id="cfg-aprsSymbolOverlay" value="O" maxlength="1" onchange="cfgChanged()" placeholder="symbol code">
       <p class="field-desc">Icon shown for your station on APRS maps. Balloon = <span class="font-mono">O</span>, weather station = <span class="font-mono">_</span>. Custom lets you type any APRS symbol code.</p></div>
     <div><label class="field-label">Symbol table</label><input type="text" class="input-base font-mono" id="cfg-aprsSymTable" value="a" maxlength="1" onchange="cfgChanged()"><p class="field-desc">APRS symbol table the icon is taken from. <span class="font-mono">a</span> is the primary table; leave as-is unless you know you need the alternate (<span class="font-mono">/</span>) table.</p></div>
-    <div><label class="field-label">Destination address</label><input type="text" class="input-base font-mono" id="cfg-aprsDest" value="APRNFW" maxlength="6" onchange="cfgChanged()"><p class="field-desc">AX.25 destination / tocall. <span class="font-mono">APRNFW</span> is the <strong>official registered tocall</strong> for this firmware - it is recognised and officially supported by APRS and identifies the device as running RS41-NFW. Leave it unchanged.</p></div>
     <div><label class="field-label">Digipeater path</label><input type="text" class="input-base font-mono" id="cfg-aprsDigi" value="WIDE2" maxlength="6" onchange="cfgChanged()"><p class="field-desc">Relay path requested for the packet. <span class="font-mono">WIDE2</span> with SSID 1 (next field) is the usual airborne setting.</p></div>
     <div><label class="field-label">Digipeater SSID</label><input type="number" class="input-base" id="cfg-aprsDigiSsid" value="1" min="0" max="15" onchange="cfgChanged()"><p class="field-desc">Hop count for the path above (the "n" in WIDEn-N). 1 is typical for flights.</p></div>
     <div class="md:col-span-2"><label class="field-label">Operation mode</label>
@@ -1673,7 +1725,7 @@ select.input-base option { background: #1e293b; }
 </div>
 
 <!-- SECTION 8 - RTTY -->
-<div class="card">
+<div class="card rsm4x4-only">
   <div class="card-header px-5 py-3 flex items-center gap-2">
     <span class="text-rose-400 text-lg">⌨️</span>
     <span class="font-bold text-white">8 · RTTY</span>
@@ -1703,7 +1755,7 @@ select.input-base option { background: #1e293b; }
 </div>
 
 <!-- SECTION 9 - MORSE -->
-<div class="card">
+<div class="card rsm4x4-only">
   <div class="card-header px-5 py-3 flex items-center gap-2">
     <span class="text-yellow-300 text-lg">•-</span>
     <span class="font-bold text-white">9 · Morse</span>
@@ -1883,7 +1935,7 @@ select.input-base option { background: #1e293b; }
       <p class="field-desc">0 = disabled.</p></div>
     <div><label class="field-label">Battery cut-off voltage</label><div class="unit-wrap"><input type="number" step="0.01" class="input-base" id="cfg-batteryCutOffVoltage" value="0" min="0" onchange="cfgChanged()"><span class="unit-label">V</span></div>
       <p class="field-desc">Auto power-off below this voltage. Useful for NiMH (damage below 0.8 V/cell). 0 = disabled / max runtime.</p></div>
-    <div class="flex items-start gap-3 md:col-span-2">
+    <div class="flex items-start gap-3 md:col-span-2 rsm4x4-only">
       <label class="toggle mt-1"><input type="checkbox" id="cfg-ultraPowerSaveAfterLanding" onchange="cfgChanged()"><span class="toggle-slider"></span></label>
       <div><span class="field-label cursor-pointer" onclick="toggleCheck('cfg-ultraPowerSaveAfterLanding')">Ultra power save after landing</span>
         <span class="badge bg-indigo-500/20 text-indigo-300 border border-indigo-500/40 ml-1 align-middle">RSM4x4 only</span>
@@ -1976,11 +2028,58 @@ select.input-base option { background: #1e293b; }
     </div>
     <div><label class="field-label">Power-saving read interval</label><div class="unit-wrap"><input type="number" class="input-base" id="cfg-sensorBoomPowerSavingInterval" value="30000" min="1000" onchange="cfgChanged()"><span class="unit-label">ms</span></div>
       <p class="field-desc">Used only when power saving is on. Default 30000 (30 s).</p></div>
+
+    <!-- Sensor calibration mode. RSM4x4/RSM4x5: selectable. RSM4x2/RSM4x1: factory-only. -->
+    <div id="sensorcal-mode-wrap" class="md:col-span-2 mode-box">
+      <div class="mode-head"><span class="text-amber-300">🧪</span> Sensor calibration mode</div>
+      <p class="field-desc mb-2"><strong class="text-white">This is the master switch for the whole sensor boom.</strong> It decides how temperature and humidity are computed - and the rest of this section changes with it.</p>
+      <div class="text-xs text-slate-300 leading-relaxed space-y-1.5 mb-3">
+        <div><strong class="text-emerald-300">Factory (Vaisala)</strong> - reproduces the boom's <em>original Vaisala factory calibration</em> (coefficients fetched from SondeHub by serial). <strong class="text-white">Expected accuracy: the same you get when receiving a normal factory sonde</strong> - full manufacturer-grade temperature and humidity. Recommended whenever the boom's factory data is available.</div>
+        <div><strong class="text-amber-300">NFW algorithms</strong> - the in-house calibration and compensation model. A <strong class="text-white">simplified, close approximation</strong> that brings a boom to life even with <em>no factory calibration data at all</em>. Good, usable readings, but not at the manufacturer's certified accuracy. Use it for booms whose serial was never received by SondeHub, or when you prefer the NFW workflow.</div>
+      </div>
+      <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <div><label class="field-label">Calibration mode</label>
+          <select class="input-base" id="cfg-sensorCalibrationMode" onchange="sensorCalModeChanged()">
+            <option value="1">1 - NFW calibration</option>
+            <option value="2" selected>2 - Factory (Vaisala, from SondeHub) - default</option>
+          </select>
+        </div>
+      </div>
+
+      <div id="factory-cal-box" class="mt-4 rounded-xl border border-indigo-900/40 bg-indigo-950/20 px-4 py-3" style="display:none">
+        <label class="field-label">Measurement boom serial number</label>
+        <div class="flex flex-col sm:flex-row gap-2">
+          <input type="text" class="input-base font-mono sm:flex-1" id="factory-serial" placeholder="e.g. X1234567" maxlength="12" oninput="this.value=this.value.toUpperCase(); factoryCalDirty();">
+          <button class="btn btn-blue whitespace-nowrap" type="button" id="btn-fetch-cal" onclick="fetchSondeCal()">⬇️ Download from SondeHub</button>
+        </div>
+        <p class="field-desc mt-1">Enter the serial printed on the <strong class="text-white">silver measurement sensor boom</strong> - it is engraved on the central part of the boom's structure (not the mainboard). The factory PTU calibration for that exact boom is downloaded and compiled into the firmware. The boom must have been received by the SondeHub network at least once; each serial has its own coefficients and they are not interchangeable.</p>
+        <div class="mt-2 rounded-lg border border-indigo-800/40 bg-indigo-900/20 px-3 py-2 text-[11px] text-slate-300 leading-relaxed">
+          <strong class="text-white">Recommended:</strong> use a matching boom + sonde pair that share the same serial (printed both on the styrofoam sonde packaging and on the boom). <br>
+          <strong class="text-white">Allowed:</strong> you may pair the boom with any mainboard and enter just the boom serial - but the factory data also captures the original mainboard's imperfections, so with a mismatched board expect problems. It may equally well read perfectly - that is just the worst case to keep in mind.
+        </div>
+        <div id="factory-cal-status" class="text-xs mt-2 hidden"></div>
+        <div id="factory-cal-readout" class="text-xs mt-2 hidden font-mono text-slate-300 leading-relaxed"></div>
+
+        <div class="mt-3 pt-3 border-t border-indigo-900/40">
+          <div class="text-[11px] font-semibold text-slate-300 uppercase tracking-wider mb-2">Factory startup self-checks</div>
+          <div class="flex items-start gap-3 mb-2">
+            <label class="toggle mt-1"><input type="checkbox" id="cfg-factoryTemperatureCheck" checked onchange="cfgChanged()"><span class="toggle-slider"></span></label>
+            <div><span class="field-label cursor-pointer" onclick="toggleCheck('cfg-factoryTemperatureCheck')">Temperature check</span>
+            <p class="field-desc">Checks whether the temperature sensors read consistent values.</p></div>
+          </div>
+          <div class="flex items-start gap-3">
+            <label class="toggle mt-1"><input type="checkbox" id="cfg-factoryHumidityCheck" checked onchange="cfgChanged()"><span class="toggle-slider"></span></label>
+            <div><span class="field-label cursor-pointer" onclick="toggleCheck('cfg-factoryHumidityCheck')">Humidity check</span>
+            <p class="field-desc">Runs a one-minute "reconditioning" phase, then checks the dry reading of the humidity sensor.</p></div>
+          </div>
+        </div>
+      </div>
+    </div>
   </div>
 </div>
 
 <!-- SECTION 16 - TEMPERATURE CALIBRATION -->
-<div class="card">
+<div class="card nfw-cal-card">
   <div class="card-header px-5 py-3 flex items-center gap-2">
     <span class="text-red-400 text-lg">🎯</span>
     <span class="font-bold text-white">16 · Temperature Calibration</span>
@@ -2027,7 +2126,7 @@ select.input-base option { background: #1e293b; }
 </div>
 
 <!-- SECTION 17 - HUMIDITY CALIBRATION -->
-<div class="card">
+<div class="card nfw-cal-card">
   <div class="card-header px-5 py-3 flex items-center gap-2">
     <span class="text-cyan-300 text-lg">💧</span>
     <span class="font-bold text-white">17 · Humidity Module</span>
@@ -2120,7 +2219,7 @@ select.input-base option { background: #1e293b; }
 </div>
 
 <!-- SECTION 20 - LOW-ALTITUDE FAST-TX -->
-<div class="card">
+<div class="card rsm4x4-only">
   <div class="card-header px-5 py-3 flex items-center gap-2">
     <span class="text-fuchsia-400 text-lg">⬇️</span>
     <span class="font-bold text-white">20 · Low-Altitude Fast-TX</span>
@@ -2306,15 +2405,10 @@ select.input-base option { background: #1e293b; }
 
 <div class="max-w-5xl mx-auto mt-6 pb-10 space-y-3 text-center">
   <div class="text-sm text-slate-200 font-semibold">NFW Sounding Software · Firmware builder for Vaisala RS41 radiosondes · GPL-3.0</div>
-  <div class="text-xs text-slate-200 leading-relaxed max-w-2xl mx-auto bg-slate-800/70 border border-slate-600 rounded-lg px-4 py-3">
-    This software and its build infrastructure are maintained <strong class="text-white">privately and paid for out of the author's own pocket</strong>. Please use it thoughtfully and don't abuse or overload the service. If activity is detected that harms the service, attempts to attack it, or overloads it, the author will be <strong class="text-white">forced to shut it down</strong>. Please be considerate and treat it with respect so it can stay available for everyone. 🙏
-  </div>
-  <div class="text-[11px] text-slate-400 leading-relaxed max-w-2xl mx-auto">
-    <strong class="text-slate-200">Privacy:</strong> Configuration and compilation run on this server and on your device; your config files are not shared with any third party. There is no visitor or IP tracking - only compile jobs are logged on the author's own infrastructure (the build output and the configuration used) to operate and debug the build service.
-    &nbsp;|&nbsp;
-    <strong class="text-slate-200">Disclaimer:</strong> The creator (Franek SP5FRA "nevvman") assumes no liability for any operations, transmissions or flights performed using this firmware or software. Users are solely responsible for compliance with all applicable national regulations governing unmanned balloon flights and amateur / non-amateur radio transmissions.
-    &nbsp;|&nbsp;
-    <strong class="text-slate-200">How it was built:</strong> This Sounding Software is "vibe-coded" (written quickly with AI tooling) but with the highest standards kept for verifying its stability - every part was reviewed, tested and hardened before going live. The sonde firmware itself is hand-written.
+  <div class="text-[11px] text-slate-400 leading-relaxed max-w-2xl mx-auto space-y-2.5 text-left">
+    <p><strong class="text-slate-200">Privacy.</strong> Configuration and compilation run on this server and on your device; your config files are not shared with any third party. There is no visitor or IP tracking - only compile jobs are logged on the author's own infrastructure (the build output and the configuration used) to operate and debug the build service.</p>
+    <p><strong class="text-slate-200">Disclaimer.</strong> The creator (Franek SP5FRA "nevvman") assumes no liability for any operations, transmissions or flights performed using this firmware or software. Users are solely responsible for compliance with all applicable national regulations governing unmanned balloon flights and amateur / non-amateur radio transmissions.</p>
+    <p><strong class="text-slate-200">How it was built.</strong> This Sounding Software (the web tool) was developed with the help of LLM tooling. The author assures it has been through extensive testing and checking, that it provides stable, problem-free operation, and that it was carefully refined and polished.</p>
   </div>
 </div>
 </div><!-- /dark wrapper -->
@@ -2497,19 +2591,19 @@ const NFW_FIELDS = [
   "sensorBoomEnable",                 // 85
   "thermistorTemp",                   // 86
   "mainTemperatureValue",             // 87
-  "humidityValue",                    // 88
-  "pressureValue",                    // 89
-  "mainTemperatureCorrectionC",       // 90
-  "extHeaterTemperatureCorrectionC",  // 91
-  "autoTemperatureCalibration",       // 92
-  "autoTemperatureCalibrationMethod", // 93
-  "environmentStartupAirTemperature", // 94
-  "autoHumidityModuleTemperatureCorrection", // 95
-  "humidityModuleEnable",             // 96
-  "zeroHumidityCalibration",          // 97
-  "humidityCapacitanceRangeDelta",    // 98
-  "zeroHumidityCapacitance",          // 99
-  "tempSensorBoomCalibrationFactor",  // 100
+  "extHeaterTemperatureValue",        // 88
+  "humidityValue",                    // 89
+  "pressureValue",                    // 90
+  "mainTemperatureCorrectionC",       // 91
+  "extHeaterTemperatureCorrectionC",  // 92
+  "autoTemperatureCalibration",       // 93
+  "autoTemperatureCalibrationMethod", // 94
+  "environmentStartupAirTemperature", // 95
+  "autoHumidityModuleTemperatureCorrection", // 96
+  "humidityModuleEnable",             // 97
+  "zeroHumidityCalibration",          // 98
+  "humidityCapacitanceRangeDelta",    // 99
+  "zeroHumidityCapacitance",          // 100
   "calibrationError",                 // 101
   "extHeaterPwmStatus",               // 102
   "referenceHeaterStatus",            // 103
@@ -2517,46 +2611,43 @@ const NFW_FIELDS = [
   "humidityModuleHeating",            // 105
   "sensorBoomMainTempError",          // 106
   "sensorBoomHumidityModuleError",    // 107
-  "pressureMode",                     // 108
-  "rpm411InternalTemperature",        // 109
-  "RPM411SerialNumber",               // 110
-  "rpm411Error",                      // 111
-  "seaLevelPressure",                 // 112
-  "mainTemperatureFrequency",         // 113
-  "mainTemperatureResistance",        // 114
-  "extHeaterTemperatureFrequency",    // 115
-  "extHeaterTemperatureResistance",   // 116
-  "extHeaterTemperatureValue",        // 117
-  "humidityCapacitance",              // 118
-  "maxHumidityCapacitance",           // 119
-  "THERMISTOR_R25",                   // 120
-  "THERMISTOR_B",                     // 121
-  "dataRecorderEnable",               // 122
-  "dataRecorderInterval",             // 123
-  "dataRecorderFlightNoiseFiltering", // 124
-  "recorderInitialized",              // 125
-  "err",                              // 126
-  "warn",                             // 127
-  "ok",                               // 128
-  "stage",                            // 129
+  "measurementMode",                  // 108 - 1 = NFW algorithms, 2 = Vaisala factory
+  "mcuTemperature",                   // 109 - MCU die temperature (°C)
+  "temperatureCheckError",            // 110 - factory-mode temperature CHECK flag
+  "humidityCheckError",               // 111 - factory-mode humidity CHECK flag
+  "boomSerialNumber",                 // 112 - measurement-boom serial (factory mode), empty otherwise
+  "humidityCapacitance",              // 113 - kept for NFW humidity-range calibration
+  "pressureMode",                     // 114
+  "rpm411InternalTemperature",        // 115
+  "RPM411SerialNumber",               // 116
+  "rpm411Error",                      // 117
+  "seaLevelPressure",                 // 118
+  "dataRecorderEnable",               // 119
+  "dataRecorderInterval",             // 120
+  "dataRecorderFlightNoiseFiltering", // 121
+  "recorderInitialized",              // 122
+  "err",                              // 123
+  "warn",                             // 124
+  "ok",                               // 125
+  "stage",                            // 126
   // 14 - OIF411 ozone sonde (xdataPortMode = 3)
-  "xdataPortMode",                    // 130
-  "ozonePumpTemperature",             // 131
-  "ozoneCurrentUa",                   // 132
-  "ozoneBatteryV",                    // 133
-  "ozonePumpCurrentMa",               // 134
-  "ozoneExtV",                        // 135
-  "ozoneDiagnostics",                 // 136
-  "ozoneFwVer",                       // 137
-  "ozoneSerial",                      // 138
-  "ozoneP3mPa",                       // 139
-  "ozonePpb",                         // 140
-  "ozoneGroundP0",                    // 141
-  "ozoneConnErr",                     // 142 - 1 if no OIF411 frame for >3 s (after first frame)
-  "ozoneDbgLen",                      // 143
-  "ozoneDbgRaw",                      // 144
-  "ozoneRxByteTotal",                 // 145 - total bytes received on xdata RX
-  "ozoneFrameTotal",                  // 146 - OIF411 frames successfully parsed
+  "xdataPortMode",                    // 127
+  "ozonePumpTemperature",             // 128
+  "ozoneCurrentUa",                   // 129
+  "ozoneBatteryV",                    // 130
+  "ozonePumpCurrentMa",               // 131
+  "ozoneExtV",                        // 132
+  "ozoneDiagnostics",                 // 133
+  "ozoneFwVer",                       // 134
+  "ozoneSerial",                      // 135
+  "ozoneP3mPa",                       // 136
+  "ozonePpb",                         // 137
+  "ozoneGroundP0",                    // 138
+  "ozoneConnErr",                     // 139 - 1 if no OIF411 frame for >3 s (after first frame)
+  "ozoneDbgLen",                      // 140
+  "ozoneDbgRaw",                      // 141
+  "ozoneRxByteTotal",                 // 142 - total bytes received on xdata RX
+  "ozoneFrameTotal",                  // 143 - OIF411 frames successfully parsed
 ];
 
 const STAGE_MAP = {
@@ -2567,9 +2658,12 @@ const STAGE_MAP = {
   "04": ["Hardware Setup Complete",            "Hardware setup has finished."],
   "11": ["Temperature Calibration - Method 1", "Calibrating main temperature sensor using a known environment temperature. Place the sensor boom in a stable, known-temperature environment."],
   "12": ["Temperature Calibration - Method 2", "Calibrating main temperature sensor using the PCB thermal model (polynomial offset). No action required - please wait."],
+  "13": ["Temperature Check",                  "Verifying that the temperature sensors read consistent values. Auto-retries a couple of times if needed. Please wait."],
   "15": ["Humidity Module Temp. Correction",   "Automatic temperature offset correction for the humidity module sensor. Keep the sonde in a stable environment and wait."],
   "20": ["Reconditioning - DO NOT TOUCH",      "Humidity module reconditioning active. Module heats to ~135 °C. Keep clear of the sensor boom and away from flammable materials."],
   "21": ["Zero Humidity Check - DO NOT TOUCH", "Zero-humidity reference measurement in progress. Module heats to ~135 °C. Environment must remain stable: 0-30 °C, 0-60 %RH."],
+  "22": ["Humidity Check - Reconditioning",    "Running the reconditioning phase for the humidity module - the sensor reaches ~138 °C, please keep clear of the boom. The phase lasts one minute."],
+  "23": ["Humidity Check - Measurement",       "After reconditioning: a zero-humidity check that the reading is definitely <= 2 %RH. Keep clear of the sensor boom."],
   "25": ["Humidity Range Cal. - Starting",     "Preparing humidity range (delta) calibration session. Please wait."],
   "26": ["Humidity Range Cal. - In Progress",  "Place the sensor boom in a 100 %RH environment (saturated salt solution or humidity chamber). Observe humidityCapacitanceRangeDelta in the Sensors tab until stable."],
   "27": ["Humidity Range Cal. - Complete",     "Calibration done. Sonde powering off - record the final humidityCapacitanceRangeDelta value from the Sensors tab and reprogram CONFIG.h before flight."],
@@ -2680,10 +2774,10 @@ function hrdUpdate() {
   const cap  = tel.humidityCapacitance      ? parseFloat(tel.humidityCapacitance)      : null;
   const zero = tel.zeroHumidityCapacitance  ? parseFloat(tel.zeroHumidityCapacitance)  : null;
   // Live instantaneous delta vs the zero-humidity capacitance, just for the moving display
-  // so you can watch it settle and peak. The 0.95 calibration factor MUST match the one the
+  // so you can watch it settle and peak. The 1.08 calibration factor MUST match the one the
   // firmware applies in humidityDeltaCalibrationDebug() so this preview lines up with the
   // recorded peak below. The value actually recorded is always the firmware's own figure.
-  const HRD_CAL_FACTOR = 0.95;
+  const HRD_CAL_FACTOR = 1.08;
   const live = (cap !== null && zero !== null) ? (cap - zero) * HRD_CAL_FACTOR : null;
   // Authoritative range delta: the firmware tracks the calibrated PEAK and sends it in
   // humidityCapacitanceRangeDelta (field 98). This - not a value recomputed here - is what
@@ -2729,6 +2823,8 @@ const CHART_DEFS = [
   { id:'chart-radio',   color:'#e11d48', fill:'rgba(225,29,72,0.08)',   label:'°C'    },
   { id:'chart-rpm411',  color:'#4f46e5', fill:'rgba(79,70,229,0.08)',   label:'°C'    },
   { id:'chart-pres',    color:'#7c3aed', fill:'rgba(124,58,237,0.08)',  label:'hPa'   },
+  { id:'chart-batt',    color:'#d97706', fill:'rgba(217,119,6,0.08)',   label:'V'     },
+  { id:'chart-mcu',     color:'#c026d3', fill:'rgba(192,38,211,0.08)',  label:'°C'    },
   // OIF411
   { id:'chart-oif-P3',    color:'#7c3aed', fill:'rgba(124,58,237,0.08)',  label:'mPa'   },
   { id:'chart-oif-ppb',   color:'#6d28d9', fill:'rgba(109,40,217,0.08)',  label:'ppbv'  },
@@ -2979,12 +3075,13 @@ function updateUI(d) {
     }
   }
 
-  if (d.batV !== undefined)                  { setText('hdr-bat', parseFloat(d.batV).toFixed(2) + ' V'); setText('qs-bat', parseFloat(d.batV).toFixed(2) + ' V'); }
+  if (d.batV !== undefined)                  { setText('hdr-bat', parseFloat(d.batV).toFixed(2) + ' V'); setText('qs-bat', parseFloat(d.batV).toFixed(2) + ' V'); setText('batVBig', parseFloat(d.batV).toFixed(2)); }
   if (d.gpsSats !== undefined)               { setText('hdr-sats', d.gpsSats); setText('qs-sats', d.gpsSats + ' sats'); }
   if (d.mainTemperatureValue !== undefined)  setText('qs-temp', d.mainTemperatureValue + ' °C');
   if (d.extHeaterTemperatureValue !== undefined) setText('qs-exttemp', d.extHeaterTemperatureValue + ' °C');
   if (d.humidityValue !== undefined)         setText('qs-hum', d.humidityValue + ' %RH');
   if (d.pressureValue !== undefined)         { setText('qs-pres', d.pressureValue + ' hPa'); setText('pressureValueBig', d.pressureValue); }
+  if (d.mcuTemperature !== undefined)        setText('mcuTemperatureBig', parseFloat(d.mcuTemperature).toFixed(1));
   if (d.pressureMode !== undefined)          setText('pressureModeShort', fmtVal('pressureMode', d.pressureMode));
   if (d.thermistorTemp !== undefined)            setText('thermistorTempHeat', d.thermistorTemp);
   if (d.extHeaterTemperatureValue !== undefined) setText('extHeaterTemperatureValueHeat', d.extHeaterTemperatureValue);
@@ -3017,10 +3114,13 @@ function updateUI(d) {
 
   if (d.mainTemperatureCorrectionC !== undefined)     setText('hdr-main-corr', d.mainTemperatureCorrectionC);
   if (d.extHeaterTemperatureCorrectionC !== undefined) setText('hdr-ext-corr', d.extHeaterTemperatureCorrectionC);
-  if (d.humidityCapacitance !== undefined)             setText('hdr-hum-cap',  d.humidityCapacitance);
 
   if (d.humidityCapacitance !== undefined || d.humidityCapacitanceRangeDelta !== undefined) hrdUpdate();
-  if (d.THERMISTOR_R25 !== undefined)                  setText('hdr-therm-r25', d.THERMISTOR_R25);
+  if (d.measurementMode !== undefined)                 applyMeasurementMode(d.measurementMode);
+  if (d.batV !== undefined) updateBatteryWarn();
+  if (d.temperatureCheckError !== undefined || d.humidityCheckError !== undefined ||
+      d.sensorBoomMainTempError !== undefined || d.sensorBoomHumidityModuleError !== undefined ||
+      d.calibrationError !== undefined) updateDiagnostics();
 
   if (d.gpsHours !== undefined || d.gpsMinutes !== undefined || d.gpsSeconds !== undefined) {
     const h = String(tel.gpsHours   || 0).padStart(2,'0');
@@ -3050,6 +3150,8 @@ function updateUI(d) {
   cp('radioTemp',                'chart-radio');
   cp('rpm411InternalTemperature','chart-rpm411');
   cp('pressureValue',            'chart-pres');
+  cp('batV',                     'chart-batt');
+  cp('mcuTemperature',           'chart-mcu');
   // Dual-axis heating: power (left) vs sensor temperature (right).
   if (d.referenceHeaterStatus !== undefined || d.thermistorTemp !== undefined)
     pushDual(charts['chart-ref-pwr'], parseFloat(tel.referenceHeaterStatus), parseFloat(tel.thermistorTemp));
@@ -3071,6 +3173,60 @@ function updateUI(d) {
     const el = document.getElementById('adv-' + k);
     if (el) el.textContent = v;
   }
+}
+
+// Detect the sonde's measurement mode from telemetry and switch the UI: NFW shows the
+// full calibration command set and NFW-only readouts; Vaisala (factory) shows just the
+// two self-check buttons and hides the NFW calibration controls.
+let _lastMeasurementMode = null;
+function applyMeasurementMode(mode) {
+  const m = String(mode);
+  const isVaisala = (m === '2');
+  setText('measurementModeDisp', isVaisala ? 'Vaisala (factory)' : 'NFW (algorithms)');
+  if (m === _lastMeasurementMode) return;
+  _lastMeasurementMode = m;
+  document.querySelectorAll('.nfw-only').forEach(el => { el.style.display = isVaisala ? 'none' : ''; });
+  document.querySelectorAll('.vaisala-only').forEach(el => { el.style.display = isVaisala ? '' : 'none'; });
+}
+
+// Diagnostics panel: OK / ERROR / -- for each boom and calibration/self-check flag.
+function updateDiagnostics() {
+  const setDiag = (id, errVal) => {
+    const el = document.getElementById(id); if (!el) return;
+    if (errVal === undefined || errVal === '' || !connected) {
+      el.textContent = '--'; el.className = 'font-mono font-bold text-slate-400'; return;
+    }
+    const err = (errVal === '1');
+    el.textContent = err ? 'ERROR' : 'OK';
+    el.className = 'font-mono font-bold ' + (err ? 'text-red-600' : 'text-green-600');
+  };
+  setDiag('diag-maintemp',  tel.sensorBoomMainTempError);
+  setDiag('diag-hummodule', tel.sensorBoomHumidityModuleError);
+  setDiag('diag-cal',       tel.calibrationError);
+  setDiag('diag-tempcheck', tel.temperatureCheckError);
+  setDiag('diag-humcheck',  tel.humidityCheckError);
+
+  // Small OK / FAULT pills on the sensor chart cards (replaces the old table rows).
+  const setBadge = (id, errVal) => {
+    const el = document.getElementById(id); if (!el) return;
+    if (errVal === undefined || errVal === '' || !connected) { el.classList.add('hidden'); return; }
+    const err = (errVal === '1');
+    el.classList.remove('hidden');
+    el.textContent = err ? 'FAULT' : 'OK';
+    el.className = 'text-[9px] font-black uppercase tracking-wider px-1.5 py-0.5 rounded-full ' +
+                   (err ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700');
+  };
+  setBadge('badge-maintemp',  tel.sensorBoomMainTempError);
+  setBadge('badge-hummodule', tel.sensorBoomHumidityModuleError);
+}
+
+// Low-battery warning: the sonde sends only the pack voltage; charge-% estimation was
+// removed (the L91 plateau is too flat for a meaningful figure). We just warn under 2.75 V.
+function updateBatteryWarn() {
+  const el = document.getElementById('bat-low-warn');
+  if (!el) return;
+  const v = parseFloat(tel.batV);
+  el.classList.toggle('hidden', !(connected && !isNaN(v) && v < 2.75));
 }
 
 function updateOif411UI(d) {
@@ -3214,7 +3370,7 @@ function setBadge(state) {
   if (state === 'err') {
     el.textContent = 'ERROR'; el.className = 'px-2 py-0.5 rounded-full text-[10px] font-black tracking-widest bg-red-100 text-red-600';
   } else if (state === 'ok') {
-    el.textContent = 'OK'; el.className = 'px-2 py-0.5 rounded-full text-[10px] font-black tracking-widest bg-green-100 text-green-700';
+    el.textContent = 'CONNECTED'; el.className = 'px-2 py-0.5 rounded-full text-[10px] font-black tracking-widest bg-green-100 text-green-700';
   } else {
     el.textContent = 'OFFLINE'; el.className = 'px-2 py-0.5 rounded-full text-[10px] font-black tracking-widest bg-slate-200 text-slate-400';
   }
@@ -3247,6 +3403,46 @@ const TAG_COLOR = {
   pres:'text-cyan-400', sch:'text-slate-400', flt:'text-pink-400', ok:'text-green-400',
 };
 
+// Live-sync state per log panel. true = follow the tail; false = user scrolled up.
+const logStick = { 'log-panel': true, 'log-panel-full': true };
+
+function updateLogLiveUI(id) {
+  const stuck = logStick[id] !== false;
+  if (id === 'log-panel-full') {
+    document.getElementById('log-live-btn')?.classList.toggle('hidden', stuck);
+    const pill = document.getElementById('log-live-pill');
+    if (pill) {
+      pill.classList.toggle('bg-green-100', stuck);
+      pill.classList.toggle('text-green-700', stuck);
+      pill.classList.toggle('bg-slate-200', !stuck);
+      pill.classList.toggle('text-slate-500', !stuck);
+      pill.innerHTML = stuck
+        ? '<span class="w-1.5 h-1.5 rounded-full bg-green-500"></span>Live'
+        : '<span class="w-1.5 h-1.5 rounded-full bg-slate-400"></span>Paused';
+    }
+  }
+}
+
+function resumeLogLive(id) {
+  const panel = document.getElementById(id);
+  if (!panel) return;
+  logStick[id] = true;
+  panel.scrollTop = panel.scrollHeight;
+  updateLogLiveUI(id);
+}
+
+function initLogLiveSync() {
+  ['log-panel','log-panel-full'].forEach(id => {
+    const panel = document.getElementById(id);
+    if (!panel) return;
+    panel.addEventListener('scroll', () => {
+      const atBottom = panel.scrollHeight - panel.scrollTop - panel.clientHeight < 24;
+      logStick[id] = atBottom;
+      updateLogLiveUI(id);
+    });
+  });
+}
+
 function addLog(tag, msg) {
   const now = new Date();
   const ts = `${now.getHours().toString().padStart(2,'0')}:${now.getMinutes().toString().padStart(2,'0')}:${now.getSeconds().toString().padStart(2,'0')}`;
@@ -3259,7 +3455,8 @@ function addLog(tag, msg) {
     div.innerHTML = `<span class="log-ts flex-shrink-0">${ts}</span><span class="${c} font-bold flex-shrink-0">[${esc(tag)}]</span><span class="log-msg">${esc(msg)}</span>`;
     panel.appendChild(div);
     while (panel.children.length > LOG_MAX) panel.removeChild(panel.firstChild);
-    panel.scrollTop = panel.scrollHeight;
+    // Live-sync: only stick to the bottom while the user hasn't scrolled up.
+    if (logStick[id] !== false) panel.scrollTop = panel.scrollHeight;
   });
 
   logCount++;
@@ -3270,6 +3467,7 @@ function addLog(tag, msg) {
 function clearLog() {
   ['log-panel','log-panel-full'].forEach(id => {
     const el = document.getElementById(id); if (el) el.innerHTML = '';
+    logStick[id] = true; updateLogLiveUI(id);
   });
   logCount = 0;
   setText('log-badge', '0');
@@ -3448,6 +3646,11 @@ function setPlatform(p) {
   if (lbl) lbl.textContent = p;
   updateGpsModeOptions();
   updateM10Visibility();
+  updateSensorCalVisibility();
+  // Show/hide every option flagged "RSM4x4 only" (whole sections like Horus V2, RTTY,
+  // Morse, Low-Altitude Fast-TX, and individual fields) to match the selected board.
+  const is4x4 = (p === 'RSM4x4');
+  document.querySelectorAll('.rsm4x4-only').forEach(el => { el.style.display = is4x4 ? '' : 'none'; });
 }
 
 // GPS operation modes differ by board: mode 3 (Intelligent M10) is RSM4x4-only,
@@ -3503,6 +3706,111 @@ function updateCalVisibility() {
   const show = (id, on) => { const el = document.getElementById(id); if (el) el.style.display = on ? '' : 'none'; };
   if (autoTemp) { show('cal-auto-box', autoTemp.checked); show('cal-manual-box', !autoTemp.checked); }
   if (autoHeat) { show('heatercorr-manual-box', !autoHeat.checked); }
+}
+
+// ── Factory (Vaisala) sensor calibration - mode 2 ──
+let factoryCal = null;   // { serial, cal:{factory*...}, mainboard, telemetry, fetched }
+
+// The mode selector lives in the Sensor Boom card. Factory (Vaisala) calibration is
+// RSM4x4 / RSM4x5 only (it does not fit the F100's flash/RAM), so on older RSM4x2 /
+// RSM4x1 boards the whole master switch is hidden and the firmware runs NFW calibration.
+function updateSensorCalVisibility() {
+  const wrap = document.getElementById('sensorcal-mode-wrap');
+  const sel  = document.getElementById('cfg-sensorCalibrationMode');
+  if (!wrap || !sel) return;
+
+  const is4x4 = currentPlatform === 'RSM4x4';
+  // Hide the factory/NFW master switch on older boards and force NFW (mode 1).
+  wrap.style.display = is4x4 ? '' : 'none';
+  if (!is4x4) sel.value = '1';
+
+  const factoryActive = is4x4 && sel.value === '2';
+  const box = document.getElementById('factory-cal-box');
+  if (box) box.style.display = factoryActive ? '' : 'none';
+  // In factory (Vaisala) mode the NFW temperature/humidity calibration sections do not
+  // apply, so hide them; otherwise (NFW, incl. all RSM4x2 builds) show them.
+  document.querySelectorAll('.nfw-cal-card').forEach(el => { el.style.display = factoryActive ? 'none' : ''; });
+}
+
+function sensorCalModeChanged() {
+  updateSensorCalVisibility();
+  cfgChanged();
+}
+
+function setFactoryCalStatus(msg, ok) {
+  const el = document.getElementById('factory-cal-status');
+  if (!el) return;
+  el.textContent = msg;
+  el.className = 'text-xs mt-2 ' + (ok === true ? 'text-green-400' : ok === false ? 'text-red-400' : 'text-slate-400');
+  el.classList.remove('hidden');
+}
+
+// Typing a different serial invalidates a previously loaded calibration so the
+// user cannot accidentally compile sonde A's coefficients under sonde B's serial.
+function factoryCalDirty() {
+  if (!factoryCal) return;
+  const inp = document.getElementById('factory-serial');
+  if (inp && factoryCal.serial && inp.value.trim().toUpperCase() !== factoryCal.serial.toUpperCase()) {
+    factoryCal = null;
+    const ro = document.getElementById('factory-cal-readout');
+    if (ro) ro.classList.add('hidden');
+    setFactoryCalStatus('Serial changed - download the calibration again before compiling.', null);
+  }
+}
+
+async function fetchSondeCal() {
+  if (!ensureVerified(setFactoryCalStatus)) return;
+  const inp = document.getElementById('factory-serial');
+  const serial = (inp.value || '').trim().toUpperCase();
+  if (!/^[A-Za-z][A-Za-z0-9]{3,11}$/.test(serial)) {
+    setFactoryCalStatus('Enter a valid sonde serial (e.g. X1234567).', false);
+    return;
+  }
+  const btn = document.getElementById('btn-fetch-cal');
+  btn.disabled = true;
+  const old = btn.innerHTML;
+  btn.innerHTML = '<span class="spinner"></span> Downloading...';
+  setFactoryCalStatus('Contacting SondeHub for ' + serial + '...', null);
+  try {
+    const r = await fetch('/api/sonde_cal/' + encodeURIComponent(serial), { headers: authHeaders() });
+    if (r.status === 401) { authExpired(setFactoryCalStatus); return; }
+    const d = await r.json();
+    if (!d.ok) { factoryCal = null; setFactoryCalStatus(d.error || 'Could not fetch calibration.', false); return; }
+    factoryCal = d;
+    const c = d.cal || {}, t = d.telemetry || {};
+    // The humidity matrix (matrixU, 7x6) is required for factory RH - guard against a
+    // truncated/old backend response so we never compile a build with no RH surface.
+    if (!Array.isArray(c.factoryMatrixU) || c.factoryMatrixU.length !== 42) {
+      factoryCal = null;
+      setFactoryCalStatus('Calibration is missing the humidity matrix (matrixU). Update the server / try another serial.', false);
+      const ro0 = document.getElementById('factory-cal-readout'); if (ro0) ro0.classList.add('hidden');
+      return;
+    }
+    const bits = [];
+    if (d.mainboard) bits.push('board ' + d.mainboard);
+    if (t.subtype)   bits.push(t.subtype);
+    if (t.temp !== undefined && t.temp !== null) bits.push('last T ' + t.temp + ' C');
+    if (t.humidity !== undefined && t.humidity !== null) bits.push('RH ' + t.humidity + ' %');
+    const ro = document.getElementById('factory-cal-readout');
+    if (ro) {
+      ro.innerHTML =
+        'Loaded calibration for <b>' + (d.serial || serial) + '</b>' + (d.cached ? ' (cached)' : '') + '<br>' +
+        'refRes ' + c.factoryRefResistorLow + ' / ' + c.factoryRefResistorHigh + ' Ohm, ' +
+        'refCap ' + c.factoryRefCapLow + ' / ' + c.factoryRefCapHigh + ' pF<br>' +
+        'calT ' + Number(c.factoryCalT).toPrecision(6) + ', calibU0 ' + Number(c.factoryCalibU0).toPrecision(6) + '<br>' +
+        'humidity matrix: ' + c.factoryMatrixU.length + ' coefficients loaded' +
+        (bits.length ? '<br>' + bits.join(' · ') : '');
+      ro.classList.remove('hidden');
+    }
+    setFactoryCalStatus('Calibration loaded - it will be compiled into the firmware.', true);
+    configDirty = true;
+  } catch(e) {
+    factoryCal = null;
+    setFactoryCalStatus('Network error contacting the server.', false);
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = old;
+  }
 }
 
 function setFetchStatus(msg, ok) {
@@ -3710,6 +4018,7 @@ function applyConfigToForm(cfg) {
   }
   syncAprsSymbolUI();
   updateGpsModeOptions(); // values are now set: hide/snap GPS modes to the board
+  updateSensorCalVisibility(); // show/snap the factory-calibration panel to the board
   cfgChanged(); // sync conditional sections (e.g. OIF411 visibility)
   configDirty = false; // applyConfigToForm is called on load - mark clean after sync
 }
@@ -3733,6 +4042,23 @@ function collectConfig() {
   });
   // one baud control drives both Horus modes (they share the same rate)
   if ('horusBdr' in cfg) cfg.horusV3Bdr = cfg.horusBdr;
+
+  // Factory calibration (mode 2) is RSM4x4/4x5 only. Off that board, or when the
+  // mode is 2 but no calibration has been downloaded, fall back to NFW (mode 1)
+  // so we never compile zeroed-out factory coefficients.
+  if ('sensorCalibrationMode' in cfg) {
+    const wantFactory = (parseInt(cfg.sensorCalibrationMode, 10) === 2);
+    if (wantFactory && factoryCal && factoryCal.cal) {
+      Object.assign(cfg, factoryCal.cal);   // factory* coefficients at full precision
+      cfg.boomSerialNumber = (factoryCal.serial || '').toUpperCase();   // reported in telemetry
+    } else {
+      // Not factory, or factory requested without a downloaded calibration -> NFW (mode 1)
+      // so we never compile zeroed-out factory coefficients. On RSM4x2 this is always the
+      // case (the builder hides the factory option there).
+      cfg.sensorCalibrationMode = 1;
+      cfg.boomSerialNumber = '';
+    }
+  }
   return cfg;
 }
 
@@ -3768,6 +4094,14 @@ function syncAprsSymbolUI() {
 let pendingCompilePlatform = null;
 function startCompile(platform) {
   if (!ensureVerified()) return;
+  // Factory calibration mode needs a downloaded coefficient set first.
+  const calSel = document.getElementById('cfg-sensorCalibrationMode');
+  if (calSel && calSel.value === '2' && !(factoryCal && factoryCal.cal)) {
+    updateSensorCalVisibility();
+    setFactoryCalStatus('Download the factory calibration for your sonde serial before compiling in mode 2, or switch back to NFW calibration.', false);
+    document.getElementById('sensorcal-mode-wrap').scrollIntoView({behavior:'smooth', block:'center'});
+    return;
+  }
   pendingCompilePlatform = platform;
   document.getElementById('compile-modal').classList.remove('hidden');
 }
@@ -3980,6 +4314,7 @@ document.addEventListener('DOMContentLoaded', () => {
   CHART_DEFS.forEach(d => { charts[d.id] = makeChart(d.id, d.color, d.fill, d.label); });
   DUAL_CHART_DEFS.forEach(d => { charts[d.id] = makeDualChart(d.id, d.pwrColor, d.pwrFill, d.tempColor); });
   buildAdvTable();
+  initLogLiveSync();
   updateChecklist();
   updateCalVisibility();   // sync calibration menu show/hide to default toggle states
 

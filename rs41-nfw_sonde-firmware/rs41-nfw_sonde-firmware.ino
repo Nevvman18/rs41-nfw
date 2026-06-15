@@ -21,7 +21,7 @@ I wish You high, successful flights with a lot of data gathered with this firmwa
 Franek,
 Author of RS41-NFW
 */
-#define NFW_VERSION "RS41-NFW v66, GPL-3.0 Franek Lada (nevvman, SP5FRA)"  //This is the firmware version You are running
+#define NFW_VERSION "RS41-NFW v67, GPL-3.0 Franek Lada (nevvman, SP5FRA)"  //This is the firmware version You are running
 
 //===== Libraries and lib-dependant definitions (nothing to modify)
 /* No libraries are required to be installed, all dependencies are shipped within the project folder. */
@@ -152,25 +152,6 @@ int gpsBaudRate = 9600;
 // XDATA (2,3)          rx    tx
 HardwareSerial xdataSerial(PB11, PB10);
 
-//Support of ability to heat up the radio/gps oscillator by reference heating resistors has ENDED. This is due to the decision, that RTTY (especially 75 baud) is not used widely, so the heating isn't needed, and also that the heating of them at max power is very power hungry. Also, they are used for temperature calibration and now have been implemented to correct the readings properly. This can be configured in the sensorBoom area
-/*
-//Oscillator heating system (don't activate unless You plan to use fast RTTY in extremely small temperatures and fly with large batteries)
-int refHeatingMode = 0;                    //0 - off, 1 - auto, 2 - always on
-int refHeaterAutoActivationHeight = 0;     //set to 0 to disable auto heater enable above set level, if other than 0 then it means height above which the heater gets auto enabled
-unsigned long heaterWorkingTimeSec = 600;  //heater heating time
-unsigned long heaterCooldownTimeSec = 3;   //heater cooldown time after heating process
-int autoHeaterThreshold = 6;               //auto heater temperature threshold, WARNING! If rtty used baud is faster than 45bdr, the threshold should be at 14*C to prevent the radio from loosing PLL-lock, best would be even to set the heating to always on. If only horus mode is used, it is not mandatory, altough for standard flights that dont require more than 12h of operation the 6*C is advised for defrosting and keeping the internals slightly above ice temperature.
-int refHeaterCriticalDisableTemp = 72;     //heater critical temp which disables the heating if exceeded
-int refHeaterCriticalReenableTemp = 67;    //heater temperature at which heating gets re-enabled after being cut down due to too high temperature*/
-
-//Support for the first development release of humidity module heating has ended, these options are no longer available, please use the new 'humidityModuleHeating'
-/*bool humidityModuleHeating = false; //This option enables the defrosting of humidity module and 'prevents condensation'. This function works the same as in Vaisala firmware, keeping the module slightly warmer than air, 5K above air temperature. NOTE: May alter the readings.
-int humidityModuleHeatingAmount = 4; //algorithms will keep the temperature by this number more than air temperature [K]
-int heatingPwmUpperLimit = 75; //These three values shouldn't be changed, unless You know what they mean. Max PWM value of humidity module heating
-int heatingPwmCurrentValue = 3; //default start value, should be around the lower limit
-int heatingPwmLowerLimit = 3; //minimum PWM value of heating
-int heatingTemperatureThreshold = 2; //turns on only in conditions where condensation would be really possible, offers more accurate readings
-int heatingHumidityThreshold = 90; //turns on only in conditions where condensation would be really possible*/
 
 //===== System internal variables, shouldn't be changed here
 uint8_t btnCounter = 0;
@@ -1764,7 +1745,7 @@ void GPSManagement() {
 }
 
 
-// ─── OIF411 Ozone Sonde Handler ───────────────────────────────────────────────
+// oif411
 
 static const float OIF411_CEF_P[]  = {2.0f,   3.0f,   5.0f,  10.0f,  20.0f,  30.0f,  50.0f, 100.0f, 200.0f, 300.0f, 500.0f, 1000.0f};
 static const float OIF411_CEF_V[]  = {1.1655f, 1.1275f, 1.0895f, 1.0545f, 1.0325f, 1.0230f, 1.0150f, 1.0105f, 1.0075f, 1.0055f, 1.0030f, 1.0000f};
@@ -1833,7 +1814,7 @@ void ozoneParseFrame(const char* data) {
   ozoneConnectionError  = false;
 
   if (dlen == 20) {
-    // Measurement frame: [type2][num2][pumpT4][I5][batV2][pumpI3][extV2]
+    // frame: [type2][num2][pumpT4][I5][batV2][pumpI3][extV2]
     ozoneFrameTotal++;
     uint16_t rawT = parseHex(data + 4, 4);
     float pumpT = (rawT & 0x8000) ? -(float)(rawT & 0x7FFF) * 0.01f
@@ -2096,8 +2077,9 @@ void selectReferencesHeater(int heatingMode) {
   referenceHeaterStatus = heatingMode;
 
   if (xdataPortMode == 1) {
-    xdataSerial.print("[info]: References heater power has been set to ");
-    xdataSerial.println(heatingMode);
+    xdataSerial.print("[info]: ref. heating ");
+    xdataSerial.print(heatingMode);
+    xdataSerial.println("/3");
   }
 
   switch (heatingMode) {
@@ -2146,181 +2128,10 @@ void selectReferencesHeater(int heatingMode) {
   }
 }
 
-/*
-void refHeaterHandler() {
-  unsigned long currentMillis = millis();
-  float currentTemp = readThermistorTemp();
-
-  // Mode 0: Heating Off
-  if (refHeatingMode == 0) {
-    disableRefHeaterRing();  // Ensure the heater is off
-
-    isReferenceHeaterOn = false;
-    heaterDebugState = 5;
-
-    if (xdataPortMode == 1) {
-      xdataSerial.println("[info]: Heating is completely OFF.");
-    }
-
-    return;  // Exit early
-  }
-
-  // Mode 1: Auto Mode
-  if (refHeatingMode == 1) {
-    // Disable heater if temperature exceeds the critical disable threshold
-    if (currentTemp > refHeaterCriticalDisableTemp) {
-      disableRefHeaterRing();  // Turn off the heater
-
-      if (xdataPortMode == 1) {
-        xdataSerial.print("[err]: Heater OFF - overheat threshold (*C): ");
-        xdataSerial.println(refHeaterCriticalDisableTemp);
-      }
-
-      heaterOffTime = currentMillis;  // Record the time the heater was turned off
-
-      isReferenceHeaterOn = false;         // Update the heater state
-      isHeaterPausedOvht = true;  // Mark that the heater was paused due to overheating
-      heaterDebugState = 19;
-
-      return;  // Exit early
-    }
-
-    // Re-enable the heater if it was paused due to overheating and the temperature drops below the re-enable threshold
-    if (isHeaterPausedOvht && currentTemp <= refHeaterCriticalReenableTemp) {
-      if (xdataPortMode == 1) {
-        xdataSerial.print("[info]: Temp below re-enable threshold (*C): ");
-        xdataSerial.println(refHeaterCriticalReenableTemp);
-      }
-
-      isHeaterPausedOvht = false;  // Clear the overheating flag
-
-      enableRefHeaterRing();  // Turn on the heater
-
-      if (xdataPortMode == 1) {
-        xdataSerial.println("[info]: HEATER RE-ENABLED!");
-      }
-
-      isReferenceHeaterOn = true;  // Update the heater state
-      heaterDebugState = 11;
-
-      return;  // Exit early after re-enabling
-    }
-
-    // Disable heater if the timer condition is met
-    if (isReferenceHeaterOn && currentMillis - heaterOnTime >= heaterWorkingTimeSec * 1000) {
-      disableRefHeaterRing();  // Turn off the heater
-      if (xdataPortMode == 1) {
-        xdataSerial.print("[info]: Heater OFF - cooldown (s): ");
-        xdataSerial.println(heaterCooldownTimeSec);
-      }
-
-      heaterOffTime = currentMillis;  // Record the time the heater was turned off
-      isReferenceHeaterOn = false;             // Update the heater state
-      heaterDebugState = 10;
-    } else if (isReferenceHeaterOn) {
-      if (xdataPortMode == 1) {
-        xdataSerial.print("[info]: Heater ON (*C): ");
-        xdataSerial.println(currentTemp);
-      }
-
-      heaterDebugState = 11;
-    } else {
-      // If the heater is off, check if cooldown has passed and if it should be re-enabled
-      if (currentMillis - heaterOffTime >= heaterCooldownTimeSec * 1000) {
-        if (currentTemp < autoHeaterThreshold) {
-          if (xdataPortMode == 1) {
-            xdataSerial.print("[info]: Cooldown done, T under threshold (*C): ");
-            xdataSerial.println(autoHeaterThreshold);
-            xdataSerial.println("[info]: HEATER ON!");
-          }
-
-          enableRefHeaterRing();  // Turn on the heater
-
-          heaterOnTime = currentMillis;  // Record the time the heater was turned on
-          isReferenceHeaterOn = true;             // Update the heater state
-          heaterDebugState = 11;
-        } else {
-          if (xdataPortMode == 1) {
-            xdataSerial.println("[info]: autoRefHeat: T above threshold, skip");
-          }
-
-          heaterDebugState = 10;
-        }
-      }
-    }
-    return;  // Exit early
-  }
-
-  // Mode 2: Heater Always On with Safety Control
-  if (refHeatingMode == 2) {
-    // Check if the temperature exceeds the critical disable threshold
-    if (currentTemp > refHeaterCriticalDisableTemp) {
-      disableRefHeaterRing();  // Turn off the heater
-
-      if (xdataPortMode == 1) {
-        xdataSerial.print("[err]: Heater OFF - overheat threshold (*C): ");
-        xdataSerial.println(refHeaterCriticalDisableTemp);
-      }
-
-      heaterOffTime = currentMillis;  // Record the time the heater was turned off
-      isReferenceHeaterOn = false;             // Update the heater state
-      isHeaterPausedOvht = true;      // Mark that the heater was paused due to overheating
-      heaterDebugState = 29;
-
-      return;  // Exit early
-    }
-
-    // Re-enable the heater immediately after temperature drops below re-enable threshold
-    if (isHeaterPausedOvht && currentTemp <= refHeaterCriticalReenableTemp) {
-      if (xdataPortMode == 1) {
-        xdataSerial.print("[info]: Temp below re-enable threshold (*C): ");
-        xdataSerial.println(refHeaterCriticalReenableTemp);
-      }
-
-      isHeaterPausedOvht = false;  // Clear the overheating flag
-
-      enableRefHeaterRing();  // Turn on the heater
-
-      if (xdataPortMode == 1) {
-        xdataSerial.println("[info]: HEATER RE-ENABLED!");
-      }
-
-      isReferenceHeaterOn = true;             // Update the heater state
-      heaterOnTime = currentMillis;  // Reset the heater's working time
-      heaterDebugState = 21;
-    } else if (!isReferenceHeaterOn) {
-      // If the heater is not on, ensure it is turned on
-      enableRefHeaterRing();  // Turn on the heater
-
-      if (xdataPortMode == 1) {
-        xdataSerial.println("[info]: Heating is always ON with safety control.");
-      }
-
-      isReferenceHeaterOn = true;             // Update the heater state
-      heaterOnTime = currentMillis;  // Reset the heater's working time
-      heaterDebugState = 21;
-    }
-    return;  // Exit early
-  }
-}
-
-void refHeaterHeightActivator() {
-  if (refHeaterAutoActivationHeight != 0) {
-    if (gpsAlt > refHeaterAutoActivationHeight) {
-      refHeatingMode = 2;
-    } else if (gpsAlt < refHeaterAutoActivationHeight) {
-      refHeatingMode = 1;
-    } else {
-      refHeatingMode = 1;
-    }
-  }
-}
-*/
-
 void powerHandler() {
   if (readBatteryVoltage() < batteryCutOffVoltage && batteryCutOffVoltage != 0) {
     if (xdataPortMode == 1) {
-      xdataSerial.println("[err]: BATTERY CUT-OFF VOLTAGE, SYSTEM WILL POWER OFF");
+      xdataSerial.println("[err]: battery cutoff - power off");
     }
 
     radioDisableTx();
@@ -2332,60 +2143,6 @@ void powerHandler() {
     hardwarePowerShutdown();
   }
 }
-
-/* TO BE CONTINUED... will implement better in the future
-void xdataInstrumentHandler() {
-  unsigned long start = millis();
-  String serialData = "";
-
-  // Read data until timeout
-  while (millis() - start < oif411MsgWaitTime) {
-    while (xdataSerial.available()) {
-      serialData += (char)xdataSerial.read();
-    }
-  }
-
-  // Process each frame separately
-  int startIndex = 0;
-  while ((startIndex = serialData.indexOf("xdata=", startIndex)) != -1) {
-    int endIndex = serialData.indexOf("xdata=", startIndex + 1);
-    if (endIndex == -1) {
-      endIndex = serialData.length();
-    }
-    String frame = serialData.substring(startIndex, endIndex);
-    decodeXdataOif411(frame);
-    startIndex = endIndex;
-  }
-}
-
-void decodeXdataOif411(String xdataString) {
-  // Check if the input string starts with "xdata="
-  if (xdataString.startsWith("xdata=")) {
-    // Extract the relevant substring containing the data
-    String data = xdataString.substring(6);  // Remove "xdata=" from the input
-
-    // Extract and decode instrument type
-    xdataInstrumentType = strtol(data.substring(0, 2).c_str(), NULL, 16);
-
-    // Extract and decode instrument number
-    xdataInstrumentNumber = strtol(data.substring(2, 4).c_str(), NULL, 16);
-
-    // Extract and decode ozone pump temperature
-    int rawPumpTemp = strtol(data.substring(4, 8).c_str(), NULL, 16);
-    xdataOzonePumpTemperature = rawPumpTemp / 100.0;  // Convert to Celsius
-
-    // Extract and decode ozone current
-    int rawOzoneCurrent = strtol(data.substring(8, 13).c_str(), NULL, 16);
-    xdataOzoneCurrent = rawOzoneCurrent / 10000;  //  /10000
-
-    // Extract and decode ozone battery voltage
-    int rawwxVoltage = strtol(data.substring(13, 15).c_str(), NULL, 16);
-    xdataOzonewxVoltage = rawwxVoltage / 10.0;  // Convert to Volts (V)
-
-    // Extract and decode ozone pump current
-    xdataOzonePumpCurrent = strtol(data.substring(15, 18).c_str(), NULL, 16);
-  }
-}*/
 
 // Function to select reading of a sensor and set its state (on/off)
 void selectSensorBoom(int sensorNum, int state) {
@@ -2438,16 +2195,19 @@ void selectSensorBoom(int sensorNum, int state) {
       digitalWrite(SPDT1, powerState);
       digitalWrite(PULLUP_TM, !powerState);
       digitalWrite(PULLUP_HYG, powerState);
+      break;
 
     case 6:
       digitalWrite(SPDT2, powerState);
       digitalWrite(PULLUP_TM, !powerState);
       digitalWrite(PULLUP_HYG, powerState);
+      break;
 
     case 7:
       digitalWrite(SPDT3, powerState);
       digitalWrite(PULLUP_TM, !powerState);
       digitalWrite(PULLUP_HYG, powerState);
+      break;
 
     default:
       // Invalid sensor number, do nothing
@@ -2567,6 +2327,96 @@ cleanup:
   return freq;
 }
 
+// Raw reference-resistor frequencies from the most recent calibrateTempSensorBoom()
+// call. The factory (mode 2) conversion interpolates against these raw 750 Ohm /
+// 1100 Ohm readings instead of the averaged constant used by mode 1.
+float lastRefFreq750  = 0;
+float lastRefFreq1100 = 0;
+
+#if defined(RSM4x4)
+/* Factory (Vaisala) calibration conversion - sensor calibration mode 2
+   (RSM4x4 / RSM4x5 only). Reproduces the rs1729 (zilog80) RS41 PTU math using
+   the sonde's original factory coefficients fetched from SondeHub.
+     f       - sensor frequency
+     f1 / f2 - low / high reference frequencies
+   For temperatures f1 = getSensorBoomFreq(1) (750 Ohm), f2 = getSensorBoomFreq(2)
+   (1100 Ohm). For humidity f1 = getSensorBoomFreq(7) (0 pF), f2 = getSensorBoomFreq(6)
+   (47 pF), T = main temperature. */
+// NFW's getSensorBoomFreq() returns a TRUE frequency (f = clk * samples / ticks),
+// which is proportional to 1/R (and 1/C). The rs1729 interpolation below
+// expects the raw measurement count, which is proportional to R (and C). So we feed
+// the reciprocal (period). Any constant scale cancels in the interpolation, which is
+// why this recovers Rc = R exactly. measFromFreq() centralises that conversion.
+static inline float measFromFreq(float fr) { return (fr > 0.0f) ? (1.0f / fr) : 0.0f; }
+
+float getFactoryTc(float fr, float fr1, float fr2) {   // main PT temperature
+  if (fr <= 0.0f || fr1 <= 0.0f || fr2 <= 0.0f) return -273.15f;
+  float f  = measFromFreq(fr), f1 = measFromFreq(fr1), f2 = measFromFreq(fr2);
+  float g  = (f2 - f1) / (factoryRefResistorHigh - factoryRefResistorLow);
+  float Rb = (f1 * factoryRefResistorHigh - f2 * factoryRefResistorLow) / (f2 - f1);
+  float Rc = f / g - Rb;
+  float R  = Rc * factoryCalT;
+  return (factoryTaylorT0 + factoryTaylorT1 * R + factoryTaylorT2 * R * R + factoryPolyT0) * (1.0f + factoryPolyT1);
+}
+
+float getFactoryTH(float fr, float fr1, float fr2) {   // heater / RH-sensor temperature
+  if (fr <= 0.0f || fr1 <= 0.0f || fr2 <= 0.0f) return -273.15f;
+  float f  = measFromFreq(fr), f1 = measFromFreq(fr1), f2 = measFromFreq(fr2);
+  float g  = (f2 - f1) / (factoryRefResistorHigh - factoryRefResistorLow);
+  float Rb = (f1 * factoryRefResistorHigh - f2 * factoryRefResistorLow) / (f2 - f1);
+  float Rc = f / g - Rb;
+  float R  = Rc * factoryCalTU;
+  return (factoryTaylorTU0 + factoryTaylorTU1 * R + factoryTaylorTU2 * R * R + factoryPolyTrh0) * (1.0f + factoryPolyTrh1);
+}
+
+// Saturation water-vapour pressure [Pa] (Hyland & Wexler), used to convert RH
+// referenced to the sensor temperature into RH referenced to the air temperature.
+double factoryVaporSatP(double Tc) {
+  double T = Tc + 273.15;
+  return exp(-5800.2206 / T
+             + 1.3914993
+             + 6.5459673 * log(T)
+             - 4.8640239e-2 * T
+             + 4.1764768e-5 * T * T
+             - 1.4452093e-8 * T * T * T);
+}
+
+// Full Vaisala factory relative-humidity calculation Reproduces the matrixU 7x6 calibration surface in (capacitance, sensor temp).
+//   f, f1, f2 = humidity / 0pF-ref / 47pF-ref measurement frequencies
+//   Tair      = main air temperature (getFactoryTc)
+//   Tsensor   = RH-sensor (heater) temperature (getFactoryTH)
+float getFactoryRH(float fr, float fr1, float fr2, float Tair, float Tsensor) {
+  if (factoryCalibU0 == 0.0f) return -1.0f;
+  if (fr <= 0.0f || fr1 <= 0.0f || fr2 <= 0.0f) return -1.0f;
+  // Reciprocal: counts proportional to capacitance (see measFromFreq note above).
+  float f  = measFromFreq(fr), f1 = measFromFreq(fr1), f2 = measFromFreq(fr2);
+  float cfh = (f - f1) / (f2 - f1);
+  float cap = factoryRefCapLow + (factoryRefCapHigh - factoryRefCapLow) * cfh;
+  double Cp = ((double)cap / factoryCalibU0 - 1.0) * factoryCalibU1;
+
+  double Trh = ((double)Tsensor - 20.0) / 180.0;
+  double b[6];
+  double bk = 1.0;
+  for (int k = 0; k < 6; k++) { b[k] = bk; bk *= Trh; }   // b[k] = Trh^k
+
+  double rh = 0.0;
+  double aj = 1.0;                                          // aj = Cp^j
+  for (int j = 0; j < 7; j++) {
+    for (int k = 0; k < 6; k++) {
+      rh += aj * b[k] * factoryMatrixU[6 * j + k];
+    }
+    aj *= Cp;
+  }
+
+  if (Tair < -40.0) rh += (Tair - (-40.0)) / 12.0;         // low-temperature correction
+  rh *= factoryVaporSatP(Tsensor) / factoryVaporSatP(Tair);
+
+  if (rh < 0.0)   rh = 0.0;
+  if (rh > 100.0) rh = 100.0;
+  return (float)rh;
+}
+#endif
+
 // Function to calibrate the sensor using the two calibration resistors
 float calibrateTempSensorBoom() {
   // Get the frequencies for calibration resistors
@@ -2574,6 +2424,10 @@ float calibrateTempSensorBoom() {
   selectSensorBoom(0, 0);
   float freq1100 = getSensorBoomFreq(2);  // Get frequency for 1100Ω resistor
   selectSensorBoom(0, 0);
+
+  // Keep the raw reference frequencies for the factory (mode 2) conversion.
+  lastRefFreq750  = freq750;
+  lastRefFreq1100 = freq1100;
 
   // Calibration constant k: R * f (frequency-to-resistance ratio)
   // We use an average to balance between the two calibration resistors.
@@ -2608,6 +2462,41 @@ void sensorBoomHandler() {
     // Calibrate the sensor and get the calibration factor
     tempSensorBoomCalibrationFactor = calibrateTempSensorBoom();
 
+#if defined(RSM4x4)
+    if (FACTORY_CAL_ACTIVE) {
+      // ===== Factory (Vaisala) calibration path - measurement only (RSM4x4 / RSM4x5) =====
+      mainTemperatureFrequency = getSensorBoomFreq(4);
+      if (mainTemperatureFrequency <= 0) {
+        sensorBoomMainTempError = true;   // error flag is sent in telemetry / shown by Ground Control
+      } else {
+        sensorBoomMainTempError = false;
+        // Factory mode: absolute Vaisala polynomial - NFW correction offsets are NOT applied.
+        mainTemperatureValue = getFactoryTc(mainTemperatureFrequency, lastRefFreq750, lastRefFreq1100);
+      }
+      selectSensorBoom(0, 0);
+
+      extHeaterTemperatureFrequency = getSensorBoomFreq(3);
+      if (extHeaterTemperatureFrequency <= 0) {
+        sensorBoomHumidityModuleError = true;
+      } else {
+        sensorBoomHumidityModuleError = false;
+        // Factory mode: absolute Vaisala polynomial - NFW correction offsets are NOT applied.
+        extHeaterTemperatureValue = getFactoryTH(extHeaterTemperatureFrequency, lastRefFreq750, lastRefFreq1100);
+      }
+      selectSensorBoom(0, 0);
+
+      humidityFrequency   = getSensorBoomFreq(5);
+      refCapHighFrequency = getSensorBoomFreq(6); // 47pF Ref
+      refCapLowFrequency  = getSensorBoomFreq(7); // 0pF Ref
+      // raw capacitance kept for reporting / telemetry parity
+      humidityCapacitance = 47.0 * (float)(refCapLowFrequency - humidityFrequency) / (refCapLowFrequency - refCapHighFrequency);
+      // factory RH: f1 = 0pF ref (gSBF7), f2 = 47pF ref (gSBF6),
+      // Tair = main temperature (Tc), Tsensor = heater/RH-sensor temperature (TH)
+      humidityValue = getFactoryRH(humidityFrequency, refCapLowFrequency, refCapHighFrequency, mainTemperatureValue, extHeaterTemperatureValue);
+    } else
+#endif
+    {
+    // ===== NFW calibration path (mode 1) - default on RSM4x2, optional on RSM4x4 =====
     // Get main temperature frequency
     mainTemperatureFrequency = getSensorBoomFreq(4);
     if (mainTemperatureFrequency <= 0) {
@@ -2691,6 +2580,7 @@ void sensorBoomHandler() {
   else if(humidityValue > 110.0) {
     humidityValue = 110;
   }
+    } // end NFW calibration path
 
     // Check overall sensor status
     sensorBoomFault = sensorBoomMainTempError || sensorBoomHumidityModuleError;
@@ -2701,21 +2591,6 @@ void sensorBoomHandler() {
       }
     }
 
-    if (xdataPortMode == 1) {
-      static unsigned long _lastBoomLog = 0;
-      if (millis() - _lastBoomLog >= 15000UL) {
-        _lastBoomLog = millis();
-        xdataSerial.print(F("[boom]: T="));
-        xdataSerial.print(mainTemperatureValue, 1);
-        xdataSerial.print(F("C H="));
-        xdataSerial.print(humidityValue, 0);
-        xdataSerial.print(F("% xT="));
-        xdataSerial.print(extHeaterTemperatureValue, 1);
-        xdataSerial.print(F("C pcb="));
-        xdataSerial.print(readThermistorTemp(), 1);
-        xdataSerial.println(F("C"));
-      }
-    }
     selectSensorBoom(0, 0);
     selectReferencesHeater(lastReferenceHeaterStatus);
   }
@@ -4020,7 +3895,7 @@ void temperatureCalibration() {
 void reconditioningPhase() {
   if (xdataPortMode == 1) {
     xdataSerial.println("[info]: Reconditioning phase start");
-    xdataSerial.println("[warn]: Humidity module heating soon - don't touch sensor");
+    xdataSerial.println("[warn]: extHeater heating soon - don't touch");
   }
 
   setStage("20");
@@ -4058,7 +3933,7 @@ void reconditioningPhase() {
     extHeaterHandler(true, reconditioningTemperature, extHeaterTemperatureValue);
 
     if (xdataPortMode == 1) {
-      xdataSerial.print("[warn]: Current humidity module temperature = ");
+      xdataSerial.print("[warn]: extHeater T = ");
       xdataSerial.print(extHeaterTemperatureValue);
       xdataSerial.println("*C");
     }
@@ -4067,14 +3942,14 @@ void reconditioningPhase() {
   extHeaterHandler(false, 0, 0);
 
   if (xdataPortMode == 1) {
-    xdataSerial.println("[info]: Reconditioning phase completed. Heating OFF.");
+    xdataSerial.println("[info]: reconditioning done, heating off");
   }
 }
 
 void zeroHumidityCheck() {
   if (xdataPortMode == 1) {
     xdataSerial.println("[info]: Zero-humidity cal start...");
-    xdataSerial.println("[warn]: Sensor heats! Keep device still: no wind, RH<70%, T>0C, don't touch sensor");
+    xdataSerial.println("[warn]: sensor heats - keep still, no wind, RH<70%, T>0C");
   }
 
   setStage("21");
@@ -4226,6 +4101,160 @@ void zeroHumidityCheck() {
   zeroHumidityCapacitance = (capMeasurement / measurementCount);
 }
 
+
+bool temperatureCheckError = false;   // set by temperatureCheck()
+bool humidityCheckError    = false;   // set by humidityCheck()
+
+// Factory-mode start-up self-checks. The factory (Vaisala) chain is RSM4x4 / RSM4x5
+// only, so these are compiled there only (RSM4x2 / RSM4x1 run NFW calibration instead).
+#if defined(RSM4x4)
+
+// temperatureCheck - verifies the main and heater temperature sensors read consistent
+// values (a healthy boom at rest reads almost the same on both). Runs at start-up only,
+// on a cold boom; it is NOT re-runnable from Ground Control because by then the humidity
+// check may have heated the sensor. A momentary post-power-on settling can briefly exceed
+// the window, so it auto-retries up to 2 extra times before flagging an error.
+void temperatureCheck() {
+  if (xdataPortMode == 1) {
+    xdataSerial.println("[info]: Factory temperature CHECK...");
+  }
+  setStage("13");
+
+  for (int attempt = 1; attempt <= 3; attempt++) {
+    sensorBoomHandler();
+    buttonHandlerSimplified();
+    interfaceHandler();
+
+    if (sensorBoomMainTempError || sensorBoomHumidityModuleError) {
+      temperatureCheckError = true; calibrationError = true;  // light the red fault LED
+      if (xdataPortMode == 1) {
+        xdataSerial.println("[err]: temperature CHECK - sensor boom error");
+      }
+      return;   // a boom fault is not something a retry can fix
+    }
+
+    float diff = mainTemperatureValue - extHeaterTemperatureValue;
+    if (diff < 0) diff = -diff;
+
+    if (diff <= 3.0f) {
+      temperatureCheckError = false;
+      if (xdataPortMode == 1) {
+        xdataSerial.println("[info]: temperature CHECK passed");
+      }
+      return;
+    }
+
+    if (xdataPortMode == 1) {
+      xdataSerial.print("[warn]: temperature CHECK attempt "); xdataSerial.print(attempt);
+      xdataSerial.print("/3 - sensors differ by "); xdataSerial.print(diff); xdataSerial.println(" C (>3)");
+    }
+    if (attempt < 3) delay(800);
+  }
+
+  temperatureCheckError = true; calibrationError = true;  // light the red fault LED
+  if (xdataPortMode == 1) {
+    xdataSerial.println("[err]: temperature CHECK FAILED after 3 attempts (>3 C)");
+  }
+}
+
+// humidityCheck - runs a one-minute reconditioning phase (heats the sensor to ~138 °C),
+// then holds ~135 °C and verifies a bone-dry reading (< 2 %RH). Fails if the sensor never
+// exceeds 115 °C within the minute (heater/boom problem) or if the dry reading is high.
+// May be re-run from Ground Control.
+void humidityCheck() {
+  if (xdataPortMode == 1) {
+    xdataSerial.println("[info]: Factory humidity CHECK (reconditioning)...");
+    xdataSerial.println("[warn]: Humidity module heating to ~138C - don't touch sensor");
+  }
+  setStage("22");
+
+  unsigned long beginMillis = millis();
+  unsigned long reached115Millis = 0;
+  bool reached115 = false;
+  delay(500);
+
+  // Reconditioning at ~138 C. The dwell lasts 30 s measured FROM the moment the sensor
+  // first exceeds 115 C; if it never reaches 115 C within 60 s of heating, the heater /
+  // boom is faulty. NOTE: these are millis() budgets, and millis() is frozen while
+  // getSensorBoomFreq() runs with interrupts disabled, so the real wall-clock time is
+  // somewhat longer (markedly so on the slow F100).
+  while (true) {
+    orangeLed(); delay(100); bothLedOff();
+    sensorBoomHandler();
+    buttonHandlerSimplified();
+    interfaceHandler();
+
+    if (sensorBoomHumidityModuleError) {
+      extHeaterHandler(false, 0, 0);
+      humidityCheckError = true; calibrationError = true;  // light the red fault LED
+      if (xdataPortMode == 1) {
+        xdataSerial.println("[err]: humidity CHECK - sensor boom error during reconditioning");
+      }
+      return;
+    }
+
+    extHeaterHandler(true, 138, extHeaterTemperatureValue);
+
+    if (!reached115 && extHeaterTemperatureValue > 115.0f) {
+      reached115 = true;
+      reached115Millis = millis();   // start the 30 s reconditioning dwell
+    }
+
+    if (xdataPortMode == 1) {
+      xdataSerial.print("[info]: humidity CHECK reconditioning = ");
+      xdataSerial.print(extHeaterTemperatureValue); xdataSerial.println(" C");
+    }
+
+    if (reached115) {
+      if (millis() - reached115Millis >= 30000) break;   // 30 s dwell after reaching 115 C
+    } else if (millis() - beginMillis >= 60000) {
+      break;   // never reached 115 C -> fall through to the failure check below
+    }
+  }
+
+  // Must have exceeded 115 °C, otherwise the heater/boom is faulty.
+  if (!reached115) {
+    extHeaterHandler(false, 0, 0);
+    humidityCheckError = true; calibrationError = true;  // light the red fault LED
+    if (xdataPortMode == 1) {
+      xdataSerial.println("[err]: humidity CHECK FAILED - sensor did not exceed 115C in 60 s");
+    }
+    return;
+  }
+
+  // Hold ~135 C and confirm a dry reading (< 2 %RH).
+  setStage("23");
+  float rhSum = 0; int rhCount = 0;
+  unsigned long holdBegin = millis();
+  while (rhCount < 5 && millis() - holdBegin < 10000) {
+    sensorBoomHandler();
+    extHeaterHandler(true, 135, extHeaterTemperatureValue);
+    buttonHandlerSimplified();
+    interfaceHandler();
+
+    if (extHeaterTemperatureValue > 115.0f && !sensorBoomHumidityModuleError) {
+      rhSum += humidityValue; rhCount++;
+    }
+    orangeLed(); delay(80); bothLedOff();
+  }
+  extHeaterHandler(false, 0, 0);
+
+  float dryRH = (rhCount > 0) ? (rhSum / rhCount) : 100.0f;
+  if (dryRH > 2.0f) {
+    humidityCheckError = true; calibrationError = true;  // light the red fault LED
+    if (xdataPortMode == 1) {
+      xdataSerial.print("[err]: humidity CHECK FAILED - dry reading ");
+      xdataSerial.print(dryRH); xdataSerial.println(" %RH (>2)");
+    }
+  } else {
+    humidityCheckError = false;
+    if (xdataPortMode == 1) {
+      xdataSerial.println("[info]: humidity CHECK passed");
+    }
+  }
+}
+#endif
+
 void flightHeatingHandler() {
   if (referenceHeating) {
     float cutOutTemp = readThermistorTemp();  //maintaining reference area temperature of ~20*C
@@ -4266,6 +4295,36 @@ void flightHeatingHandler() {
   }
 }
 
+// MCU die temperature from the STM32 internal temperature sensor (both boards).
+// The two STM32 families behave very differently, so each is handled correctly:
+//   * STM32L4 (RSM4x4): the sensor voltage RISES with temperature (positive slope) and
+//     the chip ships with two factory calibration points (TS_CAL1 @30C, TS_CAL2 @130C,
+//     both taken at VDDA = 3.0 V). We interpolate between them and normalise the live
+//     reading to that 3.0 V reference via VREFINT - this is the accurate, no-guess method.
+//   * STM32F1 (RSM4x2): no factory cal; the sensor voltage FALLS with temperature, so we
+//     use the classic (V25 - Vsense)/avg_slope formula with cpuTempSensorVoltageAt25degC.
+// Falls back to the board-temperature proxy if the internal channel is not exposed.
+float readMcuTemperature() {
+#if defined(ATEMP)
+  float tsRaw = (float)analogRead(ATEMP);
+  #if defined(RSM4x4) && defined(TEMPSENSOR_CAL1_ADDR) && defined(TEMPSENSOR_CAL2_ADDR)
+    const uint16_t c1 = *TEMPSENSOR_CAL1_ADDR;
+    const uint16_t c2 = *TEMPSENSOR_CAL2_ADDR;
+    if (c2 == c1) return (float)readAvgIntTemp();
+    #if defined(AVREF) && defined(VREFINT_CAL_ADDR)
+      uint32_t vrefRaw = analogRead(AVREF);
+      if (vrefRaw > 0) tsRaw = tsRaw * (float)(*VREFINT_CAL_ADDR) / (float)vrefRaw;  // normalise to the 3.0 V cal supply
+    #endif
+    return (float)(TEMPSENSOR_CAL2_TEMP - TEMPSENSOR_CAL1_TEMP) * (tsRaw - (float)c1) / (float)(c2 - c1) + (float)TEMPSENSOR_CAL1_TEMP;
+  #else
+    float vSense = (tsRaw / 1024.0f) * 3.0f;   // F100: 10-bit ADC, regulated 3.0 V
+    return (cpuTempSensorVoltageAt25degC - vSense) / 0.0043f + 25.0f;  // negative slope
+  #endif
+#else
+  return (float)readAvgIntTemp();   // internal channel not exposed by the core for this variant
+#endif
+}
+
 int readAvgIntTemp() {
   int radioTemp = static_cast<int>(readRadioTemp());
   int thermistorTemp = static_cast<int>(readThermistorTemp());
@@ -4276,12 +4335,23 @@ int readAvgIntTemp() {
     thermistorTemp = radioTemp;
   }
 
-  if(pressureMode == 1 && !rpm411Error) {
-    return static_cast<int>( (radioTemp + thermistorTemp + static_cast<int>(rpm411InternalTemperature) ) / 3);
+  long sum = (long)radioTemp + thermistorTemp;
+  int count = 2;
+
+  if (pressureMode == 1 && !rpm411Error) {
+    sum += static_cast<int>(rpm411InternalTemperature);
+    count++;
   }
-  else {
-    return static_cast<int>( (radioTemp + thermistorTemp) / 2);
-  }
+
+#if defined(ATEMP)
+  // Include the MCU die temperature in the board-temperature average (it sits in the same
+  // enclosure and tracks the PCB closely). Guarded by ATEMP so readMcuTemperature() never
+  // falls back to readAvgIntTemp() here, which would recurse.
+  int mcuTemp = static_cast<int>(readMcuTemperature());
+  if (abs(mcuTemp) < 150) { sum += mcuTemp; count++; }
+#endif
+
+  return static_cast<int>(sum / count);
 }
 
 void generateSi4032FmTone(unsigned int toneFrequency, unsigned int lengthMs) {
@@ -4390,9 +4460,9 @@ void humidityModuleHeaterPowerControl(unsigned int heaterPower) {  //0 - OFF, 1-
   extHeaterPwmStatus = heaterPower;
 
   if (xdataPortMode == 1) {
-    xdataSerial.print("[info]: Humidity module heating power is ");
+    xdataSerial.print("[info]: extHeater pwr ");
     xdataSerial.print(heaterPower);
-    xdataSerial.println("/500 .");
+    xdataSerial.println("/500");
   }
 
   if (heaterPower == 0) {
@@ -4860,6 +4930,13 @@ bool runXdataCommand(const char* line) {
     humidityDeltaCalibrationDebug();
     humidityCalibrationDebug = false;
     setStage(_prevStage);   // restore the pre-debug stage so the stage leaves 25/26 and Ground Control can reopen the dialog next time
+#if defined(RSM4x4)
+  // Only the humidity check is re-runnable. The temperature check is start-up only: by
+  // now the humidity check may have heated the boom, so a fresh comparison is invalid.
+  } else if (strncmp(cmd, "CMD:HUMCHECK", 12) == 0 && sensorBoomEnable && humidityModuleEnable) {
+    xdataSerial.println(F("[info]: Starting humidity CHECK..."));
+    humidityCheck();
+#endif
   } else if (strncmp(cmd, "CMD:STOP", 8) == 0) {
     _hrdStopRequested = true;
     xdataSerial.println(F("[info]: Stop requested."));
@@ -5008,6 +5085,7 @@ void interfaceHandler() {
   NW_D(); NW_I(sensorBoomEnable);
   NW_D(); NW_F(readThermistorTemp(), 2);
   NW_D(); NW_F(mainTemperatureValue, 2);
+  NW_D(); NW_F(extHeaterTemperatureValue, 2);
   NW_D(); NW_F(humidityValue, 1);
   NW_D(); NW_F(pressureValue, 2);
   NW_D(); NW_F(mainTemperatureCorrectionC, 2);
@@ -5020,7 +5098,6 @@ void interfaceHandler() {
   NW_D(); NW_I(zeroHumidityCalibration);
   NW_D(); NW_F(humidityCapacitanceRangeDelta, 2);
   NW_D(); NW_F(zeroHumidityCapacitance, 2);
-  NW_D(); NW_F(tempSensorBoomCalibrationFactor, 2);
   NW_D(); NW_I(calibrationError);
   NW_D(); NW_I(extHeaterPwmStatus);
   NW_D(); NW_I(referenceHeaterStatus);
@@ -5028,22 +5105,19 @@ void interfaceHandler() {
   NW_D(); NW_I(humidityModuleHeating);
   NW_D(); NW_I(sensorBoomMainTempError);
   NW_D(); NW_I(sensorBoomHumidityModuleError);
+  // Measurement mode + MCU temperature + factory-mode self-check diagnostics
+  NW_D(); NW_I(FACTORY_CAL_ACTIVE ? 2 : 1);   // measurementMode: 1 = NFW, 2 = Vaisala factory
+  NW_D(); NW_F(readMcuTemperature(), 1);       // MCU die temperature (°C)
+  NW_D(); NW_I(temperatureCheckError);
+  NW_D(); NW_I(humidityCheckError);
+  NW_D(); NW_S(boomSerialNumber.c_str());       // measurement-boom serial (factory mode); empty otherwise
+  NW_D(); NW_F(humidityCapacitance, 2);        // kept: used by the NFW humidity-range calibration window
   // Pressure & RPM411
   NW_D(); NW_I(pressureMode);
   NW_D(); NW_F(rpm411InternalTemperature, 2);
   NW_D(); NW_S(RPM411SerialNumber);
   NW_D(); NW_I(rpm411Error);
   NW_D(); NW_F(seaLevelPressure, 2);
-  // 11 - Raw sensor data
-  NW_D(); NW_F(mainTemperatureFrequency,       2);
-  NW_D(); NW_F(mainTemperatureResistance,      2);
-  NW_D(); NW_F(extHeaterTemperatureFrequency,  2);
-  NW_D(); NW_F(extHeaterTemperatureResistance, 2);
-  NW_D(); NW_F(extHeaterTemperatureValue,      2);
-  NW_D(); NW_F(humidityCapacitance,            2);
-  NW_D(); NW_F(maxHumidityCapacitance,         2);
-  NW_D(); NW_I(THERMISTOR_R25);
-  NW_D(); NW_I(THERMISTOR_B);
   // 12 - Recorder
   NW_D(); NW_I(dataRecorderEnable);
   NW_D(); NW_I(dataRecorderInterval);
@@ -5150,7 +5224,7 @@ void humidityDeltaCalibrationDebug() {
 
     setStage("26");
     if (xdataPortMode == 1) {
-      xdataSerial.println("[info]: Ready - place sensor at 100%RH, observe humidityCapacitanceRangeDelta");
+      xdataSerial.println("[info]: place at 100%RH, watch humidityCapacitanceRangeDelta");
     }
 
     float _capDeltaMax = 0.0f;
@@ -5161,7 +5235,7 @@ void humidityDeltaCalibrationDebug() {
 
       sensorBoomHandler();
 
-      float _liveDelta = (humidityCapacitance - zeroHumidityCapacitance) * 0.95f;  // delta vs zero-humidity capacitance, with calibration factor
+      float _liveDelta = (humidityCapacitance - zeroHumidityCapacitance) * 1.08f;  // delta vs zero-humidity capacitance, with calibration factor
       if (_liveDelta > _capDeltaMax) _capDeltaMax = _liveDelta;
       // humidityCapacitanceRangeDelta holds the PEAK delta - that is the value to record and
       // put in CONFIG.h.
@@ -5191,7 +5265,7 @@ void humidityDeltaCalibrationDebug() {
       if (analogRead(VBTN_PIN) + 50 > analogRead(VBAT_PIN) && analogRead(VBAT_PIN) > 100) {
         setStage("27");
         if (xdataPortMode == 1) {
-          xdataSerial.println("[info]: Power off - reprogram humidityCapacitanceRangeDelta, disable humidityCalibrationDebug");
+          xdataSerial.println("[info]: power off - set humidityCapacitanceRangeDelta, disable debug");
         }
 
         hardwarePowerShutdown();
@@ -5328,14 +5402,21 @@ void RPM411ParseConfigData() {
   // the RPM411 is absent or the read failed) would show up as the replacement glyph
   // and, worse, break the frame checksum so the whole frame is dropped. Stop at the
   // first non-printable byte, which also trims null/0xFF padding.
+  char tmp[9];
   int n = 0;
   for (int i = 0; i < 8; i++) {
     char c = (char)RPM411ConfigData[1][(41 + i) % 33];
     if (c < 0x20 || c > 0x7E) break;
-    RPM411SerialNumber[n++] = c;
+    tmp[n++] = c;
   }
+  tmp[n] = '\0';
 
-  RPM411SerialNumber[n] = '\0';
+  // Only overwrite the stored serial if we actually decoded one. A disconnected or
+  // garbled read yields an empty string - in that case keep the last known serial so it
+  // does not vanish to "--" in Ground Control on a momentary RPM411 disconnect.
+  if (n > 0) {
+    memcpy(RPM411SerialNumber, tmp, n + 1);
+  }
 }
 
 void RPM411ParseReadings() {
@@ -5621,21 +5702,39 @@ void setup() {
     foxHuntModeLoop();
   }
 
+  // Factory (Vaisala) mode uses absolute calibration polynomials, so the NFW
+  // startup temperature-offset calibration is skipped - otherwise it would add an
+  // offset on top of the factory reading and shift it to environmentStartupAirTemperature.
+#if defined(RSM4x4)
+  if (sensorBoomEnable && FACTORY_CAL_ACTIVE) {
+    // ===== Factory (Vaisala) mode (RSM4x4 / RSM4x5) =====
+    // The NFW startup calibrations (temperature offset, zero-humidity, capacitance
+    // range) are intentionally NOT run - the factory coefficients are absolute.
+    // Optional factory-mode self-checks.
+    if (factoryTemperatureCheck) {
+      temperatureCheck();
+    }
+    if (factoryHumidityCheck && humidityModuleEnable) {
+      humidityCheck();
+    }
+  } else
+#endif
+  // ===== NFW mode: original startup calibration chain (default on RSM4x2) =====
   if (sensorBoomEnable) {
     temperatureCalibration();
-  }
 
-  if (sensorBoomEnable && reconditioningEnabled) {
-    reconditioningPhase();
-  }
-
-  if (sensorBoomEnable && humidityModuleEnable && zeroHumidityCalibration) {
-    if (xdataPortMode == 1) {
-      xdataSerial.println("[info]: Humidity cal start");
+    if (reconditioningEnabled) {
+      reconditioningPhase();
     }
-    zeroHumidityCheck();
-    if (xdataPortMode == 1) {
-      xdataSerial.println("[info]: Humidity cal done");
+
+    if (humidityModuleEnable && zeroHumidityCalibration) {
+      if (xdataPortMode == 1) {
+        xdataSerial.println("[info]: Humidity cal start");
+      }
+      zeroHumidityCheck();
+      if (xdataPortMode == 1) {
+        xdataSerial.println("[info]: Humidity cal done");
+      }
     }
   }
 

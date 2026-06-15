@@ -169,13 +169,12 @@ constexpr bool aprsEnable = true;   // Enable APRS TX
 
 constexpr float aprsFreqTable[] = {432.5};
 // Same format as horusV3FreqTable.
-// dataRecorder and lowAltitudeFastTxMode use the first entry only.
+// lowAltitudeFastTxMode uses the first entry only.
 
 char aprsCall[]   = "N0CALL";       // Your amateur radio callsign
-String aprsComment = " NFWv66";     // Comment appended to every APRS packet
+String aprsComment = " NFWv67";     // Comment appended to every APRS packet
 
 constexpr char aprsSsid          = 11;       // Callsign SSID
-constexpr char aprsDest[]        = "APRNFW"; // Destination address
 constexpr char aprsDigi[]        = "WIDE2";  // Digipeater callsign
 constexpr char aprsDigiSsid      = 1;        // Digipeater SSID
 constexpr char aprsSymbolOverlay = 'O';      // 'O' = balloon icon, '_' = WX station
@@ -253,20 +252,19 @@ constexpr int8_t   foxHuntRadioPower        = 7;     // TX power (see Pip sectio
    SECTION 11 - STATUS LEDs
 
    LED meanings during normal operation:
-     Solid Green          - all OK, GPS fix held, no warnings. Ready / flying normally.
-     Blinking Orange      - running but no GPS fix yet, or a non-critical warning
-                            (searching for satellites, low-ish battery).
-     Blinking / Solid Red - an error is active (sensor-boom fault, RPM411 fault,
-                            calibration error or battery warning).
-     Off                  - LEDs disabled, or above ledAutoDisableHeight.
+     Solid Green           - all OK, GPS fix held, no warnings. Ready / flying normally.
+     Solid Orange          - running OK but no GPS fix yet.
+     Solid Red             - an error is active (sensor-boom fault, RPM411 fault,
+                              calibration error or battery warning).
+     Off                   - LEDs disabled, or above ledAutoDisableHeight.
 
    LED meanings during startup and calibration:
-     Solid Red            - hardware initialisation right after power-on (stages 01-04).
-     Blinking Orange      - calibration in progress (temperature / reconditioning /
-                            zero-humidity). The module is hot (~140 C) - keep clear of the boom.
-     Red blinks           - an error during start-up or calibration (e.g. sensor-boom
-                            fault or calibration error).
-     Green ×5             - boot complete, system started, entering normal operation.
+     Solid Red             - hardware initialisation right after power-on (stages 01-04).
+     Blinking Orange       - calibration in progress (temperature / reconditioning /
+                              zero-humidity). The module is hot (~140 C) - keep clear of the boom.
+     Red blinks            - an error during start-up or calibration (e.g. sensor-boom
+                              fault or calibration error).
+     Green ×5              - boot complete, system started, entering normal operation.
    ============================================================ */
 
 bool           ledStatusEnable      = true;   // Enable status LEDs
@@ -278,7 +276,7 @@ constexpr int16_t ledAutoDisableHeight = 1000; // Altitude (m) above which LEDs 
 
    Mode 0 - disabled
    Mode 1 - combined log + telemetry (recommended): human-readable [info]/[warn]/[err] lines
-            AND periodic compact $NFW telemetry frames readable by Ground Control Software
+            AND periodic compact $NFW telemetry frames readable by Ground Control Software at nfw.flada.ovh
    Mode 2 - GPS bridge: raw NMEA echoed to the xdata port at 115200 bps
    Mode 3 - OIF411 ozone sonde (9600 bps) - see Section 12b for OIF411 settings
    ============================================================ */
@@ -301,7 +299,7 @@ constexpr uint16_t oif411MsgWaitTime = 1100; // OIF411 response timeout (ms)
    • Measure your specific pump time (T100) before launch and set ozonePumpTime.
    • Let I0 stabilise through the ozone-destruction filter and record it as
      ozoneBackgroundCurrent before launch.
-   • The Data Recorder is strongly recommended to log full OIF411 telemetry.
+   • The Data Recorder is very strongly recommended to log full OIF411 telemetry.
    ============================================================ */
 
 constexpr float ozonePumpTime          = 28.5f;   // Pump time for 100 ml of air [s]; measure with filter before launch
@@ -380,6 +378,81 @@ unsigned long     gpsPowerSaveDebounce = 300000; // Min interval between GPS pow
 bool sensorBoomEnable      = true;   // Enable sensor boom measurements and diagnostics
 constexpr bool sensorBoomPowerSaving = false;  // Power saving: read the boom only every sensorBoomPowerSavingInterval
 unsigned long sensorBoomPowerSavingInterval = 30000; // Boom read interval in power-saving mode (ms), default 30000 = 30 s
+
+
+/* ============================================================
+   SECTION 15b - SENSOR CALIBRATION MODE
+
+   Selects how temperature and humidity are computed. The switch governs the
+   WHOLE measurement chain (main temp, heater temp, humidity) - nothing is
+   mixed between modes.
+
+     1 - NFW calibration. The in-house calibration and compensation algorithms
+         (computed from reference-resistor ratio + PT1000 curve, capacitance + zero-humidity
+         range and passed through extensive correction scripts). Works on every board.
+
+     2 - Factory (Vaisala) calibration (default). Uses the sonde's original
+         factory coefficients, reproducing the Vaisala / rs1729 conversion for
+         full factory accuracy. The coefficients are sonde-specific: the Sounding
+         Software fetches them per serial number from SondeHub and pastes them
+         in below.
+
+   BOARD SUPPORT:
+     - RSM4x4 / RSM4x5 (newer boards): both modes are available; this setting
+       chooses between them (default 2 = factory / Vaisala).
+     - RSM4x2 / RSM4x1 (older boards): NFW calibration ONLY. The factory (Vaisala)
+       chain is not compiled on the F100 - its 64 KB flash and 8 KB RAM cannot hold
+       the per-boom coefficients plus the double-precision Vaisala maths - so this
+       whole Section 15b block exists only on RSM4x4 / RSM4x5.
+
+   NOTE: Leave the coefficients at 0 when unused - the Sounding Software fills them
+   when you load a serial number.
+   ============================================================ */
+#if defined(RSM4x4)
+uint8_t sensorCalibrationMode = 2;   // 1 = NFW, 2 = factory (Vaisala). RSM4x4 / RSM4x5 only.
+
+// --- Factory calibration coefficients (filled per-serial from SondeHub) ---
+// Reference resistors (Ohm) / capacitors (pF):
+float factoryRefResistorLow   = 750;    // refResistorLow  (low ref, getSensorBoomFreq(1))
+float factoryRefResistorHigh  = 1100;   // refResistorHigh (high ref, getSensorBoomFreq(2))
+float factoryRefCapLow        = 0;      // refCapLow  (0 pF, getSensorBoomFreq(7))
+float factoryRefCapHigh       = 47;     // refCapHigh (47 pF, getSensorBoomFreq(6))
+// Main temperature polynomial: taylorT[0..2], calT, polyT[0..1]
+float factoryTaylorT0 = 0;
+float factoryTaylorT1 = 0;
+float factoryTaylorT2 = 0;
+float factoryCalT     = 0;
+float factoryPolyT0   = 0;
+float factoryPolyT1   = 0;
+// Heater / RH-sensor temperature polynomial: taylorTU[0..2], calTU, polyTrh[0..1]
+float factoryTaylorTU0 = 0;
+float factoryTaylorTU1 = 0;
+float factoryTaylorTU2 = 0;
+float factoryCalTU     = 0;
+float factoryPolyTrh0  = 0;
+float factoryPolyTrh1  = 0;
+// Humidity calibration: calibU[0..1] (capacitance normalisation)
+float factoryCalibU0 = 0;
+float factoryCalibU1 = 0;
+// Humidity calibration matrix matrixU (7 rows x 6 cols, row-major). Filled per-boom serial.
+const float factoryMatrixU[42] = {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0};
+
+/* --- Factory-mode startup self-checks (mode 2 only) ---
+   These replace the NFW startup calibrations (which are disabled in factory mode,
+   because the Vaisala coefficients are absolute and need no per-flight tuning).
+   They do NOT alter any reading - they are only for diagnostics and to ensure the best accuracy and repeatability. Each is simply on/off; the procedure itself is fixed (no tuning).
+
+   factoryTemperatureCheck (runs first):
+       One sensor-boom measurement; verifies the main temperature and the heater
+       temperature agree within 3 °C. A larger gap flags a temperature-check error.
+
+   factoryHumidityCheck (runs after the temperature check):
+       Reconditions the humidity sensor (heats it to ~140 °C for one minute), then,
+       while holding ~140 °C, reads humidity. A bone-dry sensor must read < 5 %RH; a
+       higher reading, or failure to exceed 115 °C within the minute, flags an error. */
+bool factoryTemperatureCheck = true;
+bool factoryHumidityCheck    = true;
+#endif  // RSM4x4 factory-calibration block (Section 15b)
 
 
 /* ============================================================
@@ -530,7 +603,7 @@ constexpr uint16_t      lowAltitudeFastTxInterval  = 1;       // Inter-TX delay 
 constexpr uint16_t flightStartClimbThreshold = 150; // Climb (m) above the launch baseline that marks the start of flight.
                                                     // Detection is relative to the altitude at the first GPS fix, so it
                                                     // works at any launch elevation and for any ascent rate (incl. slow
-                                                    // solar / zero-pressure balloons). Replaces flightDetectionAltitude.
+                                                    // solar / zero-pressure balloons). Replaces previous flightDetectionAltitude.
 constexpr uint16_t burstDetectionThreshold = 800; // Altitude drop below maxAlt confirming burst (m)
 
 
@@ -549,8 +622,27 @@ bool aprsToneCalibrationMode = false;
 // Transmits 1200 Hz and 2200 Hz AFSK tones for APRS delay calibration.
 // DO NOT enable for actual flights - development/calibration use only.
 
+constexpr char aprsDest[] = "APRNFW";
+// APRS AX.25 destination address / tocall. APRNFW is the OFFICIAL registered tocall for
+// this firmware - it is recognised by the APRS network and identifies the device as
+// running RS41-NFW. This is a system value: do not change it (which is why it is not
+// exposed).
+
 #define THERMISTOR_R25 10000   // Onboard thermistor resistance at 25 °C (Ω)
 #define THERMISTOR_B   3900    // Onboard thermistor Beta coefficient
+
+/* MCU internal temperature sensor (both RSM4x2 and RSM4x4).
+   cpuTempSensorVoltageAt25degC is the temperature-sensor output voltage at 25 °C.
+   It is fairly repeatable across units, so the default 1.424 V is fine to leave as-is.
+   It can optionally be loaded per-serial from the factory subframe
+   (cpuTempSensorVoltageAt25deg) for a touch more accuracy, but this is not required. */
+float cpuTempSensorVoltageAt25degC = 1.424;
+
+// Measurement-boom serial number. The Sounding Software fills this with the serial you
+// enter for factory (Vaisala) mode; it is reported in the $NFW telemetry so Ground
+// Control can show which boom's calibration the firmware was built with. Leave empty
+// otherwise (NFW mode does not need it).
+String boomSerialNumber = "";
 
 
 /* ============================================================
@@ -571,7 +663,7 @@ bool aprsToneCalibrationMode = false;
          Hold time may vary ~1.5-3 s depending on CPU load.
    ============================================================ */
 
-constexpr int8_t buttonMode = 1;
+constexpr int8_t buttonMode = 0;
 
 
 /* ============================================================
@@ -648,8 +740,8 @@ constexpr unsigned int dataRecorderInterval        = 300000; // Interval between
 /* ============================================================
    SECTION 25 - KALMAN FILTER & HEATER PID CONSTANTS
    Carefully tuned defaults. Modify only if you know what you
-   are doing. Changing these can destabilise sensor readings
-   or heater control loops.
+   are doing. Even slight changes of these can easily destabilise
+   sensor readings or heater control loops.
    ============================================================ */
 
 // Kalman filter - pressure:
@@ -665,9 +757,23 @@ float humidityKalmanEst      = 5;
 float humidityKalmanErrorEst = 2;      // Initialised to humidityKalmanError
 
 // PID controller - humidity module heater:
-float extHeaterProportionalK = 2.5;   // Proportional gain
-float extHeaterIntegralK     = 0.6;   // Integral gain
-float extHeaterDerivativeK   = 0.4;   // Derivative gain
+float extHeaterProportionalK = 2.48;   // Proportional gain
+float extHeaterIntegralK     = 0.6;  // Integral gain
+float extHeaterDerivativeK   = 0.49;  // Derivative gain
+
+// You do not edit this.
+/* Helper used across the sketch: true when the factory (Vaisala) chain is active.
+   In factory mode the NFW startup calibrations (temperature offset / zero-humidity)
+   are skipped, because the factory polynomials are absolute - applying an NFW
+   offset on top of them would corrupt the readings.*/
+#if defined(RSM4x4)
+// RSM4x4 / RSM4x5: the mode is user-selectable (1 = NFW, 2 = factory).
+#define FACTORY_CAL_ACTIVE (sensorCalibrationMode == 2)
+#else
+// RSM4x2 / RSM4x1 (and any other board): NFW calibration only - the factory chain
+// is never compiled here, so this helper is always false.
+#define FACTORY_CAL_ACTIVE (0)
+#endif
 
 
 #endif  // NFW_CONFIG_H

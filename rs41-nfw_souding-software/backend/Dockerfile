@@ -17,6 +17,7 @@ COPY requirements.txt .
 RUN pip3 install --no-cache-dir -r requirements.txt
 
 COPY app.py .
+COPY rs41_subframe.py .
 COPY static/ ./static/
 
 RUN mkdir -p /workspace /logs && chown -R builder:builder /workspace /logs /app
