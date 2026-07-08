@@ -3,13 +3,18 @@
 **NOTE:** This firmware works with the **ALL** variants of RS41 radiosondes, with the new (2023 and 2025) ones too, bringing full hardware and software support with lots of features for everyone. More below.<br><br>
 Vaisala some time ago began launching new RS41 sonde revisions, with new internal design. They can be recognized by a last digit of 4 or 5 of the PCB model (eg. `RSM414`, `RSM424`, `RSM425`). This firmware is an approach for reusing them as amateur devices for many different purposes. It brings full and thorough support for [all revisions](../hw/README.md#older-vs-newer---how-do-i-know-which-one-im-holding-now).<br>
 
-> ## 🎈 NFW Sounding Software - [nfw.flada.ovh](https://nfw.flada.ovh)
-> **The easiest way to use this firmware - straight from your browser, nothing to install.**
-> It joins two tools in one page:
-> * a **Firmware Builder** that configures and compiles your firmware online (no Arduino IDE, no toolchain), then hands you a ready `.bin`, and
-> * a **Ground Station** that connects to the sonde over USB-serial for pre-flight checks, live sensor readout, calibration values and a map.
+> ## 🎈 Start here - do everything in your browser at [nfw.flada.ovh](https://nfw.flada.ovh)
+> **This is all you need. No Arduino IDE, no toolchain, no desktop flashing tool.** The
+> **NFW Sounding Software** takes you from a blank sonde to a flight-ready one, entirely in
+> the browser (desktop Chrome, Edge or Opera). Three steps:
 >
-> Full description in the [RS41-NFW Sounding Software](#rs41-nfw-sounding-software) section below.
+> 1. **Configure** - open the **Firmware Builder**, pick your board (`RSM4x4/4x5` or `RSM4x2/4x1`) and set your options with guided help. For sensor accuracy, just type the measurement-boom serial and the original **Vaisala factory calibration** is pulled in for you.
+> 2. **Compile** - one click builds your firmware on the server and hands you a ready `.bin`.
+> 3. **Flash** - press **Flash over WebUSB** and the page writes it to your sonde through your ST-Link. A factory-new sonde is **unlocked automatically** first. You do **not** need to flash manually - the browser does it. A full flashing reference is in [FLASHING.md](./fw/FLASHING.md).
+>
+> The same page also has a **Ground Station**: connect the sonde over USB-serial for pre-flight checks, live sensor readout, calibration values and a map. Wiring for both the programmer and the serial adapter is in the [flashing guide](./fw/FLASHING.md).
+>
+> Full description in the [RS41-NFW Sounding Software](#rs41-nfw-sounding-software) section below. Prefer to do it by hand? The [manual flashing](#firmware-flashing) and [local build](#firmware-compilation) routes are still fully documented.
 
 * [RS41-NFW Firmware features](#rs41-nfw-firmware-features)
 * [Terms of Use](#terms-of-use)
@@ -73,7 +78,12 @@ Vaisala some time ago began launching new RS41 sonde revisions, with new interna
 
 
 ## Terms of Use
-**RS41-NFW** project (author - Franek *nevvman SP5FRA*) is released under **GNU GPL-3.0 license**. This software is **open source** and **free to use for amateur projects**, **which cannot lead to profit** in any kind. This excludes usage of this firmware as a commercial product. **For commercial use, please contact me**. 
+**RS41-NFW** project (author - Franek *nevvman SP5FRA*) is released under the **GNU GPL-3.0 license**, with two clarifications new in this release (full details in [`LICENSING.md`](LICENSING.md)):
+
+* Most of the firmware and the whole Sounding Software stay **GPL-3.0**, now with an explicit **linking exception** so the GPL code and the source-available modules below can legally share one compiled binary.
+* The **sensor boom** acquisition/calibration and the **GPS readout** code are carved out as **Source-Available Modules** under the [RS41-NFW Source-Available License](LICENSE.source-available). You can read, build and use them for personal/non-commercial purposes, but not sell them or ship modified closed versions. Every covered function is marked in-source with an `// [RS41-NFW-SA]` banner.
+
+This software is **open source** and **free to use for amateur projects**, **which cannot lead to profit** in any kind. This excludes usage of this firmware as a commercial product. **For commercial use, please contact me**. Bundled third-party code (TinyGPS++, Horus/Golay, STM32 variant files) keeps its own upstream license.
 The creator of this project isn't at all responsible for any kind of harm made by devices operated with these instructions. Follow your local law about radio transmissions and balloon flights. Altough the firmware **tested successfully** on several dozen of flights, keep in mind that it is still a *hobbyst project*.
 
 
@@ -88,7 +98,7 @@ For more details about HAB and sonde hunting, please look on google and social m
 
 
 ## RS41-NFW Sounding Software
-A single web application that takes you from a blank sonde to a flight-ready one, entirely in the browser, at [nfw.flada.ovh](https://nfw.flada.ovh) - ready to use, nothing to install. It is the recommended way to use RS41-NFW and it replaces three older, separate tools that used to live in this repository: the Python *Ground Control Software*, the *gcs_webserial* prototype and the standalone *dataRecorder decoder* (the data recorder now uses a different on-air format, so the old decoder no longer applies).
+A single web application that takes you from a blank sonde to a flight-ready one, entirely in the browser, at [nfw.flada.ovh](https://nfw.flada.ovh) - ready to use, nothing to install. It is the recommended way to use RS41-NFW.
 
 The interface has **two tabs**.
 
@@ -96,31 +106,30 @@ The interface has **two tabs**.
 Builds a ready-to-flash `.bin` without any local toolchain (no Arduino IDE, no STM32 core, no libraries).
 
 * **Firmware source** - fetch the latest firmware straight from this GitHub repository. The page remembers which source and version is currently loaded.
-* **Board selection** - pick `RSM4x4 / RSM4x5` (STM32L412) or `RSM4x2 / RSM4x1` (STM32F100). A side-by-side comparison table lists every hardware and feature difference (flash/RAM, GPS module, which radio modes fit, build optimisation), so you know what your board supports before you build - I really recommend only to use the new RS41 revisions if possible.
+* **Board selection** - pick `RSM4x4 / RSM4x5` (STM32L412) or `RSM4x2 / RSM4x1` (STM32F100). A side-by-side comparison table lists every hardware and feature difference (GPS module, radio modes, algorithms), so you know what your board supports before you build - I really recommend only to use the new RS41 revisions if possible.
 * **Guided configuration** - every firmware option from `CONFIG.h` is exposed as a form with tons of manuals and guides. Irrelevant options hide themselves based on the board and your other choices.
-* **Online compile** - one click compiles your configuration on the server with live build log output. When it finishes, you download the compiled `.bin` (and optionally a a plain-text `config.txt`, as a backup of configured options).
-* **Flashing help** - after a successful build the page shows exactly what to do next: flash the `.bin` with [OpenOCD](#firmware-flashing) (cross-platform terminal commands matched to your selected MCU) or [STM32CubeProgrammer](#firmware-flashing) (Windows/Linux GUI), with a link to my [flashing guide](./fw/FLASHING.md).
+* **Online compile** - one click compiles your configuration on the server with live build log output. When it finishes, you flash it in the browser or download the compiled `.bin`, and can **Save settings** (a small text file of the exact configuration) to reload later.
+* **Settings file (local only)** - save the whole configuration to a small text file and load it back later, all in the browser. The file is generated and parsed on your machine and never uploaded, so a configuration you share stays yours. Handy for keeping a per-sonde profile or reusing a known-good setup.
+* **Flashing** - after a successful build the page shows exactly what to do next: **flash from your browser** (Chromium WebUSB) with your ST-Link, flash the `.bin` with [OpenOCD](#firmware-flashing) (cross-platform terminal commands auto-matched to your MCU), or with [STM32CubeProgrammer](#firmware-flashing) (Windows/Linux GUI)
 
 ### Tab 2 - Ground Station
 Connects directly to the sonde over USB (to the sonde's XDATA UART pins) and turns the pre-flight routine into a clear checklist. It uses the browser **Web Serial API**, so it runs in a Chromium-based browser (Chrome / Edge) with no driver or app to install. <br>
 If you don't know how to connect the sonde to your computer via serial adapter, check the [serial connection guide](./fw/FLASHING.md#connecting-the-serial-interface-to-the-sonde).
 
-* **Live telemetry** - decodes the compact serial frames the firmware emits: operation stage, all temperatures, humidity, pressure and its source, diagnostics and debug, battery voltage, radio status and more.
+* **Live telemetry** - decodes the compact serial frames the firmware emits: operation stage, all temperatures, humidity, pressure, diagnostics and debug, battery voltage, radio status and more.
 * **Pre-flight ground check** - a multi-phase guided procedure that walks you through start-up, calibration, sensor and GPS verification, up to the *ready for flight* stage, watching the live stage/LED state as it goes.
 * **Sensors and charts** - inline charts for the sensor and heater values, a pressure readout, and a GPS with stats and live position pin.
 * **Calibration helper** - surfaces the calibration values the firmware computes (temperature offset, zero-humidity capacitance, humidity range delta) so you can copy them straight back into the Firmware Builder for your next, fully-calibrated build. **Note:** for the **Vaisala factory mode** it downloads the boom's original factory PTU calibration from SondeHub by serial and compiles it into the firmware - no more troublesome calibration steps required, and a near-factory readout accuracy!
 
-> **A note on how it was built:** the Sounding Software (the web tool) was developed with the help of LLM tooling. The author assures that it has been through extensive testing and checking, that it provides stable, problem-free operation, and that it was carefully refined and hardened (input sanitisation, build sandboxing, abuse limits) before going live. You can be assured that all parts are working stabily.
-
 
 ## Installation guide
-A thorough, detailed project guide is available at the links below.<br>
 **The simplest path is the [NFW Sounding Software](#rs41-nfw-sounding-software) ([nfw.flada.ovh](https://nfw.flada.ovh)): configure and compile in the browser, then flash.** No more hard compilation guides.
 However, if you prefer to do everything by hand, read the documentation in the following header order:
 
+
 ## Firmware flashing
 See: [fw/FLASHING.md](./fw/FLASHING.md) <br>
-Covers OpenOCD (cross-platform terminal, the recommended route) and STM32CubeProgrammer (Windows/Linux, GUI and CLI).
+Covers OpenOCD (cross-platform terminal, the recommended route), STM32CubeProgrammer (Windows/Linux, GUI and CLI), and flashing from the browser over WebUSB with an ST-Link.
 
 
 ## Firmware compilation
@@ -138,6 +147,13 @@ See: [hw/README.md](./hw/README.md)
 
 
 ## Firmware changelog
+* `v68` - a big tooling, flashing and licensing release. Highlights:
+  * **Browser flashing (WebUSB + ST-Link).** Flash the compiled firmware straight from the Sounding Software with your ST-Link, nothing to install, on **both board families**. A **factory-new sonde is unlocked automatically** (read-out + write protections cleared) and the MCU is reset into the new firmware. ST-Link access check and steps for non-set computers are built in (though if you have flashed STM32s before you will have a working setup already - try the ST-Link veirication button), documented as [Method D](./fw/FLASHING.md#method-d---flash-from-the-browser-webusb--st-link).
+  * **Factory calibration on the old boards.** `RSM4x2` / `RSM4x1` (STM32F100) now run the **Vaisala factory calibration** too, not just the NFW model. The factory maths moved to single precision so it fits, giving the old boards manufacturer-grade temperature and humidity. They now require a downloaded boom calibration to measure.
+  * **Guidance popups.** The builder now speaks up before you commit to a discouraged setting, and guides more throughout the configuration process. Turning the **sensor boom off now automatically disables both heaters** and says so on the heating card - to minimise misconfiguration risks.
+  * **Private landing mode (RSM4x4, community-request feature).** Optionally moves every enabled mode onto its own private frequency once the sonde has flown, climbed above a threshold (default 3500 m) and descended back below it, keeping the touchdown spot off public maps. Labelling the payload "reward if returned" with your contact details is the better, friendlier choice, than hiding them from the maps.
+  * **Licensing.** The firmware stays GPL-3.0 with a linking exception; the **sensor-boom, heating and GPS-readout / intelligent-GPS modules** are now source-available under the [RS41-NFW Source-Available License](LICENSE.source-available) (see [`LICENSING.md`](LICENSING.md)).
+  * **Firmware fixes.** The calculated-pressure path and a couple of other spots moved from double to single-precision math, which drops the double-precision libm from the F100 build (fixes the overflow when switching pressure to *calculations*); added `-fno-strict-aliasing` as an LTO safeguard.
 * `v67` - **Vaisala factory calibration mode** (now the default sensor-boom mode). A new master switch in the sensor-boom section chooses between the **Factory (Vaisala) calibration** data or the **NFW calibration algorithms**, which reproduces the boom's original factory calibration - the full temperature polynomials and the humidity matrix surface fetched from SondeHub by the measurement-boom serial number - for manufacturer-grade temperature and humidity, the same accuracy you get from a normally received factory sonde. In factory mode the two optional **self-checks** run on start-up: a **temperature check** (to ensure that temperature sensors are working properly) and a **humidity check** (one-minute reconditioning at ~138 °C, then verifies a dry reading during so-called zero-humidity check at ~135 °C), each with its own operation stage and a diagnostic flag. New **MCU internal temperature** reading on both board families, also folded into the averaged board temperature. The `$NFW` telemetry now carries the measurement mode, MCU temperature, the check flags and the boom serial, and drops unused raw fields (sensor frequencies, resistances and capacitances) for simplicity; **Ground Control auto-detects the mode**, shows the matching command set and a brand-new diagnostics panel. The battery panel shows the pack voltage and a low-voltage warning before flight. Options that apply only to RSM4x4 now show or hide automatically with the selected board, and default `buttonMode` is **0**, as Mark suggested. On new RSM4x4 / RSM4x5 both calibration modes are available and selectable. The older **STM32F100 boards (RSM4x1 / RSM4x2) run the NFW calibration only**: the factory (Vaisala) chain is not compiled there - the F100's flash and 8 KB RAM cannot hold the per-boom coefficients plus the double-precision Vaisala maths - so the Firmware Builder hides the factory option for those boards and they use the proven NFW algorithms. Of course you can compile from source and modify the braces to fit your needs. Ground Control: a separate **Power** tab, a **battery-voltage** and **MCU-temperature** chart, small **OK / FAULT** badges on the temperature and humidity charts, and a **log live-sync** (auto-scroll pauses when you scroll up). Docs improvements and stability checks.
 * `v66` - **Brand-new, fully stable transmission scheduler** - rewritten from the ground up so every mode fires on its exact GPS-clock time slot, with the timing jitter of earlier versions gone. **Full, proper OIF411 ozone support** - complete decode of the Vaisala OIF411 ECC instrument over the XDATA port, with ozone partial pressure and ppbv computed and transmitted to ground. The firmware now uses the **board's external TCXO** as the radio reference, for more stable transmission frequency. **NFW Sounding Software** released ([nfw.flada.ovh](https://nfw.flada.ovh)) - a browser-based firmware builder and ground station that replaces the previous *Ground Control Software*, the *gcs_webserial* prototype and the standalone *dataRecorder decoder* (all three removed from the repo). All user settings moved to a dedicated `CONFIG.h` file, which the builder edits for you. Data Recorder reworked: it now rides dedicated Horus V3 pages (packet A - GPS quality, packet B - flight statistics, packet C - thermal/heater state) at a configurable interval, and runs on the RSM4x2 too (the older 64 KB board is now built with LTO so everything fits). New robust flight detection - the sonde declares flight after a configurable climb above the launch baseline (`flightStartClimbThreshold`, default 150 m), which works at any launch elevation and any ascent rate, replacing the old fixed-altitude trigger. Status-LED scheme clarified (5 quick green blinks = setup complete, red blinks = error). Docs overhaul.
 * `v65` - great code size optimisation (Horus V3 fits with all other freatures on the RSM4x2), lowering RSM4x2 memory usage down to 90%. GPS parser rewritten - now reports up to 99 satellites (no 12 GNSS SVS limits). RSM4x4 big GPS improvements - message and navigation rates optimised, intelligent GPS constellation management (user can select whether the sonde should focus on power efficiency or tracking performance, sonde automatically switches according to the signal quality), automatic GPS PSM modes, u-Blox Super-S technology, for further receiver sensitivity, trakcing performance and jamming-mitigation. GPS satellite filter optimisation - receiver now uses many more satellites for position calculation (can be sometimes over 30 sats). Final fix for overflow problems - dataRecorder is currently available in Horus V3 extraSensors (sent every 3 minutes). Others.
@@ -164,7 +180,7 @@ See: [hw/README.md](./hw/README.md)
 * `v44` - humidity readings accuracy improvement, temperature compensation improvement, GPS abnormalities detection with sending to ground in dataRecorder APRS extended packets, HDOP value in dataRecorder packets, other minor improvements
 * `v43` - minor improvements
 * `v42` - dataRecorder functionality improvement, which additionally sends power of all 3 heaters, temperatures of radio and references area and battery voltage in mV
-* `v41` - PWM humidity sensor heating, just like in the Vaisala firmware, which maintains the humidity module temperature ~5K above air temperature (by default). References heating improvement, which maintains the temperature more stabily and using 3 different power levels for power saving and efficiency. Improved calibration function based on variable heating power, speeding up the process. Pressure estimation (like in RS41-SG models?, here based on altitude, temperature and RH) sent via Horus and APRS WX packets. APRS coordinates conversion script adjustment based on RS41ng function. 
+* `v41` - PWM humidity sensor heating, just like in the Vaisala firmware, which maintains the humidity module temperature ~5K above air temperature (by default). References heating improvement, which maintains the temperature more stabily and using 3 different power levels for power saving and efficiency. Improved calibration function based on variable heating power, speeding up the process. Pressure estimation (like in RS41-SG models?, here based on altitude, temperature and RH) sent via Horus and APRS WX packets. APRS coordinates conversion script adjustment using the standard APRS coordinate encoding. 
 * `v40` - now the `referenceHeating` option works like in the Vaisala firmware, maintaing temperature around 18*C.
 * `v39` - performance improvements, minor changes
 * `v38` - bugfix for delay variable initialization, which could lead to overflow if set at 65 seconds or higher
@@ -213,7 +229,7 @@ See: [hw/README.md](./hw/README.md)
 
 
 ## References
-* [*RS41ng* - inspiration for this project (NFW is not a fork of any kind (too much differing to be called so), just a few pieces of it's code structure is used here)](https://github.com/mikaelnousiainen/RS41ng)<br>
+* [*RS41ng* - an inspiration for this project](https://github.com/mikaelnousiainen/RS41ng). RS41-NFW is **not** a fork and does **not** reuse code that originates from RS41ng - the two projects took inspiration from each other's ideas, but the RS41-NFW hardware sequences (radio, GPS, sensor boom) are implemented independently from the manufacturers' datasheets and reference material. Where formats are described as "compatible with RS41ng" it means on-air/wire-format interoperability, not shared source code.<br>
 * [**RS41ng - issues discussion about new models and supporting them**](https://github.com/mikaelnousiainen/RS41ng/issues/92)
 * [*RS41HUP* - also inspiration](https://github.com/darksidelemm/RS41HUP)<br>
 * [*radiosonde_hardware* - made reversing the new version easier](https://github.com/bazjo/radiosonde_hardware)<br>

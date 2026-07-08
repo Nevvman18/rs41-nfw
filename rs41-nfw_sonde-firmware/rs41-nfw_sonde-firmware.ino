@@ -1,12 +1,33 @@
 /*
 RS41-NFW - versatile, feature-rich and user-friendly custom firmware for ALL revisions of Vaisala RS41 radiosondes
-Released on GPL-3.0 license.
 Authors: Franek Łada (nevvman, SP5FRA)
 
-Version 66 (public, stable)
+Version 68 (public, stable)
 
 All code and dependencies used or modified here that don't origin from me are described in code comments and repo details.
 https://github.com/Nevvman18/rs41-nfw
+
+-------------------------------------------------------------------------------
+ LICENSING (see LICENSING.md for the full text and the authoritative file list)
+
+ The firmware is licensed GNU GPL-3.0, WITH one addition by the author:
+ a linking / combination exception (GPL-3.0 sec. 7) that permits combining the
+ GPL code with the Source-Available Modules described below and distributing the
+ resulting firmware binary.
+
+ Source-Available Modules - NOT licensed under the GPL. These cover the sensor
+ boom acquisition/calibration, the sensor-boom / humidity-module heating control,
+ and the GPS readout / NFW intelligent-GPS code. They are marked in-source with an
+ "[RS41-NFW-SA]" banner directly above each function, and are released under the
+ RS41-NFW Source-Available License (LICENSE.source-available): you may read, build
+ and use them for personal/non-commercial purposes, but not sell them or
+ redistribute modified closed versions.
+
+ RS41-NFW is inspired by the RS41ng project but does not reuse code originating
+ from it; the hardware sequences are implemented from the manufacturer datasheets.
+ Bundled third-party code keeps its own license: gps.h/gps.cpp is TinyGPS++
+ (Mikal Hart, LGPL-2.1); horus_l2.* contains Golay code (R. Morelos-Zaragoza).
+-------------------------------------------------------------------------------
 */
 
 /*
@@ -21,7 +42,7 @@ I wish You high, successful flights with a lot of data gathered with this firmwa
 Franek,
 Author of RS41-NFW
 */
-#define NFW_VERSION "RS41-NFW v67, GPL-3.0 Franek Lada (nevvman, SP5FRA)"  //This is the firmware version You are running
+#define NFW_VERSION "RS41-NFW v68, GPL-3.0 Franek Lada (nevvman, SP5FRA)"  //This is the firmware version You are running
 
 //===== Libraries and lib-dependant definitions (nothing to modify)
 /* No libraries are required to be installed, all dependencies are shipped within the project folder. */
@@ -234,6 +255,15 @@ uint8_t flightSustainedRise = 0;     // consecutive fixes >= climb threshold (no
 bool recorderInitialized = false;  //not init by default
 bool hasLanded = false;
 bool lowAltitudeFastTxModeEnd = false;
+#ifdef RSM4x4
+// Private landing mode (RSM4x4/4x5 only): latches true once the sonde has flown,
+// climbed above privateLandingAltitudeThreshold and then descended back below it.
+// While set, every enabled mode transmits only on its private frequency. It never
+// clears until power-off. privateLandingArmed records that the sonde has been above
+// the threshold in flight (independent of maxAlt / noise filtering).
+bool privateLandingActive = false;
+bool privateLandingArmed  = false;
+#endif
 
 // Sensor boom
 float mainTemperatureFrequency;
@@ -665,7 +695,7 @@ uint8_t readRegister(uint8_t address) {
   return result;
 }
 
-void setRadioFrequency(const float frequency_mhz) {  //adapted from RS41ng
+void setRadioFrequency(const float frequency_mhz) {  // Si4032 PLL setup per the manufacturer datasheet (approach inspired by RS41ng, no code reused)
   uint8_t hbsel = (uint8_t)((frequency_mhz * (30.0f / SI4032_CLOCK)) >= 480.0f ? 1 : 0);
 
   uint8_t fb = (uint8_t)((((uint8_t)((frequency_mhz * (30.0f / SI4032_CLOCK)) / 10) - 24) - (24 * hbsel)) / (1 + hbsel));
@@ -1564,13 +1594,15 @@ float readThermistorTemp() {
   // Note: The Beta equation is T = 1 / ( (1 / T0) + (1 / B) * ln(R/R0) ) - 273.15
   // Adjust for correct temperature calculation
 
-  float temperatureK = 1.0 / (1.0 / (25 + 273.15) + (1.0 / THERMISTOR_B) * log(THERMISTOR_R25 / resistance));
-  float temperatureC = temperatureK - 273.15;
+  // logf (not log): single precision keeps the double-precision libm out of the
+  // flash-tight F100 build; the Beta-equation result is unchanged at sensor accuracy.
+  float temperatureK = 1.0f / (1.0f / (25.0f + 273.15f) + (1.0f / THERMISTOR_B) * logf(THERMISTOR_R25 / resistance));
+  float temperatureC = temperatureK - 273.15f;
 
   return temperatureC;
 }
 
-float readRadioTemp() {  //slightly modified script from rs41ng
+float readRadioTemp() {  // Si4032 internal temperature ADC per the datasheet (approach inspired by RS41ng, no code reused)
   // Configure ADC for temperature sensor and internal reference
   writeRegister(0x0F, 0b00000000);  // ADCSEL = 0 (temperature sensor), ADCREF = 0 (internal ref)
   writeRegister(0x12, 0b00100000);  // TSRANGE = -64°C to +64°C, slope 8mV/°C, offset enabled
@@ -1630,6 +1662,7 @@ void sendUblox(int Size, uint8_t* Buffer) {
   }
 }
 
+// [RS41-NFW-SA] Source-Available Module - NOT under GPL-3.0. See LICENSING.md and LICENSE.source-available.
 void GPSManagement() {
   if(gpsOperationMode == 0) { // GPS disabled
     shutdownGPS();
@@ -1893,6 +1926,7 @@ void ozoneHandler() {
   }
 }
 
+// [RS41-NFW-SA] Source-Available Module - NOT under GPL-3.0. See LICENSING.md and LICENSE.source-available.
 void gpsHandler() {
 
   GPSManagement();
@@ -1990,6 +2024,7 @@ void gpsHandler() {
   }
 }
 
+// [RS41-NFW-SA] Source-Available Module - NOT under GPL-3.0. See LICENSING.md and LICENSE.source-available.
 void shutdownGPS() {
   digitalWrite(GPS_RESET_PIN, LOW);
 
@@ -1998,6 +2033,7 @@ void shutdownGPS() {
   }
 }
 
+// [RS41-NFW-SA] Source-Available Module - NOT under GPL-3.0. See LICENSING.md and LICENSE.source-available.
 void startGPS() {
   digitalWrite(GPS_RESET_PIN, HIGH);
 
@@ -2006,6 +2042,7 @@ void startGPS() {
   }
 }
 
+// [RS41-NFW-SA] Source-Available Module - NOT under GPL-3.0. See LICENSING.md and LICENSE.source-available.
 void restartGPS() {
   digitalWrite(GPS_RESET_PIN, LOW);
   delay(3000);
@@ -2018,6 +2055,7 @@ void restartGPS() {
   }
 }
 
+// [RS41-NFW-SA] Source-Available Module - NOT under GPL-3.0. See LICENSING.md and LICENSE.source-available.
 void initGPS() {
   if (xdataPortMode == 1) {
     xdataSerial.println(F("[info]: GPS settings are being initialized..."));
@@ -2080,6 +2118,7 @@ void initGPS() {
 }
 
 // Function to select heater and change its state (on/off)
+// [RS41-NFW-SA] Source-Available Module - NOT under GPL-3.0. See LICENSING.md and LICENSE.source-available.
 void selectReferencesHeater(int heatingMode) {
   referenceHeaterStatus = heatingMode;
 
@@ -2152,6 +2191,7 @@ void powerHandler() {
 }
 
 // Function to select reading of a sensor and set its state (on/off)
+// [RS41-NFW-SA] Source-Available Module - NOT under GPL-3.0. See LICENSING.md and LICENSE.source-available.
 void selectSensorBoom(int sensorNum, int state) {
   // Ensure state is either 0 (off) or 1 (on), return if invalid
   if (state != 0 && state != 1) {
@@ -2222,6 +2262,7 @@ void selectSensorBoom(int sensorNum, int state) {
   }
 }
 
+// [RS41-NFW-SA] Source-Available Module - NOT under GPL-3.0. See LICENSING.md and LICENSE.source-available.
 float getSensorBoomFreq(int sensorNum) {
   static uint32_t firstEdge, lastEdge, prevCapture, currentCapture;
   static uint64_t totalTicks;
@@ -2340,9 +2381,10 @@ cleanup:
 float lastRefFreq750  = 0;
 float lastRefFreq1100 = 0;
 
-#if defined(RSM4x4)
-/* Factory (Vaisala) calibration conversion - sensor calibration mode 2
-   (RSM4x4 / RSM4x5 only). Reproduces the rs1729 (zilog80) RS41 PTU math using
+#if defined(RSM4x4) || defined(RSM4x2)
+/* Factory (Vaisala) calibration conversion - sensor calibration mode 2.
+   On RSM4x4 / RSM4x5 it is selectable; on RSM4x2 / RSM4x1 it is the only mode.
+   Reproduces the rs1729 (zilog80) RS41 PTU math using
    the sonde's original factory coefficients fetched from SondeHub.
      f       - sensor frequency
      f1 / f2 - low / high reference frequencies
@@ -2356,6 +2398,7 @@ float lastRefFreq1100 = 0;
 // why this recovers Rc = R exactly. measFromFreq() centralises that conversion.
 static inline float measFromFreq(float fr) { return (fr > 0.0f) ? (1.0f / fr) : 0.0f; }
 
+// [RS41-NFW-SA] Source-Available Module - NOT under GPL-3.0. See LICENSING.md and LICENSE.source-available.
 float getFactoryTc(float fr, float fr1, float fr2) {   // main PT temperature
   if (fr <= 0.0f || fr1 <= 0.0f || fr2 <= 0.0f) return -273.15f;
   float f  = measFromFreq(fr), f1 = measFromFreq(fr1), f2 = measFromFreq(fr2);
@@ -2366,6 +2409,7 @@ float getFactoryTc(float fr, float fr1, float fr2) {   // main PT temperature
   return (factoryTaylorT0 + factoryTaylorT1 * R + factoryTaylorT2 * R * R + factoryPolyT0) * (1.0f + factoryPolyT1);
 }
 
+// [RS41-NFW-SA] Source-Available Module - NOT under GPL-3.0. See LICENSING.md and LICENSE.source-available.
 float getFactoryTH(float fr, float fr1, float fr2) {   // heater / RH-sensor temperature
   if (fr <= 0.0f || fr1 <= 0.0f || fr2 <= 0.0f) return -273.15f;
   float f  = measFromFreq(fr), f1 = measFromFreq(fr1), f2 = measFromFreq(fr2);
@@ -2392,6 +2436,7 @@ double factoryVaporSatP(double Tc) {
 //   f, f1, f2 = humidity / 0pF-ref / 47pF-ref measurement frequencies
 //   Tair      = main air temperature (getFactoryTc)
 //   Tsensor   = RH-sensor (heater) temperature (getFactoryTH)
+// [RS41-NFW-SA] Source-Available Module - NOT under GPL-3.0. See LICENSING.md and LICENSE.source-available.
 float getFactoryRH(float fr, float fr1, float fr2, float Tair, float Tsensor) {
   if (factoryCalibU0 == 0.0f) return -1.0f;
   if (fr <= 0.0f || fr1 <= 0.0f || fr2 <= 0.0f) return -1.0f;
@@ -2425,6 +2470,7 @@ float getFactoryRH(float fr, float fr1, float fr2, float Tair, float Tsensor) {
 #endif
 
 // Function to calibrate the sensor using the two calibration resistors
+// [RS41-NFW-SA] Source-Available Module - NOT under GPL-3.0. See LICENSING.md and LICENSE.source-available.
 float calibrateTempSensorBoom() {
   // Get the frequencies for calibration resistors
   float freq750 = getSensorBoomFreq(1);  // Get frequency for 750Ω resistor
@@ -2443,6 +2489,7 @@ float calibrateTempSensorBoom() {
   return k;  // Return the calibration constant
 }
 
+// [RS41-NFW-SA] Source-Available Module - NOT under GPL-3.0. See LICENSING.md and LICENSE.source-available.
 float calculateSensorBoomResistance(float freq, float k) {
   return k / freq;
 }
@@ -2458,6 +2505,7 @@ float convertPt1000ResToTemp(float resistance) {
   return temperature;
 }
 
+// [RS41-NFW-SA] Source-Available Module - NOT under GPL-3.0. See LICENSING.md and LICENSE.source-available.
 void sensorBoomHandler() {
   double tempCorrectionFactor = 1.0;
 
@@ -2469,9 +2517,9 @@ void sensorBoomHandler() {
     // Calibrate the sensor and get the calibration factor
     tempSensorBoomCalibrationFactor = calibrateTempSensorBoom();
 
-#if defined(RSM4x4)
+#if defined(RSM4x4) || defined(RSM4x2)
     if (FACTORY_CAL_ACTIVE) {
-      // ===== Factory (Vaisala) calibration path - measurement only (RSM4x4 / RSM4x5) =====
+      // ===== Factory (Vaisala) calibration path - measurement only (both board families) =====
       mainTemperatureFrequency = getSensorBoomFreq(4);
       if (mainTemperatureFrequency <= 0) {
         sensorBoomMainTempError = true;   // error flag is sent in telemetry / shown by Ground Control
@@ -2500,10 +2548,10 @@ void sensorBoomHandler() {
       // factory RH: f1 = 0pF ref (gSBF7), f2 = 47pF ref (gSBF6),
       // Tair = main temperature (Tc), Tsensor = heater/RH-sensor temperature (TH)
       humidityValue = getFactoryRH(humidityFrequency, refCapLowFrequency, refCapHighFrequency, mainTemperatureValue, extHeaterTemperatureValue);
-    } else
-#endif
-    {
-    // ===== NFW calibration path (mode 1) - default on RSM4x2, optional on RSM4x4 =====
+    }
+#if defined(RSM4x4)
+    else {
+    // ===== NFW calibration path (mode 1) - RSM4x4 / RSM4x5 only (RSM4x2 is factory-only) =====
     // Get main temperature frequency
     mainTemperatureFrequency = getSensorBoomFreq(4);
     if (mainTemperatureFrequency <= 0) {
@@ -2588,6 +2636,8 @@ void sensorBoomHandler() {
     humidityValue = 110;
   }
     } // end NFW calibration path
+#endif  // RSM4x4 NFW else-branch
+#endif  // RSM4x4 || RSM4x2 calibration branch
 
     // Check overall sensor status
     sensorBoomFault = sensorBoomMainTempError || sensorBoomHumidityModuleError;
@@ -3210,6 +3260,20 @@ void flightComputing() {
   }
 
 #ifdef RSM4x4
+  // Private landing: once the sonde has flown, been above the threshold and dropped
+  // back below it, latch every mode onto its private frequency to keep the landing
+  // spot off public maps. The arm step (must go above the threshold first) means it
+  // never triggers during a low-altitude ascent, and does not rely on maxAlt.
+  if (privateLandingModeEnable && !privateLandingActive && beganFlying) {
+    if (gpsAlt > privateLandingAltitudeThreshold) privateLandingArmed = true;
+    if (privateLandingArmed && gpsAlt < privateLandingAltitudeThreshold) {
+      privateLandingActive = true;
+      if (xdataPortMode == 1) xdataSerial.println(F("[flt]: private landing frequencies active"));
+    }
+  }
+#endif
+
+#ifdef RSM4x4
   if (beganFlying && burstDetected) {
     if (lowAltitudeFastTxThreshold != 0 && gpsAlt < lowAltitudeFastTxThreshold) {
       if (horusEnable) {
@@ -3254,7 +3318,7 @@ void lowAltitudeFastTxMode() {
       int coded_len = horus_l2_encode_tx_packet((unsigned char*)codedbuffer, (unsigned char*)rawbuffer, pkt_len);
 
       setRadioModulation(0);
-      setRadioFrequency(horusFreqTable[0]);
+      setRadioFrequency(privateLandingActive ? horusPrivateFreq : horusFreqTable[0]);
 
       radioEnableTx();
       fsk4_preamble(horusPreambleLength);
@@ -3273,7 +3337,7 @@ void lowAltitudeFastTxMode() {
       int coded_len = horus_l2_encode_tx_packet((unsigned char*)codedbuffer, (unsigned char*)rawbuffer, pkt_len);
 
       setRadioModulation(0);  // CW modulation
-      setRadioFrequency(horusV3FreqTable[0]);
+      setRadioFrequency(privateLandingActive ? horusV3PrivateFreq : horusV3FreqTable[0]);
 
       radioEnableTx();
 
@@ -3284,7 +3348,7 @@ void lowAltitudeFastTxMode() {
 
     if (aprsEnable) {
       setRadioModulation(2);
-      setRadioFrequency((aprsFreqTable[0] - 0.002));  //its lower due to the deviation in FSK adding 0.002MHz when the signal is in total 10kHz wide
+      setRadioFrequency((privateLandingActive ? aprsPrivateFreq : aprsFreqTable[0]) - 0.002);  //its lower due to the deviation in FSK adding 0.002MHz when the signal is in total 10kHz wide
 
       aprsLocationFormat(gpsLat, gpsLong, aprsLocationMsg);
       aprsHabFormat(aprsOthersMsg);
@@ -3336,13 +3400,17 @@ void pipTx() {
     }
 
     if (radioEnablePA) {
+      float pipFreq = pipFrequencyMhz;
+#ifdef RSM4x4
+      if (privateLandingActive) pipFreq = pipPrivateFreq;
+#endif
       setRadioPower(pipRadioPower);
       setRadioModulation(0);
-      setRadioFrequency(pipFrequencyMhz);
+      setRadioFrequency(pipFreq);
 
       if (xdataPortMode == 1) {
         xdataSerial.print("[info]: PIP on (MHz): ");
-        xdataSerial.println(pipFrequencyMhz);
+        xdataSerial.println(pipFreq);
         xdataSerial.println("[info]: Transmitting PIP...");
       }
 
@@ -3390,13 +3458,17 @@ void morseTx() {
         xdataSerial.println();
       }
 
+      float morseFreq = morseFrequencyMhz;
+#ifdef RSM4x4
+      if (privateLandingActive) morseFreq = morsePrivateFreq;
+#endif
       setRadioPower(morseRadioPower);
       setRadioModulation(0);  // CW modulation
-      setRadioFrequency(morseFrequencyMhz);
+      setRadioFrequency(morseFreq);
 
       if (xdataPortMode == 1) {
         xdataSerial.print("[info]: Morse transmitting on (MHz): ");
-        xdataSerial.println(morseFrequencyMhz);
+        xdataSerial.println(morseFreq);
       }
 
       if (xdataPortMode == 1) {
@@ -3438,12 +3510,13 @@ void rttyTx() {
         xdataSerial.println("");
       }
 
+      float rttyFreq = privateLandingActive ? rttyPrivateFreq : rttyFrequencyMhz;
       setRadioPower(rttyRadioPower);
       setRadioModulation(0);  // CW modulation
-      setRadioFrequency(rttyFrequencyMhz);
+      setRadioFrequency(rttyFreq);
       if (xdataPortMode == 1) {
         xdataSerial.print("[info]: RTTY frequency set to (MHz): ");
-        xdataSerial.println(rttyFrequencyMhz);
+        xdataSerial.println(rttyFreq);
       }
 
       radioEnableTx();
@@ -3485,8 +3558,11 @@ void horusTx() {
         xdataSerial.println("[info]: HORUS V2 payload created.");
       }
 
+      // Private landing: transmit on the single private frequency only.
+      if (privateLandingActive) freqTableSize = 1;
+
       for (int i = 0; i < freqTableSize; i++) {
-        float currentFreq = horusFreqTable[i];
+        float currentFreq = privateLandingActive ? horusPrivateFreq : horusFreqTable[i];
 
         setRadioPower(horusRadioPower);
         setRadioModulation(0);
@@ -3554,9 +3630,17 @@ void horusV3Tx() {
         xdataSerial.println(debugbuffer);
       }
 
+#ifdef RSM4x4
+      // Private landing: transmit on the single private frequency only.
+      if (privateLandingActive) freqTableSize = 1;
+#endif
+
       // 2. Loop through every frequency in the table
       for (int i = 0; i < freqTableSize; i++) {
         float currentFreq = horusV3FreqTable[i];
+#ifdef RSM4x4
+        if (privateLandingActive) currentFreq = horusV3PrivateFreq;
+#endif
 
         // Configure Radio for this specific hop
         setRadioPower(horusV3RadioPower);
@@ -3604,8 +3688,15 @@ void aprsTx() {
     }
 
     if (radioEnablePA) {
+#ifdef RSM4x4
+      // Private landing: transmit on the single private frequency only.
+      if (privateLandingActive) tableSize = 1;
+#endif
       for (int f = 0; f < tableSize; f++) {
         float currentFreq = aprsFreqTable[f];
+#ifdef RSM4x4
+        if (privateLandingActive) currentFreq = aprsPrivateFreq;
+#endif
         float adjustedFreq = currentFreq - 0.002;
 
         setRadioPower(aprsRadioPower);
@@ -3870,7 +3961,11 @@ void temperatureCalibration() {
       }
     } else if (autoTemperatureCalibrationMethod == 2) {  //based on the PCB temperature
       float internalTemperature = readAvgIntTemp();
-      float selfHeatingCorrectedInternalTemperature = -8.5 + 1.307 * internalTemperature - 0.001461 * pow(internalTemperature, 2) - 0.000082 * pow(internalTemperature, 3);
+      // Plain multiplies instead of pow(x,2)/pow(x,3): identical result, and it avoids
+      // pulling the (double) libm pow() into the flash-tight F100 build.
+      float it2 = internalTemperature * internalTemperature;
+      float it3 = it2 * internalTemperature;
+      float selfHeatingCorrectedInternalTemperature = -8.5f + 1.307f * internalTemperature - 0.001461f * it2 - 0.000082f * it3;
       mainTemperatureCorrectionC = selfHeatingCorrectedInternalTemperature - mainTemperatureValue;
 
       if (xdataPortMode == 1) {
@@ -4120,9 +4215,9 @@ void zeroHumidityCheck() {
 bool temperatureCheckError = false;   // set by temperatureCheck()
 bool humidityCheckError    = false;   // set by humidityCheck()
 
-// Factory-mode start-up self-checks. The factory (Vaisala) chain is RSM4x4 / RSM4x5
-// only, so these are compiled there only (RSM4x2 / RSM4x1 run NFW calibration instead).
-#if defined(RSM4x4)
+// Factory-mode start-up self-checks. Factory (Vaisala) calibration now runs on both
+// board families (RSM4x2 / RSM4x1 use it exclusively), so these are compiled for both.
+#if defined(RSM4x4) || defined(RSM4x2)
 
 // temperatureCheck - verifies the main and heater temperature sensors read consistent
 // values (a healthy boom at rest reads almost the same on both). Runs at start-up only,
@@ -4270,6 +4365,7 @@ void humidityCheck() {
 }
 #endif
 
+// [RS41-NFW-SA] Source-Available Module - NOT under GPL-3.0. See LICENSING.md and LICENSE.source-available.
 void flightHeatingHandler() {
   if (referenceHeating) {
     float cutOutTemp = readThermistorTemp();  //maintaining reference area temperature of ~20*C
@@ -4471,6 +4567,7 @@ void foxHuntModeLoop() {
   }
 }
 
+// [RS41-NFW-SA] Source-Available Module - NOT under GPL-3.0. See LICENSING.md and LICENSE.source-available.
 void humidityModuleHeaterPowerControl(unsigned int heaterPower) {  //0 - OFF, 1-255 - only low power heater PWM, 256-500 - low power heater at max and high power heater PWM-controlled
   extHeaterPwmStatus = heaterPower;
 
@@ -4508,6 +4605,7 @@ void humidityModuleHeaterPowerControl(unsigned int heaterPower) {  //0 - OFF, 1-
   }
 }
 
+// [RS41-NFW-SA] Source-Available Module - NOT under GPL-3.0. See LICENSING.md and LICENSE.source-available.
 void gpsQuietMode() {
     if (xdataPortMode == 1) xdataSerial.println(F("[info]: Entering GPS Quiet Mode"));
 
@@ -4996,6 +5094,9 @@ bool runXdataCommand(const char* line) {
   } else if (strncmp(cmd, "CMD:RECONDITION", 15) == 0 && sensorBoomEnable) {
     xdataSerial.println(F("[info]: Starting reconditioning..."));
     reconditioningPhase();
+#if defined(RSM4x4)
+  // NFW-calibration commands: compiled on RSM4x4 / RSM4x5 only. RSM4x2 / RSM4x1 use
+  // factory (Vaisala) calibration, so the NFW calibration routines are not built there.
   } else if (strncmp(cmd, "CMD:ZEROHUM", 11) == 0 && sensorBoomEnable && humidityModuleEnable) {
     xdataSerial.println(F("[info]: Starting zero-humidity calibration..."));
     zeroHumidityCheck();
@@ -5011,13 +5112,12 @@ bool runXdataCommand(const char* line) {
     humidityDeltaCalibrationDebug();
     humidityCalibrationDebug = false;
     setStage(_prevStage);   // restore the pre-debug stage so the stage leaves 25/26 and Ground Control can reopen the dialog next time
-#if defined(RSM4x4)
-  // Only the humidity check is re-runnable. The temperature check is start-up only: by
-  // now the humidity check may have heated the boom, so a fresh comparison is invalid.
+#endif
+  // Factory humidity check - re-runnable on both board families. The temperature check is
+  // start-up only: by now the humidity check may have heated the boom, so a fresh comparison is invalid.
   } else if (strncmp(cmd, "CMD:HUMCHECK", 12) == 0 && sensorBoomEnable && humidityModuleEnable) {
     xdataSerial.println(F("[info]: Starting humidity CHECK..."));
     humidityCheck();
-#endif
   } else if (strncmp(cmd, "CMD:STOP", 8) == 0) {
     _hrdStopRequested = true;
     xdataSerial.println(F("[info]: Stop requested."));
@@ -5242,6 +5342,7 @@ void interfaceHandler() {
   #undef NW_F
 }
 
+// [RS41-NFW-SA] Source-Available Module - NOT under GPL-3.0. See LICENSING.md and LICENSE.source-available.
 void extHeaterHandler(bool enable, float targetTemp, float currentTemp) {
   static float heaterPower = 0;
   static float integral = 0;
@@ -5546,62 +5647,31 @@ void pressureHandler() {
   }
   else if (pressureMode == 2) {
 
-    // --- Constants ---
-    const double gMR = 0.0341632;   // g0*M/R (1/m)
+    // Barometric pressure from GPS altitude using the ISA layer model.
+    // Kept deliberately in single precision: neither MCU has a double-precision FPU,
+    // so double pow()/exp() pull in several KB of soft-float libm and can overflow the
+    // 64 KB F100 flash (this is what tips it over when switching pressure to mode 2).
+    // float powf()/expf() reproduce the same hPa to far better than 0.1 hPa. The three
+    // inter-layer factors are compile-time constants (verified against the standard
+    // atmosphere: 226.3 / 54.7 / 8.7 hPa base pressures for P0 = 1013.25).
+    const float gMR = 0.0341632f;   // g0*M/R (1/m)
 
-    double Pb, Tb, Lb, hb;
+    const float P0  = seaLevelPressure;      // measured MSL pressure (hPa)
+    const float P11 = P0  * 0.22336105f;     // base of the 11-20 km layer
+    const float P20 = P11 * 0.24190845f;     // base of the 20-32 km layer
+    const float P32 = P20 * 0.15854540f;     // base of the 32+ km layer
 
-    // --- 1. Use measured sea-level pressure directly ---
-    // seaLevelPressure in hPa
-    double P0 = seaLevelPressure;
+    float Pb, Tb, Lb, hb;
+    if (gpsAlt < 11000.0f)      { Pb = P0;  Tb = 288.15f; Lb = -0.0065f; hb = 0.0f;     }
+    else if (gpsAlt < 20000.0f) { Pb = P11; Tb = 216.65f; Lb = 0.0f;     hb = 11000.0f; }
+    else if (gpsAlt < 32000.0f) { Pb = P20; Tb = 216.65f; Lb = 0.0010f;  hb = 20000.0f; }
+    else                        { Pb = P32; Tb = 228.65f; Lb = 0.0028f;  hb = 32000.0f; }
 
-    // --- 2. Precompute base pressures for each ISA layer ---
-    // Layer 0-11 km (lapse)
-    double P11 = P0 * pow(1.0 + (-0.0065 * 11000.0) / 288.15, -gMR / -0.0065);
-
-    // Layer 11-20 km (isothermal)
-    double P20 = P11 * exp(-gMR * (20000.0 - 11000.0) / 216.65);
-
-    // Layer 20-32 km (lapse)
-    double P32 = P20 * pow(1.0 + (0.0010 * (32000.0 - 20000.0)) / 216.65, -gMR / 0.0010);
-
-    // --- 3. Select layer ---
-    if (gpsAlt < 11000.0) {
-      Pb = P0;
-      Tb = 288.15;
-      Lb = -0.0065;
-      hb = 0.0;
-    }
-    else if (gpsAlt < 20000.0) {
-      Pb = P11;
-      Tb = 216.65;
-      Lb = 0.0;
-      hb = 11000.0;
-    }
-    else if (gpsAlt < 32000.0) {
-      Pb = P20;
-      Tb = 216.65;
-      Lb = 0.0010;
-      hb = 20000.0;
-    }
-    else {
-      Pb = P32;
-      Tb = 228.65;
-      Lb = 0.0028;
-      hb = 32000.0;
-    }
-
-    // --- 4. Final pressure calculation ---
-    if (Lb == 0.0) {
-      pressureValue = Pb * exp(-gMR * (gpsAlt - hb) / Tb);
-    }
-    else {
-      double term = 1.0 + Lb * (gpsAlt - hb) / Tb;
-      if (term > 0.0) {
-        pressureValue = Pb * pow(term, -gMR / Lb);
-      } else {
-        pressureValue = 0.0;  // Safety clamp
-      }
+    if (Lb == 0.0f) {
+      pressureValue = Pb * expf(-gMR * (gpsAlt - hb) / Tb);
+    } else {
+      float term = 1.0f + Lb * (gpsAlt - hb) / Tb;
+      pressureValue = (term > 0.0f) ? Pb * powf(term, -gMR / Lb) : 0.0f;  // clamp below the model
     }
   }
   else {
@@ -5786,9 +5856,8 @@ void setup() {
   // Factory (Vaisala) mode uses absolute calibration polynomials, so the NFW
   // startup temperature-offset calibration is skipped - otherwise it would add an
   // offset on top of the factory reading and shift it to environmentStartupAirTemperature.
-#if defined(RSM4x4)
   if (sensorBoomEnable && FACTORY_CAL_ACTIVE) {
-    // ===== Factory (Vaisala) mode (RSM4x4 / RSM4x5) =====
+    // ===== Factory (Vaisala) mode (both board families) =====
     // The NFW startup calibrations (temperature offset, zero-humidity, capacitance
     // range) are intentionally NOT run - the factory coefficients are absolute.
     // Optional factory-mode self-checks.
@@ -5798,10 +5867,10 @@ void setup() {
     if (factoryHumidityCheck && humidityModuleEnable) {
       humidityCheck();
     }
-  } else
-#endif
-  // ===== NFW mode: original startup calibration chain (default on RSM4x2) =====
-  if (sensorBoomEnable) {
+  }
+#if defined(RSM4x4)
+  // ===== NFW mode: original startup calibration chain (RSM4x4 / RSM4x5 only) =====
+  else if (sensorBoomEnable) {
     temperatureCalibration();
 
     if (reconditioningEnabled) {
@@ -5818,6 +5887,7 @@ void setup() {
       }
     }
   }
+#endif  // RSM4x4 NFW startup chain
 
   maxHumidityFrequency = zeroHumidityFrequency - humidityRangeDelta;
   maxHumidityCapacitance = zeroHumidityCapacitance + humidityCapacitanceRangeDelta;

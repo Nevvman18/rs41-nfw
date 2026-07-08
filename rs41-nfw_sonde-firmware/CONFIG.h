@@ -10,7 +10,7 @@
  *  Please read every comment carefully before changing values.
  *  Up-to-date documentation:  https://github.com/Nevvman18/rs41-nfw
  *
- *  Version 66  |  GPL-3.0  |  Franek Łada (nevvman, SP5FRA)
+ *  Version 68  |  GPL-3.0 (see LICENSING.md)  |  Franek Łada (nevvman, SP5FRA)
  * ============================================================
  */
 
@@ -171,8 +171,8 @@ constexpr float aprsFreqTable[] = {432.5};
 // Same format as horusV3FreqTable.
 // lowAltitudeFastTxMode uses the first entry only.
 
-char aprsCall[]   = "N0CALL";       // Your amateur radio callsign
-String aprsComment = " NFWv67";     // Comment appended to every APRS packet
+char aprsCall[]   = "N0CALL";       // Your amateur radio callsign - USE UPPERCASE LETTERS ONLY (lowercase may not be decoded correctly; the firmware does not convert case)
+String aprsComment = " NFWv68";     // Comment appended to every APRS packet
 
 constexpr char aprsSsid          = 11;       // Callsign SSID
 constexpr char aprsDigi[]        = "WIDE2";  // Digipeater callsign
@@ -400,16 +400,16 @@ unsigned long sensorBoomPowerSavingInterval = 30000; // Boom read interval in po
    BOARD SUPPORT:
      - RSM4x4 / RSM4x5 (newer boards): both modes are available; this setting
        chooses between them (default 2 = factory / Vaisala).
-     - RSM4x2 / RSM4x1 (older boards): NFW calibration ONLY. The factory (Vaisala)
-       chain is not compiled on the F100 - its 64 KB flash and 8 KB RAM cannot hold
-       the per-boom coefficients plus the double-precision Vaisala maths - so this
-       whole Section 15b block exists only on RSM4x4 / RSM4x5.
+     - RSM4x2 / RSM4x1 (older boards): factory (Vaisala) calibration ONLY. The NFW
+       calibration path is no longer built for the F100; the factory chain now fits
+       because its maths is single-precision (no double-precision libm), so this
+       setting is effectively fixed at 2 there.
 
    NOTE: Leave the coefficients at 0 when unused - the Sounding Software fills them
    when you load a serial number.
    ============================================================ */
-#if defined(RSM4x4)
-uint8_t sensorCalibrationMode = 2;   // 1 = NFW, 2 = factory (Vaisala). RSM4x4 / RSM4x5 only.
+#if defined(RSM4x4) || defined(RSM4x2)
+uint8_t sensorCalibrationMode = 2;   // 1 = NFW, 2 = factory (Vaisala). RSM4x4/4x5: selectable. RSM4x2/4x1: factory only.
 
 // --- Factory calibration coefficients (filled per-serial from SondeHub) ---
 // Reference resistors (Ohm) / capacitors (pF):
@@ -597,6 +597,45 @@ constexpr uint16_t      lowAltitudeFastTxInterval  = 1;       // Inter-TX delay 
 
 
 /* ============================================================
+   SECTION 20b - PRIVATE LANDING MODE   (RSM4x4 / RSM4x5 only)
+
+   NOT RECOMMENDED - please read before enabling.
+
+   This hides the landing spot from public tracking maps by moving every
+   enabled mode onto a separate, private frequency once the sonde is coming
+   down near the ground. Trackers following the public frequencies simply
+   lose the payload after it drops below the threshold.
+
+   A far better approach for almost everyone: clearly label the payload as
+   harmless research equipment with a short "reward if returned" note and
+   your contact details. Finders then return it to you, which is easier and
+   friendlier than hiding. Reserve private landing for the rare, marginal
+   situations where that genuinely is not enough.
+
+   How it works: after the sonde has flown (beganFlying), climbed above
+   privateLandingAltitudeThreshold and then descended back below it, every
+   enabled mode stops using its normal frequency (or frequency table) and
+   transmits only on its single private frequency below. It stays that way
+   until power-off. Because it must climb above the threshold first, it never
+   triggers during a low-altitude ascent.
+
+   Each mode has exactly ONE private frequency here (no frequency tables).
+   ============================================================ */
+
+#ifdef RSM4x4
+constexpr bool     privateLandingModeEnable        = false;  // Master enable (NOT recommended - read above); default off
+constexpr uint16_t privateLandingAltitudeThreshold = 3500;   // Switch to private freqs after descending below this altitude (m)
+
+constexpr float pipPrivateFreq     = 432.7;  // Pip private frequency (MHz)
+constexpr float horusV3PrivateFreq = 437.6;  // Horus Binary V3 private frequency (MHz)
+constexpr float horusPrivateFreq   = 437.6;  // Horus Binary V2 private frequency (MHz)
+constexpr float aprsPrivateFreq    = 432.5;  // APRS private frequency (MHz)
+constexpr float rttyPrivateFreq    = 434.6;  // RTTY private frequency (MHz)
+constexpr float morsePrivateFreq   = 434.6;  // Morse private frequency (MHz)
+#endif
+
+
+/* ============================================================
    SECTION 21 - FLIGHT COMPUTING
    ============================================================ */
 
@@ -769,9 +808,11 @@ float extHeaterDerivativeK   = 0.49;  // Derivative gain
 #if defined(RSM4x4)
 // RSM4x4 / RSM4x5: the mode is user-selectable (1 = NFW, 2 = factory).
 #define FACTORY_CAL_ACTIVE (sensorCalibrationMode == 2)
+#elif defined(RSM4x2)
+// RSM4x2 / RSM4x1: factory (Vaisala) calibration only - the NFW calibration chain is
+// no longer built here, so the factory path is always active.
+#define FACTORY_CAL_ACTIVE (1)
 #else
-// RSM4x2 / RSM4x1 (and any other board): NFW calibration only - the factory chain
-// is never compiled here, so this helper is always false.
 #define FACTORY_CAL_ACTIVE (0)
 #endif
 

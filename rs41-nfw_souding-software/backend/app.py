@@ -1,4 +1,5 @@
 import os, re, json, uuid, shutil, threading, queue, subprocess, zipfile, base64, secrets, time, random, sys, logging
+import requests   # used directly in api_sonde_cal's except clause; also (re-)used by rs41_subframe
 from datetime import datetime
 from pathlib import Path
 from io import BytesIO
@@ -40,7 +41,7 @@ ANALYTICS_HEAD = os.environ.get('ANALYTICS_HEAD', '').strip()
 # This is a basic layer on top of the Cloudflare protection in front of the site.
 CAPTCHA_CHARS = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'   # no ambiguous 0/O/1/I/L
 CAPTCHA_TTL   = 300            # seconds a challenge stays solvable
-AUTH_TTL      = 3 * 3600       # seconds an unlocked session stays valid
+AUTH_TTL      = 10 * 60        # seconds an unlocked session stays valid (one solve = a 10-min window)
 _captchas     = {}            # token -> {'a': answer, 'e': expiry}
 _auth_tokens  = {}            # token -> expiry
 _captcha_lock = threading.Lock()
@@ -115,6 +116,8 @@ def _security_headers(resp):
 # Mounted volumes
 WORKSPACE = Path(os.environ.get('WORKSPACE_DIR', '/workspace'))
 LOGS_DIR  = Path(os.environ.get('LOGS_DIR', '/logs'))
+
+SUBFRAMES_DIR = LOGS_DIR / 'subframes'   # raw factory-cal subframes fetched from SondeHub, kept for the record
 
 REPOS_DIR  = WORKSPACE / 'repos'    # git clones and uploads
 SKETCH_DIR = WORKSPACE / 'sketch'   # one sketch dir per board, kept around so builds are incremental
@@ -631,6 +634,21 @@ def extract_version(ino: str) -> str:
     return f'v{m.group(1)}' if m else 'v0'
 
 
+def _save_subframe(serial: str, sub_bytes: bytes, result: dict):
+    """Archive a factory-calibration subframe fetched from SondeHub. We keep the raw
+    binary exactly as received plus the parsed coefficients, one timestamped pair per
+    fetch, so the calibration a build was made against can always be traced back. Purely
+    best-effort - a failure here must never break the calibration response."""
+    try:
+        SUBFRAMES_DIR.mkdir(parents=True, exist_ok=True)
+        stamp = datetime.now().strftime('%Y-%m-%d_%H-%M-%S')
+        base  = SUBFRAMES_DIR / f'{serial}_{stamp}'
+        base.with_suffix('.bin').write_bytes(sub_bytes)
+        base.with_suffix('.json').write_text(json.dumps(result, indent=2), encoding='utf-8')
+    except Exception:
+        logging.exception('could not archive subframe for %s', serial)
+
+
 # ─── compile worker ─────────────────────────────────────────────────────────────
 
 def _stage_sketch(fw_path: Path, platform: str, patched_ino: str, user_cfg: dict):
@@ -726,7 +744,9 @@ def do_compile(job):
         now = datetime.now()
         stamp_file = now.strftime('%y-%m-%d_%H-%M-%S')   # goes in front of the .bin name
         stamp_dir  = now.strftime('%Y-%m-%d_%H-%M-%S')   # name of this build's log folder
-        out_name   = f'{stamp_file}_rs41-nfw_{version}_{platform}.bin'
+        serial     = job.get('serial') or ''
+        serial_tag = f'_{serial}' if serial else ''
+        out_name   = f'{stamp_file}_rs41-nfw_{version}_{platform}{serial_tag}.bin'
 
         # keep a copy of this build: the binary, the config it was built with, and the log
         log_dir = LOGS_DIR / stamp_dir
@@ -739,6 +759,20 @@ def do_compile(job):
             shutil.copyfile(cfg_src, log_dir / 'CONFIG.h')
         else:
             shutil.copyfile(sketch_root / 'rs41-nfw_sonde-firmware.ino', log_dir / 'config.ino')
+
+        # Record the callsigns / IDs this build transmits under, in the compile log.
+        try:
+            built_cfg = parse_config((cfg_src if cfg_src.exists() else sketch_root / 'rs41-nfw_sonde-firmware.ino')
+                                     .read_text(encoding='utf-8'))
+            log('')
+            log('=== RS41-NFW identifiers (this build) ===')
+            log(f"Serial            : {serial or '(none)'}")
+            log(f"Horus V3 callsign : {built_cfg.get('HORUS_V3_CALLSIGN', '(default)')}")
+            log(f"Horus V2 payload  : {built_cfg.get('horusPayloadId', '(default)')}")
+            log(f"APRS callsign     : {built_cfg.get('aprsCall', '(default)')}")
+            log(f"RTTY/Morse call   : {built_cfg.get('CALLSIGN', '(default)')}")
+        except Exception:
+            logging.exception('could not summarise build identifiers')
 
         job.update(status='done', bin_path=str(final_bin), bin_name=out_name,
                    log_dir=str(log_dir))
@@ -1007,6 +1041,9 @@ def api_sonde_cal(serial):
     except Exception:
         logging.exception('could not write sonde cal cache')
 
+    # Archive the raw subframe to the server logs so every fetched calibration is on record.
+    _save_subframe(serial, sub_bytes, result)
+
     return jsonify(ok=True, cached=False, **result)
 
 
@@ -1023,10 +1060,16 @@ def api_compile():
     if platform not in FQBN:
         return jsonify(ok=False, error=f'Unknown platform: {platform}'), 400
 
+    # Optional sonde serial, tagged onto the output filename so a build made for a
+    # specific sonde is identifiable at a glance. Kept loose (may be blank) and always
+    # filtered to plain filename-safe characters.
+    serial = re.sub(r'[^A-Za-z0-9]', '', str(body.get('serial', '') or ''))[:12].upper()
+
     job_id = str(uuid.uuid4())[:8]
     job = {
         'id': job_id, 'status': 'queued', 'platform': platform,
         'fw_path': fw_path, 'config': sanitize_config(body.get('config', {})),
+        'serial': serial,
         'logs': [], 'bin_path': None, 'bin_name': None, 'error': None,
         'log_dir': None, 'created': datetime.now().isoformat(),
     }
@@ -1039,10 +1082,9 @@ def api_compile():
         position = len(queue_order) - 1   # 0 = will run next / now
     compile_queue.put(job)
 
-    # Revoke the auth token immediately so every compile needs a fresh captcha solve.
-    tok = request.headers.get('X-NFW-Auth', '')
-    with _captcha_lock:
-        _auth_tokens.pop(tok, None)
+    # The verification is a short session, not a single use: one captcha solve unlocks a
+    # 10-minute window (AUTH_TTL) during which the user can compile repeatedly, then it
+    # expires on its own. So we do NOT revoke the token here.
 
     return jsonify(ok=True, job_id=job_id, queue_position=position)
 
@@ -1103,8 +1145,34 @@ def api_job_config(job_id):
                      mimetype='text/plain')
 
 
+@app.route('/api/job/<job_id>/rate', methods=['POST'])
+def api_job_rate(job_id):
+    """Append the user's 1-5 star rating of the firmware to this build's compile.log.
+    One line only; a repeat submission just adds another line."""
+    job = jobs.get(job_id)
+    if not job or not job.get('log_dir'):
+        return jsonify(ok=False, error='Build not found'), 404
+    body = request.get_json(silent=True) or {}
+    try:
+        rating = int(body.get('rating'))
+    except (TypeError, ValueError):
+        return jsonify(ok=False, error='Rating must be a number 1-5'), 400
+    if not (1 <= rating <= 5):
+        return jsonify(ok=False, error='Rating must be between 1 and 5'), 400
+    log_file = Path(job['log_dir']) / 'compile.log'
+    # Lead with a newline: compile.log is written without a trailing newline, so appending
+    # directly would glue the rating onto the last log line.
+    line = f"\n[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] User firmware rating: {rating}/5\n"
+    try:
+        with open(log_file, 'a', encoding='utf-8') as f:
+            f.write(line)
+    except OSError as e:
+        return jsonify(ok=False, error=f'Could not save rating: {e}'), 500
+    return jsonify(ok=True, rating=rating)
+
+
 def _bootstrap():
-    for d in (REPOS_DIR, SKETCH_DIR, BUILD_DIR, TMP_DIR, LOGS_DIR):
+    for d in (REPOS_DIR, SKETCH_DIR, BUILD_DIR, TMP_DIR, LOGS_DIR, SUBFRAMES_DIR):
         d.mkdir(parents=True, exist_ok=True)
     _load_state()   # restore "which firmware is loaded" marker after a restart
     # Clear transient leftovers from a previous run (keep build cache, sketch, logs).

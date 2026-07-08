@@ -2,7 +2,8 @@
 
 This page explains how to upload an RS41-NFW `.bin` to a Vaisala RS41 radiosonde, and how to connect the sonde after flashing to a serial converter.
 
-> **Shortcut:** the **[NFW Sounding Software](../README.md#rs41-nfw-sounding-software)** ([nfw.flada.ovh](https://nfw.flada.ovh)) prints the exact steps for your board right after it compiles your firmware, including ready-to-paste terminal commands. This page is the full reference behind that help.
+> **You usually don't need this page.** The **[NFW Sounding Software](../README.md#rs41-nfw-sounding-software)** ([nfw.flada.ovh](https://nfw.flada.ovh)) can flash the firmware it just built **straight from your browser** over WebUSB with your ST-Link - see [Method D](#method-d---flash-from-the-browser-webusb--st-link). It even unlocks a factory-new sonde for you. This page is the full reference and the manual alternatives for when you prefer a desktop tool or your browser cannot do WebUSB.
+
 
 You only need a `.bin` file and an ST-Link programmer. There are several ways to flash, all covered below; pick one:
 
@@ -12,7 +13,15 @@ You only need a `.bin` file and an ST-Link programmer. There are several ways to
 * [Method A - OpenOCD (terminal, cross-platform)](#method-a---openocd-terminal-cross-platform)
 * [Method B - STM32CubeProgrammer (GUI, Windows / Linux)](#method-b---stm32cubeprogrammer-gui-windows--linux)
 * [Method C - STM32CubeProgrammer CLI (terminal)](#method-c---stm32cubeprogrammer-cli-terminal)
+* [Method D - Flash from the browser (WebUSB + ST-Link)](#method-d---flash-from-the-browser-webusb--st-link)
 * [Uploading directly from the Arduino IDE](#uploading-directly-from-the-arduino-ide)
+
+
+<br>
+
+> **Which method should I pick?** **Method D (browser / WebUSB)** is the recommended path for most people - it flashes from the ([Sounding Software](https://nfw.flada.ovh)) with nothing to install and unlocks a factory sonde automatically. The command-line and GUI methods (A/B/C) are the desktop alternatives: use them if you prefer them, or if your browser cannot use WebUSB.
+
+<br>
 
 Whichever method you use, the procedure for a sonde is always the same three ideas:
 1. **Unlock** the factory protection (read-out protection + write protection). Only needed once in the sonde's life.
@@ -237,6 +246,78 @@ Notes:
 * `-rdu` is read-unprotect: on a factory-locked sonde it drops RDP and triggers a mass erase. On an already-unlocked sonde it is harmless.
 * Steps 1 and 2 are the one-time unlock. Once a sonde is unlocked you only need steps 3 and 4 for future updates.
 * `-rst` issues a system reset over SWD so the firmware starts immediately after flashing.
+
+
+## Method D - Flash from the browser (WebUSB + ST-Link)
+
+The [NFW Sounding Software](../README.md#rs41-nfw-sounding-software) can drive your ST-Link straight from the browser over **WebUSB**, so you can flash the `.bin` it just built without installing OpenOCD or STM32CubeProgrammer. Under the hood it speaks the same ST-Link protocol as the other methods and writes to the same `0x08000000`; the only difference is that the browser talks to the programmer instead of a desktop tool.
+
+### What you need
+
+* An **ST-Link V2 / V2-1 / V3** wired to the sonde exactly as in [Connecting the programmer to the sonde](#connecting-the-programmer-to-the-sonde). The wiring is identical to every other method.
+* A **WebUSB-capable browser on desktop**: Google Chrome, Microsoft Edge or Opera. For example Firefox does not implement WebUSB and will not work.
+* The **operating-system access** for the browser to open the ST-Link as a raw USB device (below). This is the one extra step compared to the desktop tools, and it is a one-time setup per computer.
+  * **Chances are you don't need to do any changes to the system** - many people already have a working system (if they played with STM32s). To verify this, please compile a firmware, and after plugging the ST-Link, click the button to check the connection. 
+
+### Windows: give the browser access to the ST-Link (WinUSB via Zadig)
+
+On Windows the ST-Link normally binds to ST's own driver, which the browser cannot open. You need to attach the generic **WinUSB** driver to it once, using [Zadig](https://zadig.akeo.ie/):
+
+1. Plug in the ST-Link (leave the sonde wiring as-is).
+2. Run **Zadig**. Choose **Options -> List All Devices**.
+3. In the dropdown pick **STM32 STLink** (interface with USB ID `0483`/`3748` for a V2, or `0483`/`374B` for a V2-1).
+4. Set the target driver on the right to **WinUSB** and click **Replace Driver** (or *Install Driver*).
+5. Reconnect the ST-Link. The browser can now see it.
+
+> Swapping to WinUSB means STM32CubeProgrammer / the ST-Link GUI may no longer see this ST-Link until you restore ST's driver (Zadig -> pick the ST driver again, or reinstall the ST-Link driver). HOWEVER - when I have tested, while having the STM32Cube installed, the ST's drivers actually support WebUSB flashing - therefore just click the Check ST-Link Access button after compiling.
+
+### Linux: allow non-root access (udev rule)
+
+On Linux WebUSB works once your user is allowed to open the ST-Link. Add a udev rule:
+
+```bash
+# /etc/udev/rules.d/49-stlink-webusb.rules
+# ST-Link V2
+SUBSYSTEM=="usb", ATTR{idVendor}=="0483", ATTR{idProduct}=="3748", MODE="0660", TAG+="uaccess"
+# ST-Link V2-1
+SUBSYSTEM=="usb", ATTR{idVendor}=="0483", ATTR{idProduct}=="374b", MODE="0660", TAG+="uaccess"
+# ST-Link V3
+SUBSYSTEM=="usb", ATTR{idVendor}=="0483", ATTR{idProduct}=="374f", MODE="0660", TAG+="uaccess"
+```
+
+Then reload the rules and reconnect the programmer:
+
+```bash
+sudo udevadm control --reload-rules && sudo udevadm trigger
+```
+
+No kernel module needs to be unloaded: the `stlink`/`st-link` modules do not claim the device, so the browser can open it directly.
+
+### macOS
+
+No driver or permission setup is needed; a WebUSB browser can open the ST-Link directly. Just wire it up and connect.
+
+### Board support
+
+Both board families flash in the browser:
+
+* **`RSM4x2` / `RSM4x1` (STM32F100)** - via the `webstlink` library's STM32FP driver.
+* **`RSM4x4` / `RSM4x5` (STM32L412)** - via an STM32L4 flash + unlock driver added for RS41-NFW (upstream `webstlink` has none).
+
+> **Experimental.** The L4 driver and the automatic unlock below were written against the STM32 reference manuals and are newer than the desktop methods. They are recoverable (SWD stays open), but keep an ST-Link + OpenOCD handy and prefer a spare sonde until you have flashed one successfully.
+
+### Automatic unlock (factory-new sondes)
+
+Unlike the desktop steps, you do **not** need a separate unlock pass. When the flasher sees a factory-locked sonde (read-out or write protection set) it clears **all** protection first - which mass-erases the chip, exactly like `stm32l4x unlock 0` / `stm32f1x unlock` - then re-attaches and writes your firmware. An already-unlocked sonde (any RS41-NFW sonde) is flashed straight away.
+
+### Flashing
+
+1. Build your firmware in the Sounding Software.
+2. Click **Check ST-Link access** first if you are unsure your setup works, then **Flash `<board>` over WebUSB** and pick your ST-Link in the device prompt.
+3. The tool identifies the MCU, clears protection if needed, then erases, writes the `.bin` at `0x08000000`, verifies and resets - with a live log.
+4. Disconnect, insert the batteries. You have a flashed sonde now!
+
+If the device picker is empty, the OS access step above has not taken effect yet: re-check the Zadig driver (Windows) or the udev rule (Linux), and reconnect the ST-Link. If a flash fails partway, nothing is bricked - re-flash with this or any other method.
 
 
 ## Uploading directly from the Arduino IDE

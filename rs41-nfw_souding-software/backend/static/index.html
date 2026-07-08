@@ -3,7 +3,9 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>NFW Sounding Software</title>
+<title>RS41-NFW - Versatile Radiosonde Firmware</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%F0%9F%8E%88%3C/text%3E%3C/svg%3E">
+<link rel="apple-touch-icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%F0%9F%8E%88%3C/text%3E%3C/svg%3E">
 <script src="https://cdn.tailwindcss.com"></script>
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
@@ -44,14 +46,29 @@ body { zoom: 1.2; }
 .data-card { transition: box-shadow 0.2s, transform 0.18s; }
 .data-card:hover { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(0,0,0,0.1); }
 
-/* App switcher */
-.sw-btn {
-  padding: 4px 14px; border-radius: 6px; font-size: .75rem; font-weight: 700;
-  cursor: pointer; border: 1px solid #334155; background: transparent;
-  color: #94a3b8; transition: .15s;
+/* ── Top bar (app switcher) ── */
+#app-switcher{
+  position:sticky; top:0; z-index:30; height:52px;
+  display:flex; align-items:center; gap:14px; padding:0 20px;
+  background:rgba(15,23,42,.72); backdrop-filter:blur(16px) saturate(150%); -webkit-backdrop-filter:blur(16px) saturate(150%);
+  border-bottom:1px solid rgba(255,255,255,.08);
+  box-shadow:0 1px 0 rgba(255,255,255,.03), 0 10px 30px rgba(0,0,0,.20);
 }
-.sw-btn:hover { background: #1e293b; color: #e2e8f0; }
-.sw-active { background: #2563eb !important; color: #fff !important; border-color: #2563eb !important; }
+.sw-brand{ display:inline-flex; align-items:center; gap:9px; font-weight:800; font-size:.92rem;
+  letter-spacing:.02em; color:#f1f5f9; margin-right:2px; user-select:none; }
+.sw-brand .dot{ width:9px; height:9px; border-radius:50%; background:linear-gradient(135deg,#38bdf8,#6366f1);
+  box-shadow:0 0 12px rgba(99,102,241,.75); flex-shrink:0; }
+.sw-nav{ display:inline-flex; align-items:center; gap:3px; padding:3px; border-radius:999px;
+  background:rgba(255,255,255,.05); border:1px solid rgba(255,255,255,.07); }
+.sw-btn{
+  padding:6px 16px; border-radius:999px; font-size:.8rem; font-weight:650; letter-spacing:.005em;
+  white-space:nowrap; cursor:pointer; border:none; background:transparent; color:#a3aec2;
+  transition:color .15s, background .15s, transform .08s;
+}
+.sw-btn:hover{ color:#f8fafc; background:rgba(255,255,255,.07); }
+.sw-btn:active{ transform:translateY(.5px); }
+.sw-active{ color:#fff !important; background:linear-gradient(135deg,#2563eb,#4f46e5) !important;
+  box-shadow:0 2px 12px rgba(79,70,229,.5); }
 
 /* FW styles */
 .card { background: #1e293b; border: 1px solid #334155; border-radius: 12px; }
@@ -208,7 +225,7 @@ select.input-base option { background: #1e293b; }
   margin:0 0 26px; text-transform:uppercase; color:var(--ink);
 }
 .lp-title em { font-style:normal; color:var(--accent); }
-.lp-lead { font-size:1.28rem; line-height:1.72; color:#cfd7e6; max-width:34em; margin:0 0 36px; }
+.lp-lead { font-size:1.28rem; line-height:1.72; color:var(--soft); max-width:34em; margin:0 0 36px; }
 .lp-cta-row { display:flex; flex-wrap:wrap; gap:14px; }
 .lp-btn {
   display:inline-flex; align-items:center; gap:9px; padding:14px 26px; border-radius:11px;
@@ -240,6 +257,21 @@ select.input-base option { background: #1e293b; }
 .lp-art.lp-below  .rig { transform:translateY(210px); opacity:0; }
 .lp-art.lp-launch .rig { transform:translateY(-620px); opacity:0;
   transition:transform .62s cubic-bezier(.5,0,.9,.35), opacity .42s ease-in; }
+/* brand text that flies in once the balloon has launched away (keyed off .lp-launch) */
+.lp-brand { position:absolute; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center;
+  gap:14px; pointer-events:none; text-align:center;
+  opacity:0; transform:translateY(72px) scale(.82); filter:blur(4px);
+  transition:opacity .7s ease .15s, transform 1s cubic-bezier(.22,.61,.36,1) .15s, filter .7s ease .15s; }
+.lp-art.lp-launch .lp-brand { opacity:1; transform:none; filter:none; }
+.lp-brand-word { font-family:'Big Shoulders Display',sans-serif; font-weight:900;
+  font-size:clamp(2.4rem,7.5vw,4.6rem); line-height:.9; letter-spacing:.01em;
+  background:linear-gradient(100deg,#93b4ff,#eaf1ff 42%,#e0a87c);
+  -webkit-background-clip:text; background-clip:text; color:transparent;
+  background-size:220% 100%; animation:lpBrandSheen 5s linear infinite; }
+.lp-brand-line { width:0; height:2px; border-radius:2px; background:linear-gradient(90deg,transparent,var(--accent),transparent); transition:width .8s ease .5s; }
+.lp-art.lp-launch .lp-brand-line { width:64%; }
+.lp-brand-sub { font-family:'IBM Plex Mono',monospace; font-size:.72rem; letter-spacing:.34em; text-transform:uppercase; color:var(--faint); }
+@keyframes lpBrandSheen { from { background-position:0 0; } to { background-position:220% 0; } }
 /* balloon swings like a pendulum from its lift point at the top */
 .lp-art .balloon { transform-origin:50% 13%; animation:lpDrift 8s ease-in-out infinite; }
 @keyframes lpDrift {
@@ -337,12 +369,12 @@ select.input-base option { background: #1e293b; }
 .lp-card p { color:var(--soft); font-size:.98rem; line-height:1.64; margin:0; }
 
 /* walkthrough steps */
-.lp-steps { display:flex; flex-direction:column; gap:0; border:1px solid var(--line); border-radius:18px; overflow:hidden; background:var(--card); }
+.lp-steps { display:flex; flex-direction:column; gap:16px; }
 .lp-step {
   display:grid; grid-template-columns:auto 1fr; gap:24px; align-items:start;
-  padding:26px 28px; border-top:1px solid var(--line); transition:background .2s ease;
+  padding:26px 28px; border:1px solid var(--line); border-radius:16px; background:var(--card);
+  transition:background .2s ease, border-color .2s ease;
 }
-.lp-step:first-child { border-top:none; }
 .lp-step:hover { background:rgba(255,255,255,0.018); }
 .lp-step .num {
   font-family:'IBM Plex Mono',monospace; font-weight:500; font-size:.9rem;
@@ -365,16 +397,247 @@ select.input-base option { background: #1e293b; }
 .lp-foot { text-align:center; padding:40px 28px 64px; color:var(--faint); font-size:.84rem; line-height:1.8; border-top:1px solid var(--line); }
 .lp-foot a { color:var(--accent); text-decoration:none; }
 .lp-foot a:hover { text-decoration:underline; }
+/* ============================================================
+   THEME SYSTEM  (light default, dark via html[data-theme="dark"])
+   Added in v68. The Firmware Builder chrome (.card etc.) used to be hard-dark,
+   which clashed with the already-light Ground Control and made the app feel heavy.
+   These variables drive a clean light "Apple-like" default and a refined dark mode,
+   toggled from the top bar and remembered in localStorage.
+   ============================================================ */
+:root{
+  --app-bg:#f5f5f7; --app-bg2:#ececed;
+  --surface:#ffffff; --surface-2:#f5f5f7; --surface-3:#fbfbfd;
+  --border:rgba(0,0,0,.10); --border-strong:rgba(0,0,0,.16);
+  --text-strong:#1d1d1f; --text:#3a3a3f; --text-muted:#6e6e73;
+  --accent:#0071e3; --accent-weak:#e8f1fe;
+  --input-bg:#ffffff; --log-bg:#f6f6f8; --log-text:#4a4a52;
+  --btn-slate-bg:#e8e8ed; --btn-slate-fg:#1d1d1f; --btn-slate-bg-h:#dcdce1;
+  --shadow:0 1px 2px rgba(0,0,0,.05), 0 8px 24px rgba(0,0,0,.06);
+  --tint-green:#e9f9ef; --tint-green-bd:#b6e6c8;
+  --tint-sky:#e7f3fd;   --tint-sky-bd:#bfe0f7;
+  --tint-indigo:#eeeefc;--tint-indigo-bd:#c9caf3;
+}
+html[data-theme="dark"]{
+  --app-bg:#0f172a; --app-bg2:#0b1220;
+  --surface:#1e293b; --surface-2:#1a2744; --surface-3:#16213a;
+  --border:#334155; --border-strong:#3b527a;
+  --text-strong:#e2e8f0; --text:#cbd5e1; --text-muted:#94a3b8;
+  --accent:#3b82f6; --accent-weak:#101b30;
+  --input-bg:#0f172a; --log-bg:#070e1a; --log-text:#94a3b8;
+  --btn-slate-bg:#475569; --btn-slate-fg:#ffffff; --btn-slate-bg-h:#334155;
+  --shadow:0 1px 2px rgba(0,0,0,.3), 0 10px 30px rgba(0,0,0,.35);
+  --tint-green:rgba(16,74,42,.30); --tint-green-bd:rgba(21,128,61,.5);
+  --tint-sky:rgba(12,52,90,.30);   --tint-sky-bd:rgba(3,105,161,.5);
+  --tint-indigo:rgba(30,27,75,.35);--tint-indigo-bd:rgba(67,56,202,.5);
+}
+/* page + nav follow the theme */
+html[data-theme="dark"] body{ background:var(--app-bg); color:var(--text); }
+body{ background:var(--app-bg); }
+/* core builder chrome, now variable-driven */
+.card{ background:var(--surface); border:1px solid var(--border); box-shadow:var(--shadow); }
+.card-header{ background:var(--surface-2); border-bottom:1px solid var(--border); }
+.input-base{ background:var(--input-bg); border:1px solid var(--border); color:var(--text); }
+.input-base:focus{ border-color:var(--accent); }
+select.input-base option{ background:var(--surface); color:var(--text); }
+.mode-box{ background:var(--surface-2); border:1px solid var(--border); }
+.mode-box:hover{ border-color:var(--border-strong); }
+.mode-head{ color:var(--text-strong); }
+.log-box{ background:var(--log-bg); border:1px solid var(--border); color:var(--log-text); }
+.field-label{ color:var(--text); }
+.field-desc{ color:var(--text-muted); }
+.field-desc strong{ color:var(--text-strong); }
+.unit-label{ background:var(--surface-2); border-color:var(--border); color:var(--text-muted); }
+.btn-slate{ background:var(--btn-slate-bg); color:var(--btn-slate-fg); }
+.btn-slate:hover:not(:disabled){ background:var(--btn-slate-bg-h); }
+.platform-btn{ border:2px solid var(--border); }
+.data-card:hover{ box-shadow:var(--shadow); }
+/* keep header/card titles and near-white inline text readable when a card turns light */
+html[data-theme="light"] .card-header .text-white,
+html[data-theme="light"] .card .text-white,
+html[data-theme="light"] .card-header .font-bold{ color:var(--text-strong)!important; }
+html[data-theme="light"] .card .text-slate-100,
+html[data-theme="light"] .card .text-slate-200,
+html[data-theme="light"] .card .text-slate-300{ color:var(--text)!important; }
+html[data-theme="light"] .card .text-slate-400,
+html[data-theme="light"] .card .text-slate-500{ color:var(--text-muted)!important; }
+/* dark accent tint boxes inside cards -> soft light tints in light mode */
+html[data-theme="light"] .card [class*="bg-green-950"]{ background:var(--tint-green)!important; border-color:var(--tint-green-bd)!important; }
+html[data-theme="light"] .card [class*="bg-sky-950"]{ background:var(--tint-sky)!important; border-color:var(--tint-sky-bd)!important; }
+html[data-theme="light"] .card [class*="bg-indigo-950"],
+html[data-theme="light"] .card [class*="bg-slate-800"]{ background:var(--surface-2)!important; }
+html[data-theme="light"] .card [class*="border-green-7"]{ border-color:var(--tint-green-bd)!important; }
+html[data-theme="light"] .card [class*="border-sky-7"]{ border-color:var(--tint-sky-bd)!important; }
+html[data-theme="light"] .card [class*="border-slate-7"]{ border-color:var(--border)!important; }
+html[data-theme="light"] .card .text-green-300{ color:#15803d!important; }
+html[data-theme="light"] .card .text-sky-200,html[data-theme="light"] .card .text-sky-300{ color:#0369a1!important; }
+html[data-theme="light"] .card .text-indigo-200{ color:#4338ca!important; }
+/* Firmware Builder was authored as a self-contained dark app (dark wrapper + white/slate
+   text). In light mode, remap those dark-context utilities so everything stays readable on
+   the now-light surfaces. Scoped to #app-fw so Ground Control (already light) is untouched. */
+html[data-theme="light"] #app-fw .text-white{ color:var(--text-strong)!important; }
+html[data-theme="light"] #app-fw .text-slate-100,
+html[data-theme="light"] #app-fw .text-slate-200,
+html[data-theme="light"] #app-fw .text-slate-300{ color:var(--text)!important; }
+html[data-theme="light"] #app-fw .text-slate-400,
+html[data-theme="light"] #app-fw .text-slate-500{ color:var(--text-muted)!important; }
+html[data-theme="light"] #app-fw [class*="bg-slate-950"],
+html[data-theme="light"] #app-fw [class*="bg-slate-900"],
+html[data-theme="light"] #app-fw [class*="bg-slate-800"],
+html[data-theme="light"] #app-fw [class*="bg-slate-700"]{ background:var(--surface-2)!important; }
+html[data-theme="light"] #app-fw pre[class*="bg-slate-950"]{ background:var(--surface-3)!important; }
+html[data-theme="light"] #app-fw [class*="border-slate-7"],
+html[data-theme="light"] #app-fw [class*="border-slate-8"]{ border-color:var(--border)!important; }
+/* PCB-model picker: keep each board's colour identity but with a light tint and dark text
+   (the selected card used to be a dark gradient with dark text on it). */
+html[data-theme="light"] .platform-btn.active-4x4{ background:linear-gradient(135deg,#eef0ff,#e5eaff)!important; border-color:#6366f1; }
+html[data-theme="light"] .platform-btn.active-4x2{ background:linear-gradient(135deg,#fdf7e6,#f9efcd)!important; border-color:#c99700; }
+html[data-theme="light"] .platform-btn .text-white{ color:var(--text-strong)!important; }
+html[data-theme="light"] #app-fw .badge[class*="bg-slate"]{ color:var(--text-muted)!important; }
+/* Light-tone accent text (…-200/-300) is unreadable on the light builder surfaces; darken it. */
+html[data-theme="light"] #app-fw [class*="text-indigo-2"],
+html[data-theme="light"] #app-fw [class*="text-indigo-3"],
+html[data-theme="light"] #app-fw [class*="text-blue-2"],
+html[data-theme="light"] #app-fw [class*="text-blue-3"]{ color:#4338ca!important; }
+html[data-theme="light"] #app-fw [class*="text-amber-2"],
+html[data-theme="light"] #app-fw [class*="text-amber-3"],
+html[data-theme="light"] #app-fw [class*="text-yellow-2"],
+html[data-theme="light"] #app-fw [class*="text-yellow-3"]{ color:#b45309!important; }
+html[data-theme="light"] #app-fw [class*="text-green-2"],
+html[data-theme="light"] #app-fw [class*="text-green-3"],
+html[data-theme="light"] #app-fw [class*="text-emerald-2"],
+html[data-theme="light"] #app-fw [class*="text-emerald-3"]{ color:#15803d!important; }
+html[data-theme="light"] #app-fw [class*="text-sky-2"],
+html[data-theme="light"] #app-fw [class*="text-sky-3"]{ color:#0369a1!important; }
+
+/* Home landing: flip its scoped palette to a light "Apple-like" scheme in light mode.
+   Every .lp-* rule reads these variables, so this one override lightens the whole page. */
+html[data-theme="light"] #app-home{
+  --bg-top:#ffffff; --bg-bot:#f4f5f7;
+  --ink:#111114; --soft:#3f4046; --faint:#6a6b70;
+  --line:rgba(0,0,0,.12); --line-2:rgba(0,0,0,.20);
+  --card:rgba(0,0,0,.03);
+  --accent:#0071e3; --accent-deep:#0058b0; --warm:#b5651d;
+  background:
+    radial-gradient(1000px 520px at 80% -12%, rgba(0,113,227,.10), transparent 62%),
+    linear-gradient(180deg, var(--bg-top) 0%, var(--bg-bot) 72%, #eef0f4 100%);
+}
+html[data-theme="light"] #app-home .lp-btn-main{ background:var(--accent); color:#fff; box-shadow:0 8px 24px rgba(0,113,227,.22); }
+html[data-theme="light"] #app-home::before{ opacity:.5; }
+
+/* ===== Post-compile flashing card ===== */
+.flash-card{ border:1px solid var(--border); background:var(--surface-2); border-radius:14px; padding:16px 18px; box-shadow:var(--shadow); }
+.flash-card-head{ display:flex; gap:12px; align-items:center; margin-bottom:10px; }
+.flash-ico{ font-size:1.4rem; width:40px; height:40px; display:flex; align-items:center; justify-content:center; border-radius:11px; background:linear-gradient(135deg,#16a34a,#0ea5a4); color:#fff; flex-shrink:0; }
+.flash-title{ font-weight:700; color:var(--text-strong); font-size:.95rem; }
+.flash-sub{ color:var(--text-muted); font-size:.78rem; }
+.flash-steps{ margin:0 0 12px; padding-left:20px; color:var(--text); font-size:.8rem; line-height:1.6; }
+.flash-steps li{ margin-bottom:3px; }
+.flash-steps strong{ color:var(--text-strong); }
+.flash-actions{ display:flex; flex-wrap:wrap; align-items:center; gap:10px; }
+.flash-status{ font-size:.76rem; color:var(--text-muted); }
+.flash-note{ font-size:.72rem; color:var(--text-muted); margin-top:10px; line-height:1.5; }
+.flash-link{ color:var(--accent); text-decoration:underline; }
+.flash-log{ margin-top:12px; background:var(--log-bg); border:1px solid var(--border); border-radius:10px; padding:10px 12px; height:180px; overflow-y:auto; font-family:'IBM Plex Mono',monospace; font-size:.72rem; color:var(--log-text); line-height:1.5; }
+.flash-log .error{ color:#ef4444; } .flash-log .warning{ color:#d97706; } .flash-log .info{ color:var(--text); }
+.flash-log .progress{ display:flex; align-items:center; gap:8px; margin:5px 0; color:var(--text-muted); animation:flashLogIn .25s ease; }
+.flash-log>div{ animation:flashLogIn .2s ease; }
+@keyframes flashLogIn{ from{ opacity:0; transform:translateY(3px);} to{ opacity:1; transform:none;} }
+.flash-log progress{ -webkit-appearance:none; appearance:none; flex:1; height:9px; border:none; border-radius:6px; background:var(--app-bg2); overflow:hidden; }
+.flash-log progress::-webkit-progress-bar{ background:var(--app-bg2); border-radius:6px; }
+.flash-log progress::-webkit-progress-value{ background:linear-gradient(90deg,#16a34a,#22c55e,#0ea5a4); background-size:200% 100%; border-radius:6px; transition:width .35s cubic-bezier(.4,0,.2,1); animation:barShimmer 1.6s linear infinite; }
+.flash-log progress::-moz-progress-bar{ background:linear-gradient(90deg,#16a34a,#0ea5a4); border-radius:6px; transition:width .35s cubic-bezier(.4,0,.2,1); }
+@keyframes barShimmer{ from{ background-position:200% 0;} to{ background-position:-200% 0;} }
+.flash-ico.flashing{ animation:flashPulse 1.1s ease-in-out infinite; }
+@keyframes flashPulse{ 0%,100%{ transform:scale(1); box-shadow:0 0 0 0 rgba(22,163,74,.5);} 50%{ transform:scale(1.08); box-shadow:0 0 0 8px rgba(22,163,74,0);} }
+/* star rating */
+.stars{ display:inline-flex; gap:2px; }
+.star{ background:none; border:none; cursor:pointer; font-size:1.55rem; line-height:1; color:var(--border-strong); transition:color .1s, transform .1s; padding:0 1px; }
+.star:hover{ transform:scale(1.18); }
+.star.lit{ color:#f5b301; }
+/* tutorials / fallback */
+.flash-details{ margin-top:12px; border:1px solid var(--border); border-radius:10px; background:var(--surface); overflow:hidden; }
+.flash-details>summary{ cursor:pointer; list-style:none; padding:11px 14px; font-size:.8rem; font-weight:600; color:var(--text); user-select:none; }
+.flash-details>summary::-webkit-details-marker{ display:none; }
+.flash-details>summary::before{ content:'▸'; margin-right:9px; color:var(--text-muted); }
+.flash-details[open]>summary::before{ content:'▾'; }
+.flash-details-body{ padding:0 14px 14px; font-size:.78rem; color:var(--text); line-height:1.55; }
+.flash-details-body ol{ padding-left:20px; margin:6px 0; } .flash-details-body li{ margin-bottom:4px; }
+.flash-details-body strong{ color:var(--text-strong); }
+.flash-hint{ font-size:.72rem; color:var(--text-muted); margin-top:6px; }
+.flash-tip{ font-size:.76rem; color:var(--text); background:var(--accent-weak); border:1px solid var(--border); border-radius:8px; padding:8px 10px; margin-bottom:10px; line-height:1.5; }
+.flash-warn{ font-size:.78rem; color:#b45309; background:rgba(217,119,6,.10); border:1px solid rgba(217,119,6,.38); border-radius:9px; padding:9px 12px; margin-bottom:12px; line-height:1.5; }
+.flash-warn strong{ color:var(--text-strong); }
+/* rating modal */
+.rating-modal-back{ position:fixed; inset:0; background:rgba(0,0,0,.55); display:flex; align-items:center; justify-content:center; z-index:60; padding:20px; animation:ratingFade .2s ease; }
+@keyframes ratingFade{ from{ opacity:0;} to{ opacity:1;} }
+.rating-modal{ background:var(--surface); border:1px solid var(--border); border-radius:18px; box-shadow:0 24px 70px rgba(0,0,0,.45); max-width:400px; width:100%; padding:28px 26px; text-align:center; animation:ratingPop .3s cubic-bezier(.34,1.56,.64,1); }
+@keyframes ratingPop{ from{ opacity:0; transform:translateY(14px) scale(.94);} to{ opacity:1; transform:none;} }
+.rating-emoji{ font-size:2.4rem; line-height:1; display:inline-block; animation:ratingFloat 3s ease-in-out infinite; }
+@keyframes ratingFloat{ 0%,100%{ transform:translateY(0) rotate(-3deg);} 50%{ transform:translateY(-6px) rotate(3deg);} }
+.rating-modal h3{ font-size:1.15rem; font-weight:800; color:var(--text-strong); margin:10px 0 4px; letter-spacing:-.01em; }
+.rating-modal p{ font-size:.84rem; color:var(--text-muted); margin:0 auto 18px; max-width:30em; line-height:1.55; }
+.rating-modal .stars{ justify-content:center; gap:8px; margin:0 0 4px; }
+.rating-modal .star{ font-size:2.4rem; padding:2px; }
+.rating-modal .star.lit{ animation:starPop .3s cubic-bezier(.34,1.7,.64,1); }
+@keyframes starPop{ 0%{ transform:scale(.6);} 60%{ transform:scale(1.25);} 100%{ transform:scale(1);} }
+.rating-thanks-note{ font-size:.74rem; color:var(--text-muted); margin-top:14px; line-height:1.5; }
+.rating-modal-actions{ display:flex; gap:10px; justify-content:center; margin-top:14px; }
+.flash-pre{ background:var(--surface-3); border:1px solid var(--border); border-radius:8px; padding:10px 12px; margin-top:6px; overflow-x:auto; font-family:'IBM Plex Mono',monospace; font-size:.72rem; color:var(--text); white-space:pre; }
+.flash-cmd-wrap{ position:relative; margin-top:8px; } .flash-cmd{ padding-right:56px; }
+.flash-copy{ position:absolute; top:8px; right:8px; font-size:.68rem; background:var(--btn-slate-bg); color:var(--btn-slate-fg); border:none; padding:4px 10px; border-radius:6px; cursor:pointer; }
+
+/* theme toggle button in the top bar */
+.theme-toggle{ margin-left:auto; display:inline-flex; align-items:center; gap:7px; padding:6px 14px;
+  border-radius:999px; font-size:.78rem; font-weight:650; cursor:pointer; border:1px solid rgba(255,255,255,.1);
+  background:rgba(255,255,255,.04); color:#cbd5e1; transition:.15s; }
+.theme-toggle:hover{ background:rgba(255,255,255,.1); color:#fff; }
+
+/* Light-theme top bar - keep it bright, crisp and high-contrast */
+html[data-theme="light"] #app-switcher{
+  background:rgba(255,255,255,.8); border-bottom:1px solid rgba(15,23,42,.09);
+  box-shadow:0 1px 0 rgba(255,255,255,.7), 0 6px 22px rgba(15,23,42,.07);
+}
+html[data-theme="light"] .sw-brand{ color:#0f172a; }
+html[data-theme="light"] .sw-nav{ background:rgba(15,23,42,.05); border-color:rgba(15,23,42,.07); }
+html[data-theme="light"] .sw-btn{ color:#475569; }
+html[data-theme="light"] .sw-btn:hover{ color:#0f172a; background:rgba(15,23,42,.06); }
+html[data-theme="light"] .sw-active{ color:#fff !important; }
+html[data-theme="light"] .theme-toggle{ border-color:rgba(15,23,42,.12); background:rgba(15,23,42,.03); color:#334155; }
+html[data-theme="light"] .theme-toggle:hover{ background:rgba(15,23,42,.09); color:#0f172a; }
 </style>
+<script>
+// Apply the saved theme before first paint (no flash). Light is the default.
+(function(){
+  try{
+    var t = localStorage.getItem('nfwTheme');
+    if(t!=='dark' && t!=='light') t='light';
+    document.documentElement.setAttribute('data-theme', t);
+  }catch(e){ document.documentElement.setAttribute('data-theme','light'); }
+})();
+function toggleTheme(){
+  var cur = document.documentElement.getAttribute('data-theme')==='dark' ? 'dark':'light';
+  var next = cur==='dark' ? 'light':'dark';
+  document.documentElement.setAttribute('data-theme', next);
+  try{ localStorage.setItem('nfwTheme', next); }catch(e){}
+  var b=document.getElementById('theme-toggle'); if(b) b.textContent = next==='dark' ? '☀ Light' : '☾ Dark';
+}
+document.addEventListener('DOMContentLoaded', function(){
+  var b=document.getElementById('theme-toggle');
+  if(b){ var cur=document.documentElement.getAttribute('data-theme'); b.textContent = (cur==='dark') ? '☀ Light' : '☾ Dark'; }
+});
+</script>
 </head>
 <body class="bg-slate-100 min-h-screen text-slate-800 text-sm">
 
 <!-- APP SWITCHER -->
-<div id="app-switcher" style="position:sticky;top:0;z-index:30;height:40px;background:#0f172a;display:flex;align-items:center;padding:0 16px;gap:8px;">
-  <span style="color:#475569;font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;margin-right:6px;">RS41-NFW</span>
-  <button id="sw-btn-home" class="sw-btn sw-active" onclick="switchApp('home')">Home</button>
-  <button id="sw-btn-fw"  class="sw-btn"            onclick="switchApp('fw')">Firmware Builder</button>
-  <button id="sw-btn-gcs" class="sw-btn"            onclick="switchApp('gcs')">Ground Control</button>
+<div id="app-switcher">
+  <span class="sw-brand"><span class="dot"></span>RS41-NFW</span>
+  <nav class="sw-nav">
+    <button id="sw-btn-home" class="sw-btn sw-active" onclick="switchApp('home')">Home</button>
+    <button id="sw-btn-fw"  class="sw-btn"            onclick="switchApp('fw')">Firmware Builder</button>
+    <button id="sw-btn-gcs" class="sw-btn"            onclick="switchApp('gcs')">Ground Control</button>
+  </nav>
+  <button id="theme-toggle" class="theme-toggle" onclick="toggleTheme()" title="Switch light / dark theme">☾ Dark</button>
 </div>
 
 <!-- ===================== HOME / LANDING ===================== -->
@@ -384,7 +647,7 @@ select.input-base option { background: #1e293b; }
     <!-- HERO -->
     <section class="lp-hero">
       <div>
-        <div class="lp-eyebrow">RS41-NFW &middot; Open radiosonde firmware</div>
+        <div class="lp-eyebrow">RS41-NFW &middot; Versatile radiosonde firmware</div>
         <h1 class="lp-title">The most advanced<br>Vaisala&nbsp;RS41<br><em>sounding</em> firmware</h1>
         <p class="lp-lead">
           A complete, open-source firmware for the Vaisala RS41 radiosonde - precise atmospheric
@@ -452,6 +715,12 @@ select.input-base option { background: #1e293b; }
           </g>
           </g>
         </svg>
+        <!-- Flies in once the balloon has launched away (keyed off .lp-launch) -->
+        <div class="lp-brand" aria-hidden="true">
+          <span class="lp-brand-word">RS41-NFW</span>
+          <span class="lp-brand-line"></span>
+          <span class="lp-brand-sub">nevvman's firmware</span>
+        </div>
       </div>
     </section>
 
@@ -546,7 +815,7 @@ select.input-base option { background: #1e293b; }
         <div class="lp-step"><div class="num">2</div><div><h4>Set your callsign &amp; modes</h4><p>Enter your <b>callsign</b> and choose your transmission modes. For a HAB flight we suggest enabling <b>Horus V3</b> (efficient, weak-signal) and <b>APRS</b> (widely received).</p></div></div>
         <div class="lp-step"><div class="num">3</div><div><h4>Type the boom serial - that's it</h4><p>In the sensor-boom section choose <b>Factory (Vaisala)</b> and enter the serial printed on the silver measuring boom. The sonde's <b>original factory calibration</b> is downloaded and compiled in - temperature and humidity then read at practically the original accuracy. <b>No calibration steps, no offsets, no fiddling - it just works.</b></p></div></div>
         <div class="lp-step"><div class="num">4</div><div><h4>Compile &amp; download</h4><p>Hit <b>Compile</b> and download the ready <code>.bin</code>. No Arduino IDE, no STM32 core, no variant files - the builder does all of it in the browser.</p></div></div>
-        <div class="lp-step"><div class="num">5</div><div><h4>Flash &amp; fly</h4><p>Install <b>OpenOCD</b> or <b>STM32CubeProgrammer</b> and flash the binary over the XDATA / SWD pins, following the instructions shown after compiling. Power on, wait for the green LED - launch-ready.</p></div></div>
+        <div class="lp-step"><div class="num">5</div><div><h4>Flash &amp; fly</h4><p>Wire an <b>ST-Link</b> to the XDATA / SWD pins and press <b>Flash over WebUSB</b> - it writes straight from the browser, no software to install, and even unlocks a factory-new sonde for you. (Desktop tools like OpenOCD stay available as a fallback.) Power on, wait for the green LED - launch-ready.</p></div></div>
       </div>
     </section>
 
@@ -564,8 +833,8 @@ select.input-base option { background: #1e293b; }
 
     <div class="lp-foot">
       RS41-NFW &middot; open-source RS41 radiosonde firmware &amp; sounding software<br>
-      Source, documentation and releases on <a href="https://github.com/Nevvman18/rs41-nfw" target="_blank" rel="noopener">github.com/Nevvman18/rs41-nfw</a><br><br>
-      <span style="opacity:.85">This Sounding Software (the web tool) was developed with the help of LLM tooling. The author assures it has been through extensive testing and checking, that it delivers stable, problem-free operation, and that it was carefully refined and polished.</span>
+      Source, documentation and releases on <a href="https://github.com/Nevvman18/rs41-nfw" target="_blank" rel="noopener">github.com/Nevvman18/rs41-nfw</a><br>
+      <span style="opacity:.85">Written and maintained by <strong>Franek "nevvman" (SP5FRA)</strong> - built for the ballooning community, with passion. 🎈</span>
     </div>
   </div>
 </div>
@@ -574,7 +843,7 @@ select.input-base option { background: #1e293b; }
 <div id="app-gcs" class="hidden">
 
 <!-- HEADER -->
-<header class="bg-white border-b border-slate-200 shadow-sm sticky z-20" style="top:40px">
+<header class="bg-white border-b border-slate-200 shadow-sm sticky z-20" style="top:52px">
   <div class="max-w-screen-2xl mx-auto px-4 py-2 flex items-center gap-3">
     <div id="hdr-led" class="w-5 h-5 rounded-full led-offline flex-shrink-0"></div>
     <div class="flex-shrink-0">
@@ -1348,7 +1617,7 @@ select.input-base option { background: #1e293b; }
 
 <!-- FW -->
 <div id="app-fw" class="hidden">
-<div style="background:#0f172a;color:#e2e8f0;font-family:'Inter',system-ui,sans-serif;min-height:calc(100vh - 40px);" class="p-4 md:p-6">
+<div style="background:var(--app-bg);color:var(--text);font-family:'Inter',system-ui,sans-serif;min-height:calc(100vh - 40px);" class="p-4 md:p-6">
 
 <!-- FW HEADER -->
 <div class="max-w-5xl mx-auto mb-6">
@@ -1356,8 +1625,8 @@ select.input-base option { background: #1e293b; }
     <div class="flex items-center gap-3">
       <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-600 to-indigo-700 flex items-center justify-center text-xl">📡</div>
       <div>
-        <h1 class="text-xl font-bold text-white">NFW Sounding Software</h1>
-        <p class="text-xs text-slate-400">Configure &amp; compile firmware for Vaisala RS41 radiosondes</p>
+        <h1 class="text-2xl font-extrabold tracking-tight bg-gradient-to-r from-sky-300 via-indigo-300 to-fuchsia-300 bg-clip-text text-transparent">NFW Sounding Software</h1>
+        <p class="text-xs text-slate-400">Configure, compile and flash firmware for Vaisala RS41 radiosondes - straight from your browser with the built-in WebUSB flasher.</p>
       </div>
     </div>
     <div id="fw-badge" class="badge bg-slate-800 text-slate-400">No firmware loaded</div>
@@ -1374,9 +1643,9 @@ select.input-base option { background: #1e293b; }
     <span id="verify-pill" class="badge bg-amber-900 text-amber-300 ml-auto">Required</span>
   </div>
   <div class="p-5">
-    <div id="verify-done" class="hidden text-sm text-green-400 font-semibold">✓ Verified. Fetching, uploading and compiling are unlocked for this session.</div>
+    <div id="verify-done" class="hidden text-sm text-green-400 font-semibold">✓ Verified. Fetching and compiling are unlocked for this session.</div>
     <div id="verify-form">
-      <p class="text-sm text-slate-400 mb-3">Retype the code below to unlock fetching, uploading and compiling. This is a simple in-app check to keep automated bots out (the public site also sits behind Cloudflare).</p>
+      <p class="text-sm text-slate-400 mb-3">Retype the code below to unlock fetching and compiling. This is a simple in-app check to keep automated bots out (the public site also sits behind Cloudflare).</p>
       <div class="flex flex-wrap items-center gap-3">
         <img id="captcha-img" alt="verification code" class="rounded-lg border border-slate-700 bg-slate-900" style="height:60px; user-select:none; -webkit-user-select:none; pointer-events:none;" draggable="false">
         <button class="btn btn-slate" type="button" onclick="loadCaptcha()" title="New code"><span>🔄</span></button>
@@ -1426,7 +1695,7 @@ select.input-base option { background: #1e293b; }
   <div class="p-5">
     <p class="text-xs text-slate-500 mb-4">Select your PCB revision - printed on the bottom of the board. This also sets which board the single Compile button below targets.</p>
     <div class="flex gap-3">
-      <button class="platform-btn active-4x4" id="plat-4x4" onclick="setPlatform('RSM4x4')">
+      <button class="platform-btn active-4x4" id="plat-4x4" onclick="selectPlatform('RSM4x4')">
         <!-- LQFP64 icon - larger package -->
         <svg class="ic-pkg mx-auto mb-2" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
           <rect x="10" y="10" width="28" height="28" rx="2" fill="#312e81" stroke="#6366f1" stroke-width="1.5"/>
@@ -1458,7 +1727,7 @@ select.input-base option { background: #1e293b; }
           <li>✓ Actively developed &amp; future-proof</li>
         </ul>
       </button>
-      <button class="platform-btn" id="plat-4x2" onclick="setPlatform('RSM4x2')">
+      <button class="platform-btn" id="plat-4x2" onclick="selectPlatform('RSM4x2')">
         <!-- LQFP48 icon - smaller package -->
         <svg class="ic-pkg mx-auto mb-2" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
           <rect x="11" y="11" width="26" height="26" rx="2" fill="#1c1500" stroke="#eab308" stroke-width="1.5"/>
@@ -1484,12 +1753,9 @@ select.input-base option { background: #1e293b; }
           <li>• Higher power draw</li>
           <li>• Data Recorder included (via LTO)</li>
           <li>• No Horus V2 / RTTY / Morse / fast-TX</li>
-          <li>• NFW sensor calibration (no factory cal)</li>
+          <li>• Factory (Vaisala) sensor calibration</li>
         </ul>
       </button>
-    </div>
-    <div id="m10-note" class="mt-3 text-xs text-indigo-300 bg-indigo-950 px-3 py-2 rounded-lg">
-      RSM4x4 (L412) has a <strong class="text-indigo-200">vastly better GPS module (M10)</strong> with intelligent power management, far lower power consumption and wider future support. RSM4x2 (F100) uses basic GPS with limited options. RSM4x4 is the strongly recommended choice for any new build.
     </div>
 
     <!-- Full board comparison -->
@@ -1504,10 +1770,8 @@ select.input-base option { background: #1e293b; }
         </thead>
         <tbody class="text-slate-400">
           <tr><td class="py-1 pr-3 border-b border-slate-800">MCU</td><td class="py-1 px-3 border-b border-slate-800 font-mono">STM32L412RBT6 · LQFP64</td><td class="py-1 px-3 border-b border-slate-800 font-mono">STM32F100C8T6 · LQFP48</td></tr>
-          <tr><td class="py-1 pr-3 border-b border-slate-800">Flash</td><td class="py-1 px-3 border-b border-slate-800 font-mono text-slate-200">128 KB</td><td class="py-1 px-3 border-b border-slate-800 font-mono text-slate-200">64 KB <span class="text-yellow-400">(tight)</span></td></tr>
-          <tr><td class="py-1 pr-3 border-b border-slate-800">RAM</td><td class="py-1 px-3 border-b border-slate-800 font-mono text-slate-200">40 KB</td><td class="py-1 px-3 border-b border-slate-800 font-mono text-slate-200">8 KB <span class="text-yellow-400">(tight)</span></td></tr>
           <tr><td class="py-1 pr-3 border-b border-slate-800">GPS module</td><td class="py-1 px-3 border-b border-slate-800">u-blox <strong class="text-indigo-300">M10</strong> · intelligent power mgmt</td><td class="py-1 px-3 border-b border-slate-800">basic · limited options</td></tr>
-          <tr><td class="py-1 pr-3 border-b border-slate-800">Sensor calibration</td><td class="py-1 px-3 border-b border-slate-800">NFW <span class="text-slate-500">or</span> Vaisala (factory)</td><td class="py-1 px-3 border-b border-slate-800">NFW <span class="text-[10px] text-yellow-400">only</span></td></tr>
+          <tr><td class="py-1 pr-3 border-b border-slate-800">Sensor calibration</td><td class="py-1 px-3 border-b border-slate-800">NFW <span class="text-slate-500">or</span> Vaisala (factory)</td><td class="py-1 px-3 border-b border-slate-800">Vaisala (factory) <span class="text-[10px] text-yellow-400">only</span></td></tr>
           <tr><td class="py-1 pr-3 border-b border-slate-800">Horus V3 + extraSensors + ozone</td><td class="py-1 px-3 border-b border-slate-800 text-emerald-400">✓</td><td class="py-1 px-3 border-b border-slate-800 text-emerald-400">✓</td></tr>
           <tr><td class="py-1 pr-3 border-b border-slate-800">APRS (AX.25 / AFSK 1200)</td><td class="py-1 px-3 border-b border-slate-800 text-emerald-400">✓</td><td class="py-1 px-3 border-b border-slate-800 text-emerald-400">✓</td></tr>
           <tr><td class="py-1 pr-3 border-b border-slate-800">Data Recorder (diagnostic frames)</td><td class="py-1 px-3 border-b border-slate-800 text-emerald-400">✓</td><td class="py-1 px-3 border-b border-slate-800 text-emerald-400">✓ <span class="text-[10px] text-yellow-400">(via LTO)</span></td></tr>
@@ -1555,6 +1819,7 @@ select.input-base option { background: #1e293b; }
         <label class="field-label">Interval</label><div class="unit-wrap"><input type="number" class="input-base" id="cfg-morseTimeSyncSeconds" value="15" min="0" onchange="cfgChanged()"><span class="unit-label">s</span></div>
         <label class="field-label mt-2">Offset</label><div class="unit-wrap"><input type="number" class="input-base" id="cfg-morseTimeSyncOffsetSeconds" value="0" min="0" onchange="cfgChanged()"><span class="unit-label">s</span></div></div>
     </div>
+    <details class="flash-details mt-4"><summary style="font-size:.78rem">Want the highest density of downlink data?</summary><div class="flash-details-body">Set that mode's <strong>interval to 1 s</strong> and the sonde transmits it as fast as it possibly can. Allow up to about a second on top of each packet for GPS and sensor updates and the transmission air-time.</div></details>
   </div>
 </div>
 
@@ -1618,7 +1883,7 @@ select.input-base option { background: #1e293b; }
       <p class="field-desc">One or more frequencies, comma-separated. The sonde cycles through them all, one per TX window (e.g. <span class="font-mono">437.6, 434.714</span> for Poland + most of Europe). Low-altitude fast-TX and the data recorder always use the first one.</p></div>
     <div><label class="field-label">Payload callsign</label><input type="text" class="input-base font-mono" id="cfg-HORUS_V3_CALLSIGN" value="4FSKTEST-V3" maxlength="32" onchange="cfgChanged()">
       <p class="field-desc">Each character adds 6 bits to the packet.</p></div>
-    <div><label class="field-label">TX power</label><select class="input-base" id="cfg-horusV3RadioPower" onchange="cfgChanged()">
+    <div><label class="field-label">TX power</label><select class="input-base" id="cfg-horusV3RadioPower" onchange="horusPowerChanged('cfg-horusV3RadioPower')">
             <option value="0">0 - -1 dBm (~0.8 mW)</option>
             <option value="1">1 - 2 dBm (~1.6 mW)</option>
             <option value="2">2 - 5 dBm (~3 mW)</option>
@@ -1656,14 +1921,14 @@ select.input-base option { background: #1e293b; }
   </div>
   <div class="p-5 grid grid-cols-1 md:grid-cols-2 gap-5">
     <div class="flex items-start gap-3 md:col-span-2">
-      <label class="toggle mt-1"><input type="checkbox" id="cfg-horusEnable" onchange="cfgChanged()"><span class="toggle-slider"></span></label>
+      <label class="toggle mt-1"><input type="checkbox" id="cfg-horusEnable" onchange="horusV2Toggle()"><span class="toggle-slider"></span></label>
       <div><span class="text-white font-bold cursor-pointer" onclick="toggleCheck('cfg-horusEnable')">Enable Horus V2 TX</span>
       <p class="field-desc"><strong class="text-amber-300">Not recommended.</strong> Horus V2 is kept only for compatibility with old receiver installs. It scales poorly (fixed field set, a globally-allocated payload ID you must request from github.com/projecthorus/horusdemodlib/issues) and receives no forward-looking support. <strong>Use Horus V3 instead</strong> - same modem, better packet, no ID needed, actively developed.</p></div>
     </div>
     <div><label class="field-label">Frequencies (MHz)</label><input type="text" class="input-base font-mono" id="cfg-horusFreqTable" value="437.6" onchange="cfgChanged()" placeholder="437.6, 434.714">
       <p class="field-desc">Comma-separated; the sonde cycles through every entry, one per TX window.</p></div>
     <div><label class="field-label">Payload ID</label><input type="number" class="input-base" id="cfg-horusPayloadId" value="256" min="0" onchange="cfgChanged()"></div>
-    <div><label class="field-label">TX power</label><select class="input-base" id="cfg-horusRadioPower" onchange="cfgChanged()">
+    <div><label class="field-label">TX power</label><select class="input-base" id="cfg-horusRadioPower" onchange="horusPowerChanged('cfg-horusRadioPower')">
             <option value="0">0 - -1 dBm (~0.8 mW)</option>
             <option value="1">1 - 2 dBm (~1.6 mW)</option>
             <option value="2">2 - 5 dBm (~3 mW)</option>
@@ -1690,9 +1955,9 @@ select.input-base option { background: #1e293b; }
     </div>
     <div><label class="field-label">Frequencies (MHz)</label><input type="text" class="input-base font-mono" id="cfg-aprsFreqTable" value="432.5" onchange="cfgChanged()" placeholder="432.5, 144.8">
       <p class="field-desc">Comma-separated; the sonde cycles through every entry, one per TX window. Use the APRS frequency that is standard for your region. The data recorder and low-altitude fast-TX use the first entry only.</p></div>
-    <div><label class="field-label">Callsign</label><input type="text" class="input-base font-mono" id="cfg-aprsCall" value="N0CALL" maxlength="10" onchange="cfgChanged()"><p class="field-desc">The station callsign the packet is sent from. Shown as the tracked object on the map.</p></div>
+    <div><label class="field-label">Callsign</label><input type="text" class="input-base font-mono" id="cfg-aprsCall" value="N0CALL" maxlength="10" oninput="this.value=this.value.toUpperCase()" onchange="cfgChanged()"><p class="field-desc">The station callsign the packet is sent from. Shown as the tracked object on the map. Automatically forced to <strong>UPPERCASE</strong> (APRS callsigns must be uppercase).</p></div>
     <div><label class="field-label">SSID</label><input type="number" class="input-base" id="cfg-aprsSsid" value="11" min="0" max="15" onchange="cfgChanged()"><p class="field-desc">Number appended to the callsign (CALL-11). By convention 11 means a balloon / high-altitude tracker.</p></div>
-    <div class="md:col-span-2"><label class="field-label">Comment</label><input type="text" class="input-base font-mono" id="cfg-aprsComment" value=" NFWv67" maxlength="64" onchange="cfgChanged()"><p class="field-desc">Free text added to the end of every packet (visible next to the station on the map).</p></div>
+    <div class="md:col-span-2"><label class="field-label">Comment</label><input type="text" class="input-base font-mono" id="cfg-aprsComment" value=" NFWv68" maxlength="64" onchange="cfgChanged()"><p class="field-desc">Free text added to the end of every packet (visible next to the station on the map).</p></div>
     <div><label class="field-label">Map icon</label>
       <select class="input-base" id="aprs-symbol-preset" onchange="aprsSymbolPreset()">
         <option value="O">🎈 Balloon</option>
@@ -1952,7 +2217,7 @@ select.input-base option { background: #1e293b; }
   </div>
   <div class="p-5 grid grid-cols-1 md:grid-cols-2 gap-5">
     <div><label class="field-label">GPS operation mode</label>
-      <select class="input-base" id="cfg-gpsOperationMode" onchange="cfgChanged()">
+      <select class="input-base" id="cfg-gpsOperationMode" onchange="gpsModeChanged()">
         <option value="0">0 - GPS fully disabled (stationary location)</option>
         <option value="1">1 - Always on / max performance</option>
         <option value="2" id="gpsmode-opt-2">2 - Standard power-save (RSM4x2 only)</option>
@@ -2017,9 +2282,9 @@ select.input-base option { background: #1e293b; }
   </div>
   <div class="p-5 grid grid-cols-1 md:grid-cols-2 gap-5">
     <div class="flex items-start gap-3">
-      <label class="toggle mt-1"><input type="checkbox" id="cfg-sensorBoomEnable" checked onchange="cfgChanged()"><span class="toggle-slider"></span></label>
+      <label class="toggle mt-1"><input type="checkbox" id="cfg-sensorBoomEnable" checked onchange="sensorBoomToggle()"><span class="toggle-slider"></span></label>
       <div><span class="field-label cursor-pointer" onclick="toggleCheck('cfg-sensorBoomEnable')">Enable sensor boom</span>
-      <p class="field-desc">Turn this on to unlock the full meteorological payload - air temperature, humidity and (with RPM411) pressure - plus their calibration and heating. This is what makes the sonde a proper weather instrument, so keep it on for any atmospheric flight. Leave it off only for a bare tracker with no boom fitted.</p></div>
+      <p class="field-desc">Turn this on to unlock the full meteorological payload - air temperature and humidity - plus their calibration and heating. This is what makes the sonde a proper weather instrument, so keep it on for any atmospheric flight. Leave it off only for a bare tracker with no boom fitted. (Pressure is a separate option - see the Pressure section.)</p></div>
     </div>
     <div class="flex items-start gap-3">
       <label class="toggle mt-1"><input type="checkbox" id="cfg-sensorBoomPowerSaving" onchange="cfgChanged()"><span class="toggle-slider"></span></label>
@@ -2037,7 +2302,7 @@ select.input-base option { background: #1e293b; }
         <div><strong class="text-emerald-300">Factory (Vaisala)</strong> - reproduces the boom's <em>original Vaisala factory calibration</em> (coefficients fetched from SondeHub by serial). <strong class="text-white">Expected accuracy: the same you get when receiving a normal factory sonde</strong> - full manufacturer-grade temperature and humidity. Recommended whenever the boom's factory data is available.</div>
         <div><strong class="text-amber-300">NFW algorithms</strong> - the in-house calibration and compensation model. A <strong class="text-white">simplified, close approximation</strong> that brings a boom to life even with <em>no factory calibration data at all</em>. Good, usable readings, but not at the manufacturer's certified accuracy. Use it for booms whose serial was never received by SondeHub, or when you prefer the NFW workflow.</div>
       </div>
-      <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+      <div class="grid grid-cols-1 sm:grid-cols-2 gap-4" id="sensorcal-mode-picker">
         <div><label class="field-label">Calibration mode</label>
           <select class="input-base" id="cfg-sensorCalibrationMode" onchange="sensorCalModeChanged()">
             <option value="1">1 - NFW calibration</option>
@@ -2045,6 +2310,7 @@ select.input-base option { background: #1e293b; }
           </select>
         </div>
       </div>
+      <p id="sensorcal-factory-only" class="field-desc mb-1 hidden"><strong class="text-emerald-300">RSM4x2 / RSM4x1</strong> now run <strong class="text-white">factory (Vaisala) calibration</strong> only - just enter the boom serial below. (The NFW calibration path is no longer built for these boards.)</p>
 
       <div id="factory-cal-box" class="mt-4 rounded-xl border border-indigo-900/40 bg-indigo-950/20 px-4 py-3" style="display:none">
         <label class="field-label">Measurement boom serial number</label>
@@ -2180,7 +2446,7 @@ select.input-base option { background: #1e293b; }
   </div>
   <div class="p-5 grid grid-cols-1 md:grid-cols-2 gap-5">
     <div><label class="field-label">Pressure mode</label>
-      <select class="input-base" id="cfg-pressureMode" onchange="cfgChanged()">
+      <select class="input-base" id="cfg-pressureMode" onchange="pressureModeChanged()">
         <option value="0">0 - Disabled (reported as 0)</option>
         <option value="1" selected>1 - Vaisala RPM411 BARO-CAP (RS41-SGP)</option>
         <option value="2">2 - Estimated from altitude/temp/humidity</option>
@@ -2198,8 +2464,11 @@ select.input-base option { background: #1e293b; }
     <span class="font-bold text-white">19 · Heating</span>
   </div>
   <div class="p-5 grid grid-cols-1 md:grid-cols-2 gap-5">
+    <div id="heating-boom-note" class="hidden md:col-span-2 rounded-xl border border-slate-600/60 bg-slate-800/40 px-4 py-3 text-xs text-slate-300 leading-relaxed">
+      Both the reference-area (cut-out) heater and the humidity-module heater have been <strong class="text-white">automatically disabled</strong> because the sensor boom is turned off. With no boom fitted they only waste power and have nothing to warm - unless you are doing something specific you know about, they should stay off. Re-enable the sensor boom to turn them back on.
+    </div>
     <div class="flex items-start gap-3">
-      <label class="toggle mt-1"><input type="checkbox" id="cfg-referenceHeating" checked onchange="cfgChanged()"><span class="toggle-slider"></span></label>
+      <label class="toggle mt-1"><input type="checkbox" id="cfg-referenceHeating" checked onchange="heatingToggle('cfg-referenceHeating')"><span class="toggle-slider"></span></label>
       <div><span class="field-label cursor-pointer" onclick="toggleCheck('cfg-referenceHeating')">Reference area heating</span>
       <p class="field-desc">Holds the temperature of the PCB cut-out where the reference resistors and capacitor for the measurement circuits sit. Keeping that reference warm and stable preserves temperature- and humidity-measurement precision throughout the flight. Recommended for ≤18 h flights on 2×AA; disable on 1×AA or with no sensor boom.</p></div>
     </div>
@@ -2211,7 +2480,7 @@ select.input-base option { background: #1e293b; }
       </ul>
       <p class="field-desc">18 °C gives the best measurement accuracy. Lower targets save power but have a noticeable effect on the readings, so choose with the flight's priorities in mind.</p></div>
     <div class="flex items-start gap-3 md:col-span-2">
-      <label class="toggle mt-1"><input type="checkbox" id="cfg-humidityModuleHeating" checked onchange="cfgChanged()"><span class="toggle-slider"></span></label>
+      <label class="toggle mt-1"><input type="checkbox" id="cfg-humidityModuleHeating" checked onchange="heatingToggle('cfg-humidityModuleHeating')"><span class="toggle-slider"></span></label>
       <div><span class="field-label cursor-pointer" onclick="toggleCheck('cfg-humidityModuleHeating')">Humidity module heating</span>
       <p class="field-desc">Gently keeps the humidity sensor above air temperature so condensation and frost cannot form on it, and also <strong>holds the sensor's silicon out of the unfavourable temperature range</strong> where its response efficiency and precision drop sharply - so you get noticeably better readings in extreme conditions. <strong class="text-emerald-300">Recommended</strong>: it improves accuracy (cloud, icing, high humidity), draws very little power, and runs fully autonomously and intelligently. Recommended whenever the sensor boom is fitted.</p></div>
     </div>
@@ -2229,6 +2498,37 @@ select.input-base option { background: #1e293b; }
     <label class="field-label">Activation altitude threshold</label>
     <div class="unit-wrap md:w-1/2"><input type="number" class="input-base" id="cfg-lowAltitudeFastTxThreshold" value="1000" onchange="cfgChanged()"><span class="unit-label">m</span></div>
     <p class="field-desc">After burst, once the sonde descends below this altitude it switches to maximum-rate Horus + APRS transmissions to maximise recovery fixes. Set 0 to disable.</p>
+  </div>
+</div>
+
+<!-- SECTION 20b - PRIVATE LANDING -->
+<div class="card rsm4x4-only">
+  <div class="card-header px-5 py-3 flex items-center gap-2">
+    <span class="text-rose-400 text-lg">🕵️</span>
+    <span class="font-bold text-white">20b · Private Landing</span>
+    <span class="badge bg-indigo-500/20 text-indigo-300 border border-indigo-500/40 ml-2">RSM4x4 only</span>
+    <span class="badge bg-rose-500/20 text-rose-300 border border-rose-500/40 ml-1">Not recommended</span>
+  </div>
+  <div class="p-5">
+    <div class="rounded-xl border border-rose-700/50 bg-rose-950/30 px-4 py-3 text-xs text-rose-200 leading-relaxed mb-4">
+      <strong>Please reconsider before using this.</strong> Private landing hides the touchdown spot from public tracking maps by moving every enabled mode onto a separate, private frequency once the sonde is coming down. For almost everyone a far better approach is to clearly label the payload as harmless research equipment with a short "reward if returned" note and your contact details, so finders simply return it to you. Reserve this for the rare, marginal situations where that genuinely is not enough.
+    </div>
+    <div class="flex items-start gap-3 mb-4">
+      <label class="toggle mt-1"><input type="checkbox" id="cfg-privateLandingModeEnable" onchange="privateLandingToggle()"><span class="toggle-slider"></span></label>
+      <div><span class="field-label cursor-pointer" onclick="toggleCheck('cfg-privateLandingModeEnable')">Enable private landing</span>
+      <p class="field-desc">Off by default. When on, after the sonde has flown, climbed above the threshold below and then descended back below it, every enabled mode stops using its normal frequency (or frequency table) and transmits only on its single private frequency. It stays that way until power-off.</p></div>
+    </div>
+    <div id="private-landing-fields" class="grid grid-cols-1 md:grid-cols-2 gap-5">
+      <div class="md:col-span-2"><label class="field-label">Switch-to-private altitude threshold</label>
+        <div class="unit-wrap md:w-1/2"><input type="number" class="input-base" id="cfg-privateLandingAltitudeThreshold" value="3500" onchange="cfgChanged()"><span class="unit-label">m</span></div>
+        <p class="field-desc">Descending below this altitude (after having climbed above it) latches the private frequencies. Default 3500 m.</p></div>
+      <div><label class="field-label">Horus V3 private frequency</label><div class="unit-wrap"><input type="number" step="0.001" class="input-base" id="cfg-horusV3PrivateFreq" value="437.6" onchange="cfgChanged()"><span class="unit-label">MHz</span></div></div>
+      <div><label class="field-label">Horus V2 private frequency</label><div class="unit-wrap"><input type="number" step="0.001" class="input-base" id="cfg-horusPrivateFreq" value="437.6" onchange="cfgChanged()"><span class="unit-label">MHz</span></div></div>
+      <div><label class="field-label">APRS private frequency</label><div class="unit-wrap"><input type="number" step="0.001" class="input-base" id="cfg-aprsPrivateFreq" value="432.5" onchange="cfgChanged()"><span class="unit-label">MHz</span></div></div>
+      <div><label class="field-label">Pip private frequency</label><div class="unit-wrap"><input type="number" step="0.001" class="input-base" id="cfg-pipPrivateFreq" value="432.7" onchange="cfgChanged()"><span class="unit-label">MHz</span></div></div>
+      <div><label class="field-label">RTTY private frequency</label><div class="unit-wrap"><input type="number" step="0.001" class="input-base" id="cfg-rttyPrivateFreq" value="434.6" onchange="cfgChanged()"><span class="unit-label">MHz</span></div></div>
+      <div><label class="field-label">Morse private frequency</label><div class="unit-wrap"><input type="number" step="0.001" class="input-base" id="cfg-morsePrivateFreq" value="434.6" onchange="cfgChanged()"><span class="unit-label">MHz</span></div></div>
+    </div>
   </div>
 </div>
 
@@ -2275,8 +2575,8 @@ select.input-base option { background: #1e293b; }
   <div class="p-5">
     <label class="field-label">Button mode</label>
     <select class="input-base md:w-2/3" id="cfg-buttonMode" onchange="cfgChanged()">
-      <option value="0">0 - Disabled</option>
-      <option value="1" selected>1 - Hold to power off (recommended)</option>
+      <option value="0" selected>0 - Disabled</option>
+      <option value="1">1 - Hold to power off</option>
       <option value="2">2 - Cycling menu</option>
     </select>
     <div class="mt-3 space-y-2 text-xs text-slate-300">
@@ -2321,6 +2621,19 @@ select.input-base option { background: #1e293b; }
   </div>
   <div class="p-5 space-y-4">
     <p class="text-xs text-slate-500">Compiles for the board selected in section 1. Switch the board there to change the target.</p>
+
+    <!-- Settings file: save the current configuration or reload a previous one, entirely in the browser -->
+    <div class="rounded-lg border border-slate-700/60 bg-slate-800/40 px-4 py-3">
+      <div class="text-xs font-semibold text-slate-200 mb-1">Settings file <span class="badge bg-slate-700 text-slate-300 ml-1">local only</span></div>
+      <p class="text-[11px] text-slate-400 leading-relaxed mb-2">Keep this build's configuration as a small text file, or reload one you saved earlier. It is generated and parsed here in your browser - nothing is uploaded, so your configuration never leaves your machine.</p>
+      <div class="flex flex-wrap gap-2">
+        <button class="btn btn-slate" onclick="downloadSettings()"><span>💾</span> Save settings</button>
+        <button class="btn btn-slate" onclick="document.getElementById('settings-file-input').click()"><span>📂</span> Load settings</button>
+        <input type="file" id="settings-file-input" accept=".txt,.cfg,.ini,text/plain" class="hidden" onchange="loadSettingsFile(this)">
+      </div>
+      <p id="settings-load-status" class="text-[11px] text-green-400 mt-2 hidden"></p>
+    </div>
+
     <button class="btn btn-green" id="btn-compile" onclick="startCompile(currentPlatform)">
       <span>⚡</span> Compile for <strong id="compile-btn-platform" class="ml-1">RSM4x4</strong>
     </button>
@@ -2334,39 +2647,102 @@ select.input-base option { background: #1e293b; }
     </div>
     <div id="download-section" class="hidden">
       <div class="rounded-lg border border-green-700/50 bg-green-950/30 px-4 py-3 mb-3">
-        <div class="text-sm font-bold text-green-300 mb-1">✓ Your firmware is ready to download</div>
-        <p class="text-xs text-slate-300 leading-relaxed">Grab the compiled <strong class="text-slate-100">.bin</strong> below and flash it to your sonde. We also include a <strong class="text-slate-100">config.txt</strong> - a plain-text copy of exactly what this build does, so you can keep it on file and reproduce or tweak the same firmware later.</p>
+        <div class="text-sm font-bold text-green-300 mb-1">✓ Your firmware is ready</div>
+        <p class="text-xs text-slate-300 leading-relaxed">Flash it straight to your sonde below, or download the compiled <strong class="text-slate-100">.bin</strong>. You can also <strong class="text-slate-100">Save settings</strong> - a small text file of exactly this configuration that you can reload later to reproduce or tweak the same build.</p>
       </div>
       <div class="flex flex-wrap gap-3">
         <button class="btn btn-green" id="btn-dl-bin" onclick="downloadBin()">
           <span>⬇</span> Download <span id="dl-bin-name" class="font-mono text-xs ml-1"></span>
         </button>
-        <button class="btn btn-slate" id="btn-dl-cfg" onclick="downloadConfig()">
-          <span>📄</span> Download config.txt
+        <button class="btn btn-slate" id="btn-dl-settings" onclick="downloadSettings()">
+          <span>💾</span> Save settings
         </button>
       </div>
 
-      <!-- Post-compile flashing help -->
-      <div class="mt-4 rounded-lg border border-sky-700/50 bg-sky-950/30 px-4 py-3">
-        <div class="text-sm font-bold text-sky-200 mb-1">Last step: flash the .bin to your sonde</div>
-        <p class="text-xs text-slate-300 leading-relaxed mb-2">
-          The firmware is built. All that is left is to write the downloaded <strong class="text-slate-100">.bin</strong>
-          to your sonde's microcontroller using an ST-Link programmer wired to the XDATA port (see the
-          <a class="text-sky-300 underline" href="https://github.com/Nevvman18/rs41-nfw/blob/main/fw/FLASHING.md" target="_blank" rel="noopener">flashing guide</a>).
-          You have two options:
-        </p>
-        <ul class="text-xs text-slate-300 leading-relaxed list-disc ml-5 space-y-1 mb-2">
-          <li><strong class="text-slate-100">OpenOCD</strong> - the popular open-source programmer (the same tool the rs41ng project uses). The terminal commands below do the whole job on Linux, macOS and Windows. Just install <span class="font-mono">openocd</span> from your package manager.</li>
-          <li><strong class="text-slate-100">STM32CubeProgrammer</strong> - the official cross-platform GUI app, if you prefer clicking. Connect the ST-Link, unlock the chip once on the Option Bytes page, then program the .bin at <span class="font-mono">0x08000000</span>. Step by step in the flashing guide.</li>
-        </ul>
-        <details class="text-xs">
-          <summary class="cursor-pointer text-sky-300 font-semibold select-none">Show OpenOCD commands for <span id="flash-mcu-label">your board</span></summary>
-          <p class="text-[11px] text-slate-400 mt-2">Requires <span class="font-mono">openocd</span> installed and an ST-Link v2 wired to the XDATA SWD pads. These commands clear write protection (and read-out protection on a factory-locked chip), then flash, verify and start your firmware. Run them from the folder where you saved the .bin.</p>
-          <div class="relative mt-2">
-            <button onclick="copyFlashCmd()" class="absolute top-2 right-2 text-[11px] bg-slate-700 hover:bg-slate-600 text-slate-200 px-2 py-1 rounded">Copy</button>
-            <pre id="flash-cmd" class="bg-slate-950 border border-slate-700 rounded-lg p-3 pr-16 overflow-x-auto text-[11px] font-mono text-slate-200 whitespace-pre"></pre>
+      <!-- Post-compile flashing: browser flashing is the recommended, no-install path -->
+      <div class="flash-card mt-4">
+        <div class="flash-card-head">
+          <span class="flash-ico">⚡</span>
+          <div>
+            <div class="flash-title">Flash it to your sonde - right here</div>
+            <div class="flash-sub">Over WebUSB with your ST-Link. No desktop software to install.</div>
           </div>
-          <p id="flash-cmd-copied" class="text-[11px] text-green-400 mt-1 hidden">Copied to clipboard.</p>
+        </div>
+
+        <ol class="flash-steps">
+          <li>Wire an <strong>ST-Link</strong> to the sonde's XDATA SWD pads (<a class="flash-link" href="https://github.com/Nevvman18/rs41-nfw/blob/main/fw/FLASHING.md#connecting-the-programmer-to-the-sonde" target="_blank" rel="noopener">wiring guide</a>) and power the sonde.</li>
+          <li>Use desktop <strong>Chrome, Edge or Opera</strong>. First time only, allow the browser to reach the ST-Link (setup below).</li>
+          <li>Press <strong>Flash</strong>. A factory-locked sonde is unlocked (read-out + write protection cleared) automatically, then written and verified.</li>
+        </ol>
+
+        <div id="webusb-unsupported" class="flash-warn hidden">⚠️ This browser does not support <strong>WebUSB</strong>, so in-browser flashing is not available here. Use desktop <strong>Chrome, Edge or Opera</strong> for one-click flashing - or download the <strong>.bin</strong> above and flash it with a desktop tool using the OpenOCD / STM32CubeProgrammer commands below.</div>
+
+        <div class="flash-actions" id="flash-actions">
+          <button class="btn btn-green" id="btn-webusb-flash" onclick="webusbFlashNow()"><span>⚡</span><span>Flash over WebUSB</span></button>
+          <button class="btn btn-slate" id="btn-webusb-check" onclick="webusbPickStlink()"><span>🔌</span> Check ST-Link access</button>
+          <span id="webusb-status" class="flash-status"></span>
+        </div>
+
+        <div id="webusb-log" class="flash-log hidden"></div>
+
+        <p id="webusb-l4-note" class="flash-note">Both board families (F100 and L412) are supported. This writes to your sonde and, on a factory-locked one, mass-erases it while clearing protection. It is newer than the desktop tools - keep an ST-Link and OpenOCD handy, and try a spare sonde first. A failed SWD flash is always recoverable.</p>
+
+        <!-- Wiring guide -->
+        <details class="flash-details">
+          <summary>Wiring: connect the ST-Link to the sonde</summary>
+          <div class="flash-details-body">
+            <p>Wire the ST-Link to the sonde's <strong>XDATA</strong> connector (2 mm pitch; jumper wires push in fine). Connect <strong>GND</strong>, <strong>SWCLK</strong> and <strong>SWDIO</strong>. To power from the ST-Link, also wire <strong>+3V_MCU</strong> to 3.3 V with the batteries out; otherwise leave the batteries in and switch the sonde on before flashing.</p>
+            <pre class="flash-pre">Pinout of XDATA connector                                    Pinout of connected ribbon cable
+                 -------
+           GND  | o   o |  XDATA_RX(PB11)                    > 1  GND
+                |       |                                      2  XDATA_RX(PB11)
+XDATA_TX(PB10)  | o   o |  +3V_MCU                             3  XDATA_TX(PB10)
+               -        |                                      4  +3V_MCU
+       V_Boost|   o   o |  VBAT                                5  V_Boost
+               -        |                                      6  VBAT
+       MCU_RST  | o   o |  SWCLK(PA14)                         7  MCU_RST
+                |       |                                      8  SWCLK(PA14)
+   SWDIO(PA13)  | o   o |  GND                                 9  SWDIO(PA13)
+                 -------                                      10  GND
+
+PAY ATTENTION TO THE CUT-OUT</pre>
+          </div>
+        </details>
+
+        <!-- First-time driver setup -->
+        <details class="flash-details" id="webusb-setup-details">
+          <summary>First-time setup: let the browser reach your ST-Link</summary>
+          <div class="flash-details-body">
+            <p class="flash-tip">💡 <strong>Try "Check ST-Link access" first.</strong> If you have used ST-Link / STM32 tools or flashed radiosondes on this computer before, your setup very likely already works and you can skip everything here. Only follow the steps below if that check comes up empty.</p>
+            <p><strong>Windows</strong> - attach the generic WinUSB driver to the ST-Link once with <a class="flash-link" href="https://zadig.akeo.ie/" target="_blank" rel="noopener">Zadig</a>:</p>
+            <ol>
+              <li>Plug in the ST-Link, run <strong>Zadig</strong>, choose <em>Options → List All Devices</em>.</li>
+              <li>Pick <strong>STM32 STLink</strong> (USB ID <span class="font-mono">0483 3748</span> for V2, <span class="font-mono">0483 374B</span> for V2-1).</li>
+              <li>Set the driver to <strong>WinUSB</strong>, click <strong>Replace Driver</strong>, reconnect the ST-Link.</li>
+            </ol>
+            <p class="flash-hint">This swaps the ST driver, so STM32CubeProgrammer won't see that ST-Link until you restore it. Many people keep a second ST-Link on WinUSB just for the browser.</p>
+            <p class="mt-2"><strong>Linux</strong> - add a udev rule, then reload:</p>
+            <pre class="flash-pre">/etc/udev/rules.d/49-stlink-webusb.rules
+SUBSYSTEM=="usb", ATTR{idVendor}=="0483", ATTR{idProduct}=="3748", MODE="0660", TAG+="uaccess"
+SUBSYSTEM=="usb", ATTR{idVendor}=="0483", ATTR{idProduct}=="374b", MODE="0660", TAG+="uaccess"
+SUBSYSTEM=="usb", ATTR{idVendor}=="0483", ATTR{idProduct}=="374f", MODE="0660", TAG+="uaccess"
+
+sudo udevadm control --reload-rules &amp;&amp; sudo udevadm trigger</pre>
+            <p class="flash-hint"><strong>macOS</strong> - nothing to install; just connect and flash.</p>
+          </div>
+        </details>
+
+        <!-- Fallback: desktop tools -->
+        <details class="flash-details" id="flash-manual-details">
+          <summary>Rather use a desktop tool? OpenOCD / STM32CubeProgrammer</summary>
+          <div class="flash-details-body">
+            <p>You don't need these - the browser flasher does the whole job - but they remain fully supported. Full steps in the <a class="flash-link" href="https://github.com/Nevvman18/rs41-nfw/blob/main/fw/FLASHING.md" target="_blank" rel="noopener">flashing guide</a>. OpenOCD commands for <span id="flash-mcu-label">your board</span>:</p>
+            <div class="flash-cmd-wrap">
+              <button onclick="copyFlashCmd()" class="flash-copy">Copy</button>
+              <pre id="flash-cmd" class="flash-pre flash-cmd"></pre>
+            </div>
+            <p id="flash-cmd-copied" class="flash-hint hidden" style="color:#22c55e">Copied to clipboard.</p>
+          </div>
         </details>
       </div>
 
@@ -2383,6 +2759,27 @@ select.input-base option { background: #1e293b; }
 </div><!-- /max-w -->
 
 <!-- Pre-compile message modal -->
+<!-- Firmware rating modal (pops up after a successful flash) -->
+<div id="rating-modal" class="rating-modal-back hidden">
+  <div class="rating-modal">
+    <span class="rating-emoji">🎈</span>
+    <h3>Flashed successfully!</h3>
+    <p>Your sonde is running RS41-NFW. How is the firmware for you? Tap a star - it's saved to this build's log and helps the project improve.</p>
+    <div class="stars" id="rating-stars" role="radiogroup" aria-label="Rate the firmware 1 to 5">
+      <button type="button" class="star" data-v="1" onclick="rateFirmware(1)" title="1 star">★</button>
+      <button type="button" class="star" data-v="2" onclick="rateFirmware(2)" title="2 stars">★</button>
+      <button type="button" class="star" data-v="3" onclick="rateFirmware(3)" title="3 stars">★</button>
+      <button type="button" class="star" data-v="4" onclick="rateFirmware(4)" title="4 stars">★</button>
+      <button type="button" class="star" data-v="5" onclick="rateFirmware(5)" title="5 stars">★</button>
+    </div>
+    <p id="rating-msg" class="hidden" style="margin:10px 0 0;font-weight:700"></p>
+    <p class="rating-thanks-note">Thank you for flying RS41-NFW, and for helping keep this free project alive. Clear skies and happy hunting! 🚀</p>
+    <div class="rating-modal-actions">
+      <button class="btn btn-slate" onclick="closeRatingModal()">Close</button>
+    </div>
+  </div>
+</div>
+
 <div id="compile-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
   <div class="bg-slate-800 border border-slate-600 rounded-2xl shadow-2xl max-w-lg w-full p-6 text-center compile-modal-pop">
     <div class="text-4xl mb-3">🎈</div>
@@ -2399,6 +2796,21 @@ select.input-base option { background: #1e293b; }
     <div class="flex gap-3 justify-center">
       <button class="btn btn-green" onclick="confirmCompileStart()"><span>⚡</span> Start compilation</button>
       <button class="btn btn-slate" onclick="document.getElementById('compile-modal').classList.add('hidden')">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<!-- Advisory modal: a friendly "please reconsider" dialog for discouraged options. -->
+<div id="advisory-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
+  <div class="bg-slate-800 border border-slate-600 rounded-2xl shadow-2xl max-w-lg w-full p-6 compile-modal-pop">
+    <div class="flex items-start gap-3 mb-3">
+      <div id="advisory-icon" class="text-3xl leading-none">⚠️</div>
+      <h3 id="advisory-title" class="text-lg font-bold text-white mt-0.5">Please reconsider</h3>
+    </div>
+    <div id="advisory-body" class="text-sm text-slate-200 leading-relaxed mb-5"></div>
+    <div class="flex gap-3 justify-end">
+      <button id="advisory-cancel" class="btn btn-slate" onclick="advisoryCancel()">Cancel</button>
+      <button id="advisory-confirm" class="btn btn-amber" onclick="advisoryConfirm()">Continue anyway</button>
     </div>
   </div>
 </div>
@@ -3635,6 +4047,7 @@ function buildAdvTable() {
 
 let currentPlatform = 'RSM4x4';
 let currentJobId = null;
+let loadedFwVersion = null;   // e.g. 'v68' - the firmware version currently loaded in the builder
 let pollTimer = null;
 let configDirty = false;
 
@@ -3696,6 +4109,201 @@ function cfgChanged() {
   if (oifSec) oifSec.style.display = (mode === 3) ? '' : 'none';
   updateCalVisibility();
   updateM10Visibility();
+  applyBoomDependentUI();
+}
+
+// ── Advisory popups ─────────────────────────────────────────────────────────────
+// A single reusable "please reconsider" dialog. Discouraged toggles apply their new
+// state immediately, then this dialog offers Continue (keep it) or Cancel (a supplied
+// revert callback puts the control back). Programmatic changes (config/settings load)
+// never call these, so they never nag the user.
+let advisoryConfirmCb = null, advisoryCancelCb = null;
+function showAdvisory(opts) {
+  advisoryConfirmCb = opts.onConfirm || null;
+  advisoryCancelCb  = opts.onCancel  || null;
+  document.getElementById('advisory-icon').textContent  = opts.icon  || '⚠️';
+  document.getElementById('advisory-title').textContent = opts.title || 'Please reconsider';
+  document.getElementById('advisory-body').innerHTML    = opts.html  || '';
+  document.getElementById('advisory-confirm').textContent = opts.confirmText || 'Continue anyway';
+  document.getElementById('advisory-cancel').textContent  = opts.cancelText  || 'Cancel';
+  document.getElementById('advisory-modal').classList.remove('hidden');
+}
+function advisoryConfirm() {
+  document.getElementById('advisory-modal').classList.add('hidden');
+  const cb = advisoryConfirmCb; advisoryConfirmCb = advisoryCancelCb = null;
+  if (cb) cb();
+}
+function advisoryCancel() {
+  document.getElementById('advisory-modal').classList.add('hidden');
+  const cb = advisoryCancelCb; advisoryConfirmCb = advisoryCancelCb = null;
+  if (cb) cb();
+}
+
+// The heating card follows the sensor boom: with no boom fitted both heaters are
+// pointless (nothing to warm, only wasted power), so they are switched off and locked,
+// and a note explains why. Re-enabling the boom restores whatever the heaters were.
+let heatingSnapshot = null;
+function applyBoomDependentUI() {
+  const boom = document.getElementById('cfg-sensorBoomEnable');
+  const ref  = document.getElementById('cfg-referenceHeating');
+  const hum  = document.getElementById('cfg-humidityModuleHeating');
+  const note = document.getElementById('heating-boom-note');
+  if (!boom || !ref || !hum) return;
+  if (!boom.checked) {
+    if (!heatingSnapshot) heatingSnapshot = { ref: ref.checked, hum: hum.checked };
+    ref.checked = false; hum.checked = false;
+    ref.disabled = true; hum.disabled = true;
+    if (note) note.classList.remove('hidden');
+  } else {
+    if (heatingSnapshot) { ref.checked = heatingSnapshot.ref; hum.checked = heatingSnapshot.hum; heatingSnapshot = null; }
+    ref.disabled = false; hum.disabled = false;
+    if (note) note.classList.add('hidden');
+  }
+}
+
+// Enabling private landing (discouraged - see the card copy).
+function privateLandingToggle() {
+  const el = document.getElementById('cfg-privateLandingModeEnable');
+  cfgChanged();
+  if (el.checked) {
+    showAdvisory({
+      icon: '🕵️', title: 'Private landing is not recommended',
+      confirmText: 'Enable anyway',
+      html: 'This hides the landing spot from public tracking maps once the sonde is coming down. '
+          + 'For almost everyone it is better to <strong>label the payload as harmless research equipment</strong> '
+          + 'with a short "reward if returned" note and your contact details, so finders return it to you. '
+          + 'Only enable private landing for the rare, marginal situations where that is genuinely not enough.',
+      onCancel: () => { el.checked = false; cfgChanged(); }
+    });
+  }
+}
+
+// Disabling the sensor boom (discouraged - it is cheap and very accurate).
+function sensorBoomToggle() {
+  const el = document.getElementById('cfg-sensorBoomEnable');
+  cfgChanged();   // applyBoomDependentUI runs here and handles the heaters
+  if (!el.checked) {
+    showAdvisory({
+      icon: '🌡️', title: 'Keep the sensor boom?',
+      confirmText: 'Disable anyway',
+      html: 'The sensor boom draws very little power yet is <strong>very accurate</strong> - it gives you '
+          + '<strong>factory-grade temperature and humidity</strong>, precise and genuinely valuable atmospheric data '
+          + 'that turns the sonde into a proper weather instrument. Only turn it off for a bare tracker with no boom '
+          + 'physically fitted.',
+      onCancel: () => { el.checked = true; cfgChanged(); }
+    });
+  }
+}
+
+// Disabling a heater - only worth flagging while the boom is actually fitted.
+function heatingToggle(id) {
+  const el   = document.getElementById(id);
+  const boom = document.getElementById('cfg-sensorBoomEnable');
+  cfgChanged();
+  if (boom && boom.checked && !el.checked) {
+    const isRef = id === 'cfg-referenceHeating';
+    showAdvisory({
+      icon: '🔥', title: isRef ? 'Reference heating improves accuracy' : 'Humidity heating improves accuracy',
+      confirmText: 'Disable anyway',
+      html: isRef
+        ? 'Reference-area heating holds the PCB cut-out (reference resistors and capacitor) warm and stable, '
+          + 'which <strong>preserves temperature and humidity accuracy</strong> throughout the flight. '
+          + 'It is recommended for flights up to ~18 h on 2×AA. Disable it only on a 1×AA supply or with no boom.'
+        : 'Humidity-module heating keeps the sensor above air temperature so <strong>frost and condensation cannot form</strong>, '
+          + 'and holds it out of the range where its response degrades - giving noticeably better readings in cloud, icing and '
+          + 'high humidity for very little power. Recommended whenever the boom is fitted.',
+      onCancel: () => { el.checked = true; cfgChanged(); }
+    });
+  }
+}
+
+// Turning pressure off entirely - nudge toward at least an estimate, ideally the RPM411.
+function pressureModeChanged() {
+  const el = document.getElementById('cfg-pressureMode');
+  cfgChanged();
+  if (el.value === '0') {
+    showAdvisory({
+      icon: '🧭', title: 'No pressure at all?',
+      confirmText: 'Leave pressure off',
+      cancelText: 'Pick a pressure mode',
+      html: 'Pressure is a valuable atmospheric channel and easy to add. Consider <strong>mode 2 - estimated pressure</strong> '
+          + '(from altitude, temperature and humidity - free, no extra hardware, order-of-magnitude accuracy), or best of all '
+          + 'the <strong>Vaisala RPM411 BARO-CAP sensor (mode 1)</strong>, a precise barometric add-on that plugs into the rear '
+          + 'connector and needs no calibration. Only leave pressure disabled if you specifically do not want it.',
+      onCancel: () => { el.value = '1'; cfgChanged(); }
+    });
+  }
+}
+
+// Enabling Horus V2 (discouraged - V3 is the same modem, better packet, no payload ID).
+function horusV2Toggle() {
+  const el = document.getElementById('cfg-horusEnable');
+  cfgChanged();
+  if (el.checked) {
+    showAdvisory({
+      icon: '📡', title: 'Consider Horus V3 instead',
+      confirmText: 'Use V2 anyway',
+      html: 'Horus V2 is kept only for compatibility with old receiver installs. Horus V3 uses the <strong>same 4FSK modem</strong> '
+          + 'but carries a better packet, needs <strong>no globally-allocated payload ID</strong>, and is the actively developed format. '
+          + 'Unless you specifically need to reach a legacy V2-only receiver, enable Horus V3 and leave V2 off.',
+      onCancel: () => { el.checked = false; cfgChanged(); }
+    });
+  }
+}
+
+// Selecting more than 25 mW for a Horus mode (usually wasteful - 4FSK is very efficient).
+// Shared by the Horus V3 and V2 power selects. 5 = 14 dBm (25 mW), 6 = 50 mW, 7 = 100 mW.
+function horusPowerChanged(id) {
+  const el = document.getElementById(id);
+  cfgChanged();
+  if (el.value === '6' || el.value === '7') {
+    showAdvisory({
+      icon: '⚡', title: 'That is more than 25 mW',
+      confirmText: 'Keep this power',
+      cancelText: 'Use 25 mW',
+      html: 'Horus 4FSK is <strong>very narrow-band and easily decoded at long range on low power</strong>, so anything above 25 mW '
+          + 'is usually wasteful - it drains the battery faster and can raise the noise floor for nearby receivers without '
+          + 'meaningfully improving decodes. 25 mW (or less) is plenty for most flights. Only run higher power if you specifically '
+          + 'know you need it.',
+      onCancel: () => { el.value = '5'; cfgChanged(); }
+    });
+  }
+}
+
+// GPS mode on RSM4x4: mode 3 (Intelligent M10) is far better than mode 1; nudge away
+// from 1. Mode 0 (stationary) is a deliberate different use case, so it is not flagged.
+function gpsModeChanged() {
+  const el = document.getElementById('cfg-gpsOperationMode');
+  cfgChanged();
+  if (currentPlatform === 'RSM4x4' && el.value === '1') {
+    showAdvisory({
+      icon: '🛰️', title: 'Mode 3 is much better on RSM4x4',
+      confirmText: 'Use mode 1 anyway',
+      cancelText: 'Switch to mode 3',
+      html: 'On RSM4x4 the M10 GPS supports <strong>mode 3 - Intelligent management</strong>, which tracks just as well as always-on '
+          + 'while using far less power through adaptive constellation and cyclic-tracking control. Mode 1 keeps the receiver at full '
+          + 'power the whole flight for no real benefit here. Prefer mode 3 unless you have a specific reason not to.',
+      onCancel: () => { el.value = '3'; cfgChanged(); }
+    });
+  }
+}
+
+// Choosing the older board shows the recommendation that used to sit in a static card.
+function selectPlatform(p) {
+  if (p === 'RSM4x2' && currentPlatform !== 'RSM4x2') {
+    showAdvisory({
+      icon: '🔻', title: 'RSM4x4 is the recommended board',
+      confirmText: 'Use RSM4x2 anyway',
+      cancelText: 'Keep RSM4x4',
+      html: 'RSM4x4 (L412) has a <strong>vastly better GPS module (M10)</strong> with intelligent power management, far lower power '
+          + 'consumption and wider future support, plus more flash for features like Horus V2 / RTTY / Morse / fast-TX. RSM4x2 (F100) '
+          + 'uses basic GPS with limited options. Pick RSM4x2 only if that is the board you actually have.',
+      onConfirm: () => setPlatform('RSM4x2'),
+      onCancel:  () => {}   // stay on the current board
+    });
+    return;
+  }
+  setPlatform(p);
 }
 
 // Calibration section: show the auto method/ambient box vs the manual offset
@@ -3711,24 +4319,34 @@ function updateCalVisibility() {
 // ── Factory (Vaisala) sensor calibration - mode 2 ──
 let factoryCal = null;   // { serial, cal:{factory*...}, mainboard, telemetry, fetched }
 
-// The mode selector lives in the Sensor Boom card. Factory (Vaisala) calibration is
-// RSM4x4 / RSM4x5 only (it does not fit the F100's flash/RAM), so on older RSM4x2 /
-// RSM4x1 boards the whole master switch is hidden and the firmware runs NFW calibration.
+// The mode selector lives in the Sensor Boom card. Both board families now run factory
+// (Vaisala) calibration: RSM4x4 / RSM4x5 can choose NFW or factory, while RSM4x2 / RSM4x1
+// are factory-only (the NFW calibration path is no longer built for the F100), so the
+// NFW/factory picker is hidden there and the mode is forced to factory.
 function updateSensorCalVisibility() {
   const wrap = document.getElementById('sensorcal-mode-wrap');
   const sel  = document.getElementById('cfg-sensorCalibrationMode');
   if (!wrap || !sel) return;
 
-  const is4x4 = currentPlatform === 'RSM4x4';
-  // Hide the factory/NFW master switch on older boards and force NFW (mode 1).
-  wrap.style.display = is4x4 ? '' : 'none';
-  if (!is4x4) sel.value = '1';
+  const is4x4  = currentPlatform === 'RSM4x4';
+  const picker = document.getElementById('sensorcal-mode-picker');
+  const note   = document.getElementById('sensorcal-factory-only');
 
-  const factoryActive = is4x4 && sel.value === '2';
+  wrap.style.display = '';   // the sensor-calibration card is shown on both boards now
+  if (is4x4) {
+    if (picker) picker.style.display = '';
+    if (note)   note.classList.add('hidden');
+  } else {
+    // RSM4x2 / RSM4x1: factory only. Hide the mode picker and force factory (mode 2).
+    if (picker) picker.style.display = 'none';
+    if (note)   note.classList.remove('hidden');
+    sel.value = '2';
+  }
+
+  const factoryActive = sel.value === '2';   // always true on RSM4x2 / RSM4x1
   const box = document.getElementById('factory-cal-box');
   if (box) box.style.display = factoryActive ? '' : 'none';
-  // In factory (Vaisala) mode the NFW temperature/humidity calibration sections do not
-  // apply, so hide them; otherwise (NFW, incl. all RSM4x2 builds) show them.
+  // In factory (Vaisala) mode the NFW temperature/humidity calibration sections do not apply.
   document.querySelectorAll('.nfw-cal-card').forEach(el => { el.style.display = factoryActive ? 'none' : ''; });
 }
 
@@ -3820,9 +4438,21 @@ function setFetchStatus(msg, ok) {
   el.classList.remove('hidden');
 }
 
-// human verification
+// human verification - a 10-minute session unlocked by one captcha solve
 let authToken   = sessionStorage.getItem('nfwAuth') || null;
+let authExpiry  = Number(sessionStorage.getItem('nfwAuthExp')) || 0;
 let captchaToken = null;
+
+function authValid() { return !!authToken && authExpiry > Date.now(); }
+
+// Reflect the current session in the UI: if it is still valid, stay verified; otherwise
+// drop it and show the captcha again. Called after each build and on a timer.
+function refreshVerifyState() {
+  if (authValid()) { setVerified(true); return; }
+  if (authToken) { authToken = null; sessionStorage.removeItem('nfwAuth'); sessionStorage.removeItem('nfwAuthExp'); }
+  setVerified(false);
+  loadCaptcha();
+}
 
 function authHeaders(extra) {
   const h = Object.assign({}, extra || {});
@@ -3855,6 +4485,9 @@ async function submitCaptcha() {
     if (d.ok) {
       authToken = d.auth;
       sessionStorage.setItem('nfwAuth', authToken);
+      // Track when the session expires so the UI can re-prompt after the 10-minute window.
+      authExpiry = Date.now() + (Number(d.expires_in) || 600) * 1000;
+      sessionStorage.setItem('nfwAuthExp', String(authExpiry));
       setVerified(true);
     } else {
       msg.textContent = d.error || 'Incorrect, try again.'; msg.style.color = '#f87171';
@@ -3874,7 +4507,9 @@ function setVerified(ok) {
 // call when the server rejects a protected action because the session is gone
 function authExpired(statusSetter) {
   authToken = null;
+  authExpiry = 0;
   sessionStorage.removeItem('nfwAuth');
+  sessionStorage.removeItem('nfwAuthExp');
   setVerified(false);
   loadCaptcha();
   if (statusSetter) statusSetter('Verification expired, please re-verify above.', false);
@@ -3882,7 +4517,7 @@ function authExpired(statusSetter) {
 }
 
 function ensureVerified(statusSetter) {
-  if (authToken) return true;
+  if (authValid()) return true;
   authExpired(statusSetter);
   return false;
 }
@@ -3949,9 +4584,16 @@ async function uploadZip(input) {
 }
 
 function updateFwBadge(version, source) {
+  loadedFwVersion = version;   // remember it for settings-file version checks
   const el = document.getElementById('fw-badge');
   el.textContent = `${source}: ${version}`;
   el.className = 'badge bg-green-900 text-green-300';
+}
+
+// Parse a firmware version like "v68" / "RS41-NFW v68 ..." to an integer (68), or null.
+function _versionNumber(v) {
+  const m = String(v || '').match(/v(\d+)/i);
+  return m ? parseInt(m[1], 10) : null;
 }
 
 async function loadConfig() {
@@ -3977,6 +4619,7 @@ const FW_BOOL_FIELDS = new Set([
   'foxHuntLowVoltageAdditionalMarker',
   'ledStatusEnable',
   'ultraPowerSaveAfterLanding',
+  'privateLandingModeEnable',   // RSM4x4 private landing (Section 20b)
   'm10ConstellationOptimization','m10AggressiveOpt','m10CyclicTracking',
   'm10PerformanceImprovements','m10SuperS',
   'ubloxGpsAirborneMode','improvedGpsPerformance','disableGpsImprovementInFlight',
@@ -4044,21 +4687,27 @@ function collectConfig() {
   // one baud control drives both Horus modes (they share the same rate)
   if ('horusBdr' in cfg) cfg.horusV3Bdr = cfg.horusBdr;
 
-  // Factory calibration (mode 2) is RSM4x4/4x5 only. Off that board, or when the
-  // mode is 2 but no calibration has been downloaded, fall back to NFW (mode 1)
-  // so we never compile zeroed-out factory coefficients.
+  // APRS callsigns must be uppercase; force it here so a loaded/lowercase value can never
+  // reach the firmware (the firmware itself does no case conversion, to save string ops).
+  if (typeof cfg.aprsCall === 'string') cfg.aprsCall = cfg.aprsCall.toUpperCase();
+
+  // Sensor calibration. Both boards can use factory (Vaisala) mode 2; RSM4x2/4x1 are
+  // factory-only. When factory is selected we splice in the downloaded coefficients.
+  // startCompile() already blocks compiling factory mode without a downloaded calibration,
+  // so we never ship zeroed-out factory coefficients (critical on RSM4x2, where there is
+  // no NFW fallback to fall back to).
   if ('sensorCalibrationMode' in cfg) {
-    const wantFactory = (parseInt(cfg.sensorCalibrationMode, 10) === 2);
+    const wantFactory = (parseInt(cfg.sensorCalibrationMode, 10) === 2) || currentPlatform !== 'RSM4x4';
     if (wantFactory && factoryCal && factoryCal.cal) {
+      cfg.sensorCalibrationMode = 2;
       Object.assign(cfg, factoryCal.cal);   // factory* coefficients at full precision
       cfg.boomSerialNumber = (factoryCal.serial || '').toUpperCase();   // reported in telemetry
-    } else {
-      // Not factory, or factory requested without a downloaded calibration -> NFW (mode 1)
-      // so we never compile zeroed-out factory coefficients. On RSM4x2 this is always the
-      // case (the builder hides the factory option there).
+    } else if (currentPlatform === 'RSM4x4') {
+      // RSM4x4 without a downloaded calibration -> NFW (mode 1).
       cfg.sensorCalibrationMode = 1;
       cfg.boomSerialNumber = '';
     }
+    // (RSM4x2 without a calibration cannot reach here: startCompile blocks it.)
   }
   return cfg;
 }
@@ -4095,11 +4744,16 @@ function syncAprsSymbolUI() {
 let pendingCompilePlatform = null;
 function startCompile(platform) {
   if (!ensureVerified()) return;
-  // Factory calibration mode needs a downloaded coefficient set first.
+  // Factory calibration needs a downloaded coefficient set first. RSM4x2 / RSM4x1 are
+  // factory-only, so they always require it; RSM4x4 only when mode 2 is selected.
   const calSel = document.getElementById('cfg-sensorCalibrationMode');
-  if (calSel && calSel.value === '2' && !(factoryCal && factoryCal.cal)) {
+  const needsFactory = (platform !== 'RSM4x4') || (calSel && calSel.value === '2');
+  if (needsFactory && !(factoryCal && factoryCal.cal)) {
     updateSensorCalVisibility();
-    setFactoryCalStatus('Download the factory calibration for your sonde serial before compiling in mode 2, or switch back to NFW calibration.', false);
+    const msg = (platform !== 'RSM4x4')
+      ? 'RSM4x2 / RSM4x1 use factory (Vaisala) calibration only. Enter the measurement-boom serial and download its calibration before compiling.'
+      : 'Download the factory calibration for your sonde serial before compiling in mode 2, or switch back to NFW calibration.';
+    setFactoryCalStatus(msg, false);
     document.getElementById('sensorcal-mode-wrap').scrollIntoView({behavior:'smooth', block:'center'});
     return;
   }
@@ -4123,11 +4777,17 @@ async function runCompile(platform) {
   currentJobId = null;
   const cfg = collectConfig();
 
+  // Tag the compiled filename with the sonde/boom serial when one is known, so a
+  // build made for a specific sonde is identifiable at a glance. Server-side this
+  // is filtered to filename-safe characters and may be blank.
+  const serialEl = document.getElementById('factory-serial');
+  const serial = (serialEl && serialEl.value ? serialEl.value : (cfg.boomSerialNumber || '')).trim();
+
   try {
     const r = await fetch('/api/compile', {
       method: 'POST',
       headers: authHeaders({'Content-Type': 'application/json'}),
-      body: JSON.stringify({platform, config: cfg})
+      body: JSON.stringify({platform, config: cfg, serial})
     });
     if (r.status === 401) { authExpired(); logLine('Verification expired, please re-verify and retry.', 'err'); compileDone(false); return; }
     const d = await r.json();
@@ -4230,10 +4890,10 @@ function compileDone(ok, detail) {
     msg.classList.add('compile-fail-anim');
   }
 
-  authToken = null;
-  sessionStorage.removeItem('nfwAuth');
-  setVerified(false);
-  loadCaptcha();
+  // The verification is a 10-minute session, not single-use: keep it so the user can
+  // build again without re-solving. It expires on its own (client + server); a later
+  // build that hits an expired session gets a 401 and re-prompts then.
+  refreshVerifyState();
 }
 
 // Build the copy-paste flashing commands for the board that was just compiled.
@@ -4284,6 +4944,115 @@ function renderFlashHelp(platform, binName) {
   if (lbl) lbl.textContent = label;
   const pre = document.getElementById('flash-cmd');
   if (pre) pre.textContent = cmd;
+  updateWebusbFlashUI(platform);
+}
+
+// WebUSB / ST-Link access check. Read-only: it just asks the browser for the ST-Link
+// so the user can confirm the OS access step (Zadig on Windows, udev on Linux) worked.
+// It does not touch the sonde. The actual write is still done with the commands below
+// or a desktop tool while the one-click flasher is in beta.
+const STLINK_USB_VENDOR = 0x0483;   // STMicroelectronics; ST-Link V2 / V2-1 / V3
+async function webusbPickStlink() {
+  const status = document.getElementById('webusb-status');
+  const set = (t, ok) => { if (status) { status.textContent = t; status.style.color = ok === true ? '#4ade80' : ok === false ? '#f87171' : '#94a3b8'; } };
+  if (!('usb' in navigator)) {
+    set('WebUSB is not available in this browser - use desktop Chrome, Edge or Opera.', false);
+    return;
+  }
+  try {
+    const dev = await navigator.usb.requestDevice({ filters: [{ vendorId: STLINK_USB_VENDOR }] });
+    const name = (dev && (dev.productName || '')).trim();
+    set('ST-Link detected' + (name ? ' (' + name + ')' : '') + ' - your browser can access the programmer. You are set up for browser flashing.', true);
+  } catch (e) {
+    // NotFoundError = user closed the picker with nothing selected (nothing to access yet).
+    if (e && e.name === 'NotFoundError') {
+      set('No ST-Link selected. If the picker was empty, open "First-time setup" below and follow the Windows/Linux access step, then reconnect the ST-Link.', false);
+      document.getElementById('webusb-setup-details')?.setAttribute('open', '');
+    } else {
+      set('Could not access USB: ' + (e && e.message ? e.message : e), false);
+    }
+  }
+}
+
+// One-click flash of the just-built firmware over WebUSB (via flasher.js -> webstlink).
+async function webusbFlashNow() {
+  const btn = document.getElementById('btn-webusb-flash');
+  const logEl = document.getElementById('webusb-log');
+  const setStatus = (t, k) => {
+    const s = document.getElementById('webusb-status');
+    if (s) { s.textContent = t; s.style.color = k === 'ok' ? '#4ade80' : k === 'err' ? '#f87171' : '#94a3b8'; }
+  };
+  if (!currentJobId) { setStatus('Build the firmware first.', 'err'); return; }
+  if (typeof window.nfwFlash !== 'function') { setStatus('Flasher is still loading, try again in a moment.', 'err'); return; }
+  const platform = pendingCompilePlatform || currentPlatform;
+  if (logEl) logEl.classList.remove('hidden');
+  const ico = document.querySelector('.flash-ico'); if (ico) ico.classList.add('flashing');
+  if (btn) btn.disabled = true;
+  try {
+    await window.nfwFlash({
+      platform,
+      binUrl: '/api/job/' + currentJobId + '/download',
+      logEl,
+      onState: setStatus,
+    });
+    openRatingModal();   // flashed successfully -> invite a rating
+  } catch (e) {
+    setStatus((e && e.message) ? e.message : String(e), 'err');
+    if (e && e.openSetup) document.getElementById('webusb-setup-details')?.setAttribute('open', '');
+  } finally {
+    if (btn) btn.disabled = false;
+    if (ico) ico.classList.remove('flashing');
+  }
+}
+
+function updateWebusbFlashUI(platform) {
+  const btn = document.getElementById('btn-webusb-flash');
+  if (btn) {
+    const lbl = btn.querySelector('span:last-child');
+    if (lbl) lbl.textContent = 'Flash ' + platform + ' over WebUSB';
+  }
+  applyWebusbSupport();
+}
+
+// When WebUSB is unavailable (Firefox/Safari, or a non-secure context), hide the in-browser
+// flash controls, show a notice, and fall back to the .bin download + manual commands.
+function applyWebusbSupport() {
+  const ok = ('usb' in navigator);
+  document.getElementById('webusb-unsupported')?.classList.toggle('hidden', ok);
+  const actions = document.getElementById('flash-actions');
+  if (actions) actions.style.display = ok ? '' : 'none';
+  if (!ok) document.getElementById('flash-manual-details')?.setAttribute('open', '');
+}
+
+// ---- Firmware star rating modal (appended to compile.log on the server) ----
+let _flashRating = 0;
+function _paintStars(n) {
+  document.querySelectorAll('#rating-stars .star').forEach(s => s.classList.toggle('lit', (+s.dataset.v) <= n));
+}
+function openRatingModal() {
+  _flashRating = 0; _paintStars(0);
+  const msg = document.getElementById('rating-msg');
+  if (msg) { msg.classList.add('hidden'); msg.textContent = ''; }
+  document.getElementById('rating-modal')?.classList.remove('hidden');
+}
+function closeRatingModal() {
+  document.getElementById('rating-modal')?.classList.add('hidden');
+}
+async function rateFirmware(n) {
+  _flashRating = n; _paintStars(n);
+  const msg = document.getElementById('rating-msg');
+  const show = (t, ok) => { if (msg) { msg.textContent = t; msg.style.color = ok ? '#16a34a' : '#f87171'; msg.classList.remove('hidden'); } };
+  if (!currentJobId) { show('No build to rate (compile first).', false); return; }
+  try {
+    const r = await fetch('/api/job/' + currentJobId + '/rate', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ rating: n }),
+    });
+    const d = await r.json().catch(() => ({}));
+    if (r.ok && d.ok) { show('Thanks! Saved your ' + n + '/5 rating.', true); setTimeout(closeRatingModal, 1300); }
+    else { show((d && d.error) ? d.error : 'Could not save the rating.', false); }
+  } catch (e) { show('Network error while saving the rating.', false); }
 }
 
 function copyFlashCmd() {
@@ -4300,9 +5069,120 @@ function downloadBin() {
   window.location = '/api/job/' + currentJobId + '/download';
 }
 
-function downloadConfig() {
-  if (!currentJobId) return;
-  window.location = '/api/job/' + currentJobId + '/config';
+// ── Client-side settings file: save / load ─────────────────────────────────────
+// A settings file lets you keep a build's configuration and reload it later without
+// recompiling. Everything happens in the browser: the file is generated from the
+// live form and, on load, parsed locally and written straight back into the fields.
+// Nothing is uploaded to the server, so no configuration ever leaves your machine.
+
+function _settingsFilename() {
+  const ser = (document.getElementById('factory-serial')?.value || '').trim().toUpperCase()
+                .replace(/[^A-Z0-9]/g, '');
+  const d = new Date().toISOString().slice(0, 10);
+  return `rs41-nfw-settings_${currentPlatform}${ser ? '_' + ser : ''}_${d}.txt`;
+}
+
+function downloadSettings() {
+  const cfg = collectConfig();
+  const lines = [
+    '# ====================================================',
+    '#  RS41-NFW settings',
+    '#  Platform : ' + currentPlatform,
+    '#  Firmware : ' + (loadedFwVersion || '(unknown)'),
+    '#  Saved    : ' + new Date().toISOString().slice(0, 19).replace('T', ' '),
+    '#',
+    '#  Load this file back with "Load settings" in the Firmware Builder.',
+    '#  Plain text - safe to read and edit by hand.',
+    '# ====================================================',
+    '',
+    'platform = ' + currentPlatform,
+    'nfw_version = ' + (loadedFwVersion || ''),
+    '',
+  ];
+  const keys = Object.keys(cfg).filter(k => !k.startsWith('_')).sort();
+  const width = keys.reduce((w, k) => Math.max(w, k.length), 0);
+  for (const k of keys) {
+    let v = cfg[k];
+    if (Array.isArray(v)) v = v.join(', ');
+    else if (typeof v === 'boolean') v = v ? 'true' : 'false';
+    lines.push(k.padEnd(width) + ' = ' + v);
+  }
+  const blob = new Blob([lines.join('\n') + '\n'], {type: 'text/plain'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = _settingsFilename();
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(a.href), 4000);
+}
+
+// Accepts our own settings file and the config.txt exported after a build. Both are
+// simple "key = value" text; sections/comments are ignored and values are cleaned of
+// C leftovers (braces, quotes, trailing semicolons) so either file round-trips.
+function parseSettingsText(text) {
+  const cfg = {};
+  for (let raw of text.split(/\r?\n/)) {
+    let line = raw.trim();
+    if (!line) continue;
+    // Board can be given as "platform = X", "Platform : X" or "# Platform : X".
+    // Normalise to the two builder families: 4x4/4x5 -> RSM4x4, 4x1/4x2 -> RSM4x2.
+    const mp = line.match(/^#?\s*platform\s*[:=]\s*RSM4x([1-5])/i);
+    if (mp) { cfg._platform = ('45'.includes(mp[1])) ? 'RSM4x4' : 'RSM4x2'; continue; }
+    // Firmware version: "nfw_version = v68" or "# Firmware : v68".
+    const mv = line.match(/^#?\s*(?:nfw_version|firmware)\s*[:=]\s*(v?\d+\S*)/i);
+    if (mv) { cfg._nfw_version = mv[1]; continue; }
+    if (line.startsWith('#') || line.startsWith('[')) continue;
+    const eq = line.indexOf('=');
+    if (eq < 1) continue;
+    const key = line.slice(0, eq).trim();
+    if (!/^[A-Za-z_]\w*$/.test(key)) continue;
+    let val = line.slice(eq + 1).trim().replace(/;+\s*$/, '').trim();
+    val = val.replace(/^\{\s*/, '').replace(/\s*\}$/, '');      // arrays: { .. }
+    val = val.replace(/^["']/, '').replace(/["']$/, '');         // quoted strings
+    cfg[key] = val;
+  }
+  return cfg;
+}
+
+function loadSettingsFile(input) {
+  const file = input.files && input.files[0];
+  input.value = '';   // allow re-selecting the same file later
+  if (!file) return;
+  if (file.size > 512 * 1024) { alert('That settings file is unexpectedly large - aborting.'); return; }
+  const reader = new FileReader();
+  reader.onload = () => {
+    try {
+      const cfg = parseSettingsText(String(reader.result));
+      const n = Object.keys(cfg).filter(k => !k.startsWith('_')).length;
+      if (!n) { alert('No settings were found in that file.'); return; }
+      const status = document.getElementById('settings-load-status');
+      const setStat = (t, ok) => { if (status) { status.textContent = t; status.style.color = ok ? '' : '#f87171'; status.classList.remove('hidden'); } };
+
+      // 1) Version check: refuse a settings file older than the firmware loaded in the builder.
+      const fileV = _versionNumber(cfg._nfw_version);
+      const builderV = _versionNumber(loadedFwVersion);
+      if (fileV && builderV && fileV < builderV) {
+        setStat('', false);
+        alert(`This settings file is from firmware v${fileV}, but the builder has the newer v${builderV}. `
+          + `Options may have changed since then, so it was not loaded. Re-create the settings on the current firmware.`);
+        return;
+      }
+
+      // 2) Board conflict: ask to switch to the file's board, or cancel without reading it.
+      const fileP = cfg._platform;
+      if (fileP && fileP !== currentPlatform) {
+        const ok = confirm(`This settings file is for ${fileP}, but the builder is set to ${currentPlatform}.\n\n`
+          + `OK: switch to ${fileP} and load the file.\nCancel: keep ${currentPlatform} and do NOT load the file.`);
+        if (!ok) { setStat('Load cancelled - board mismatch, kept ' + currentPlatform + '.', false); return; }
+      }
+
+      applyConfigToForm(cfg);   // applies the board (setPlatform) and every field
+      const verNote = fileV ? ` (firmware v${fileV})` : '';
+      setStat(`Loaded ${n} settings from ${file.name}${verNote}.`, true);
+    } catch (e) {
+      alert('Could not read that settings file: ' + e.message);
+    }
+  };
+  reader.readAsText(file);
 }
 
 // Init
@@ -4324,8 +5204,16 @@ document.addEventListener('DOMContentLoaded', () => {
   initHomeAnim();        // scroll-reveal animations for the Home landing page
   initBalloonFlight();   // balloon rises in / launches out on scroll
 
-  if (authToken) setVerified(true);
-  else { setVerified(false); loadCaptcha(); }
+  // star-rating hover preview (restores the chosen value on leave)
+  const _sc = document.getElementById('rating-stars');
+  if (_sc) {
+    _sc.querySelectorAll('.star').forEach(s => s.addEventListener('mouseover', () => _paintStars(+s.dataset.v)));
+    _sc.addEventListener('mouseleave', () => _paintStars(_flashRating));
+  }
+
+  refreshVerifyState();
+  // Re-check the session periodically so the captcha reappears when the 10-minute window ends.
+  setInterval(() => { if (authToken && !authValid()) refreshVerifyState(); }, 20000);
 
   (async function() {
     try {
@@ -4354,5 +5242,8 @@ document.addEventListener('DOMContentLoaded', () => {
   setInterval(pollQueue, 3000);
 });
 </script>
+<!-- WebUSB / ST-Link browser flasher (ES module; sets window.nfwFlash). Loaded last so
+     the classic UI script above is already defined. Failing to load never breaks the app. -->
+<script type="module" src="flasher.js"></script>
 </body>
 </html>

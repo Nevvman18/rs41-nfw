@@ -1,7 +1,7 @@
 # Firmware compile
 
 > ## You probably do not need this guide anymore
-> The **[NFW Sounding Software](../README.md#rs41-nfw-sounding-software)** ([nfw.flada.ovh](https://nfw.flada.ovh)) compiles the firmware for you in the browser. You select your board, set every option through a guided form, click compile, and download a ready `.bin` - **no Arduino IDE, no STM32 core, no board variant files and no libraries to install**. For almost everyone that is the easier and faster path; just head straight to [firmware flashing](./FLASHING.md).
+> The **[NFW Sounding Software](../README.md#rs41-nfw-sounding-software)** ([nfw.flada.ovh](https://nfw.flada.ovh)) compiles the firmware for you in the browser. You select your board, set every option through a guided form, click compile, and flash the sonde **straight from your browser** - **no Arduino IDE, no STM32 core, no board variant files and no libraries to install**.
 >
 > The manual setup below is only worth following if you specifically want to build locally (for example to modify the source code by hand).
 
@@ -66,7 +66,8 @@ This depends on the PCB version you have. The simplest way to find it is to read
 * Select the appropriate programmer -  **(IDE) Tools -> Programmer: -> STMicroelectronics ST-LINK**
 * Select compiler optimization under **(IDE) Tools -> Optimize:**
   * Newer boards (`RSM4x4` / `RSM4x5`, L412) - **Smallest (-Os default)**. There is plenty of flash, no LTO needed.
-  * Older boards (`RSM4x2` / `RSM4x1`, F100) - **Smallest (-Os) with LTO**. The full feature set only fits in the 64 KB flash with Link-Time Optimization enabled. (The Sounding Software already builds the F100 with LTO automatically.)
+  * Older boards (`RSM4x2` / `RSM4x1`, F100) - **Smallest (-Os) with LTO**. The full feature set only fits in the 64 KB flash with Link-Time Optimization enabled. (The Sounding Software already builds the F100 with LTO automatically.) See the note below on why LTO is needed and how to build without it.
+
 
 
 ## Additional libraries

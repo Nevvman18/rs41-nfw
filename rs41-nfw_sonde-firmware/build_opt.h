@@ -1,1 +1,2 @@
 -DSERIAL_RX_BUFFER_SIZE=256
+-fno-strict-aliasing
