@@ -3839,7 +3839,7 @@ void dataRecorderTx() {
     if (page < totalDrPages - 1) {
       gpsHandler();
       sensorBoomHandler();
-      if (!rpm411Error) readRPM411();
+      if (pressureMode == 1 && !rpm411Error) readRPM411();
     }
   }
 
