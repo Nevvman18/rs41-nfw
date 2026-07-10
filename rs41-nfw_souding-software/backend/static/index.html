@@ -2455,9 +2455,9 @@ document.addEventListener('DOMContentLoaded', function(){
       <select class="input-base" id="cfg-pressureMode" onchange="pressureModeChanged()">
         <option value="0">0 - Disabled (reported as 0)</option>
         <option value="1" selected>1 - Vaisala RPM411 BARO-CAP (RS41-SGP)</option>
-        <option value="2" id="pressmode-opt-2">2 - Estimated from altitude (RSM4x4 only)</option>
+        <option value="2" id="pressmode-opt-2">2 - Estimated from altitude</option>
       </select>
-      <p class="field-desc">Mode 1 needs the RPM411 in the rear connector; no calibration required. Mode 2 is order-of-magnitude only and is <strong>RSM4x4 / RSM4x5 only</strong> - it does not fit the older RSM4x2 / RSM4x1 flash, so it is hidden for those boards.</p></div>
+      <p class="field-desc">Mode 1 needs the RPM411 in the rear connector; no calibration required. Mode 2 estimates pressure from GPS altitude (order-of-magnitude only) and works on both boards.</p></div>
     <div><label class="field-label">Sea-level pressure (mode 2 only)</label><div class="unit-wrap"><input type="number" step="0.01" class="input-base" id="cfg-seaLevelPressure" value="1013.25" onchange="cfgChanged()"><span class="unit-label">hPa</span></div>
       <p class="field-desc">Current MSL pressure for your region.</p></div>
   </div>
@@ -4078,12 +4078,9 @@ function setPlatform(p) {
 // Estimated pressure (mode 2) is RSM4x4-only: it does not fit the RSM4x2 flash. Hide the
 // option on the old board and snap a mode-2 selection back to RPM411 (mode 1).
 function updatePressureModeOptions() {
-  const sel = document.getElementById('cfg-pressureMode');
-  if (!sel) return;
+  // Estimated pressure (mode 2) is available on both boards now, so nothing to hide/snap.
   const opt2 = document.getElementById('pressmode-opt-2');
-  const is4x4 = currentPlatform === 'RSM4x4';
-  if (opt2) { opt2.hidden = !is4x4; opt2.disabled = !is4x4; }
-  if (!is4x4 && sel.value === '2') sel.value = '1';
+  if (opt2) { opt2.hidden = false; opt2.disabled = false; }
 }
 
 // GPS operation modes differ by board: mode 3 (Intelligent M10) is RSM4x4-only,
@@ -4243,17 +4240,15 @@ function pressureModeChanged() {
   const el = document.getElementById('cfg-pressureMode');
   cfgChanged();
   if (el.value === '0') {
-    const est4x4 = currentPlatform === 'RSM4x4'
-      ? 'Consider <strong>mode 2 - estimated pressure</strong> (from GPS altitude - free, no extra hardware, '
-        + 'order-of-magnitude accuracy), or best of all the '
-      : 'Consider the ';
     showAdvisory({
       icon: '🧭', title: 'No pressure at all?',
       confirmText: 'Leave pressure off',
       cancelText: 'Use the RPM411 (mode 1)',
-      html: 'Pressure is a valuable atmospheric channel and easy to add. ' + est4x4
-          + '<strong>Vaisala RPM411 BARO-CAP sensor (mode 1)</strong>, a precise barometric add-on that plugs into the rear '
-          + 'connector and needs no calibration. Only leave pressure disabled if you specifically do not want it.',
+      html: 'Pressure is a valuable atmospheric channel and easy to add. Consider '
+          + '<strong>mode 2 - estimated pressure</strong> (from GPS altitude - free, no extra hardware, '
+          + 'order-of-magnitude accuracy), or best of all the <strong>Vaisala RPM411 BARO-CAP sensor '
+          + '(mode 1)</strong>, a precise barometric add-on that plugs into the rear connector and needs '
+          + 'no calibration. Only leave pressure disabled if you specifically do not want it.',
       onCancel: () => { el.value = '1'; cfgChanged(); }
     });
   }

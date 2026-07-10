@@ -254,7 +254,7 @@ The sensor has a few seconds of reaction time, longer at low temperatures. Expec
 `pressureMode` (Section 18):
 * **0** - disabled (reported as 0).
 * **1** - **Vaisala RPM411** BARO-CAP sensor (the RS41-SGP pressure board). Plug it into the rear connector; no calibration needed. Highly recommended and required for accurate ozone work. Readings are smoothed with a light Kalman filter.
-* **2** - estimation from GPS altitude (the ISA barometric model). Set `seaLevelPressure` to the current MSL pressure for your region. Order-of-magnitude accuracy only, for when no RPM411 is fitted. **RSM4x4 / RSM4x5 only** - the estimation maths does not fit the RSM4x2 / RSM4x1 flash, so on those boards mode 2 reports 0 (use mode 1 with an RPM411 instead). The Sounding Software hides the option for the older boards.
+* **2** - estimation from GPS altitude (the ISA barometric model). Set `seaLevelPressure` to the current MSL pressure for your region. Order-of-magnitude accuracy only, for when no RPM411 is fitted. Available on both board families (its maths is single precision, and on the RSM4x2 the factory calibration already links the transcendentals it needs).
 
 ### Heating
 

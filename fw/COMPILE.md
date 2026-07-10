@@ -66,7 +66,7 @@ This depends on the PCB version you have. The simplest way to find it is to read
 * Select the appropriate programmer -  **(IDE) Tools -> Programmer: -> STMicroelectronics ST-LINK**
 * Select compiler optimization under **(IDE) Tools -> Optimize:**
   * Newer boards (`RSM4x4` / `RSM4x5`, L412) - **Smallest (-Os default)**. There is plenty of flash, no LTO needed.
-  * Older boards (`RSM4x2` / `RSM4x1`, F100) - **Smallest (-Os) with LTO**. The full feature set only fits in the 64 KB flash with Link-Time Optimization enabled. (The Sounding Software already builds the F100 with LTO automatically.) See the note below on why LTO is needed and how to build without it. Some features are compiled out on the F100 because they do not fit: the RSM4x4-only radio modes (Horus V2, RTTY, Morse, low-altitude fast-TX, post-landing power save), **estimated pressure (`pressureMode = 2`)** whose barometric maths pulls in soft-float `powf`/`expf` (use the RPM411, `pressureMode = 1`, for pressure on these boards), and the **NFW calibration** model - so the F100 runs the **Vaisala factory calibration** (`sensorCalibrationMode = 2`) exclusively (its maths is single-precision, which fits).
+  * Older boards (`RSM4x2` / `RSM4x1`, F100) - **Smallest (-Os) with LTO**. The full feature set only fits in the 64 KB flash with Link-Time Optimization enabled. The Sounding Software already builds the F100 with LTO automatically.
 
 
 

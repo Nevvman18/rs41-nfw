@@ -558,11 +558,9 @@ constexpr uint8_t       humidityCalibrationMeasurementTemperature = 125;  // Min
      0 - Pressure disabled (reported as 0)
      1 - Vaisala RPM411 BARO-CAP sensor (RS41-SGP required; highly recommended)
          Plug the RPM411 into the rear connector. No calibration needed.
-     2 - Pressure estimation from altitude (ISA barometric model).  RSM4x4 / RSM4x5 ONLY.
+     2 - Pressure estimation from altitude (ISA barometric model). Works on both boards.
          Set seaLevelPressure to the current MSL pressure for your region.
-         Order-of-magnitude accuracy only. NOT available on RSM4x2 / RSM4x1: the
-         estimation maths does not fit the F100's 64 KB flash, so on those boards
-         mode 2 behaves like mode 0 (no pressure). Use mode 1 (RPM411) there instead.
+         Order-of-magnitude accuracy only - use mode 1 (RPM411) when you have the sensor.
    ============================================================ */
 
 constexpr uint8_t pressureMode     = 1;

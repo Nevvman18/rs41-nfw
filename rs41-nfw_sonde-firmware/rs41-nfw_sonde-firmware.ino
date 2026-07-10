@@ -5733,15 +5733,11 @@ void pressureHandler() {
     }
 
   }
-#ifndef RSM4x2
-  // Estimated pressure (mode 2) is RSM4x4 / RSM4x5 only. It is not built for the F100:
-  // even single-precision powf()/expf() pull in enough soft-float libm to overflow the
-  // 64 KB flash. On RSM4x2 mode 2 therefore falls through to the "no pressure" branch
-  // below (reported as 0); the Sounding Software hides the option for that board.
   else if (pressureMode == 2) {
 
-    // Barometric pressure from GPS altitude using the ISA layer model.
-    // Kept deliberately in single precision: neither MCU has a double-precision FPU.
+    // Barometric pressure from GPS altitude using the ISA layer model. Available on both
+    // boards: kept in single precision (float powf()/expf()), and on the RSM4x2 (F100) the
+    // factory calibration already links expf()/logf(), so the marginal flash cost is small.
     // float powf()/expf() reproduce the same hPa to far better than 0.1 hPa. The three
     // inter-layer factors are compile-time constants (verified against the standard
     // atmosphere: 226.3 / 54.7 / 8.7 hPa base pressures for P0 = 1013.25).
@@ -5765,7 +5761,6 @@ void pressureHandler() {
       pressureValue = (term > 0.0f) ? Pb * powf(term, -gMR / Lb) : 0.0f;  // clamp below the model
     }
   }
-#endif
   else {
     pressureValue = 0;
   }
