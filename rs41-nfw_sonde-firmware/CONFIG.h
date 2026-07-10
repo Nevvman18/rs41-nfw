@@ -10,7 +10,7 @@
  *  Please read every comment carefully before changing values.
  *  Up-to-date documentation:  https://github.com/Nevvman18/rs41-nfw
  *
- *  Version 68  |  GPL-3.0 (see LICENSING.md)  |  Franek Łada (nevvman, SP5FRA)
+ *  Version 69  |  GPL-3.0 (see LICENSING.md)  |  Franek Łada (nevvman, SP5FRA)
  * ============================================================
  */
 
@@ -35,11 +35,28 @@
    GPS-clock synchronised transmission intervals.
 
    [mode]TimeSyncSeconds
-       Transmit every N seconds, aligned to the top of the hour.
-       Example: 15  →  transmit at :00, :15, :30, :45 of each minute.
-       Setting to 0 disables that mode's scheduled transmissions.
-       Intervals shorter than ~7 s leave very little CPU time for
-       sensors, GPS and other tasks - test carefully.
+       5 s and above - GPS-clock synced: transmit every N seconds, aligned to
+       the top of the hour. Example: 15 → :00, :15, :30, :45 of each minute.
+
+       0-4 - SIMPLE FAST-TX: setting a data mode (Horus V3/V2, APRS, RTTY,
+       Morse) below 5 s switches the whole sonde to a plain fast loop with NO
+       GPS-clock sync and no offsets. Each cycle it refreshes the GPS and the
+       sensor boom, transmits every enabled mode back-to-back, then waits this
+       many seconds. 0 = no wait = as fast as possible. The real rate is still
+       bounded by one packet's air-time plus a GPS/sensor read (~4-5 s for a
+       Horus V3 packet). The GPS operation mode you chose is not changed. The
+       sensor boom is refreshed every cycle, unless its power saving (Section
+       15) is on, in which case only every sensorBoomPowerSavingInterval.
+
+       In short: below 5 s the scheduler is oriented for data DENSITY, not
+       clock synchronisation. Keep the interval at 5 s or above if you want the
+       GPS-clock-synced slots and offsets back (e.g. to interleave several
+       sondes on one frequency, or land packets on exact times).
+
+       To DISABLE a mode use its Enable switch above - in fast mode a 0 interval
+       means quickest, not off. (A short Pip interval alone does not trigger
+       fast mode, as Pip is only a beacon; Pip=0 still disables Pip. Pip is
+       still sent each cycle when fast mode is on for another mode.)
 
    [mode]TimeSyncOffsetSeconds
        Additional delay after each interval slot before transmitting.
@@ -109,7 +126,6 @@ constexpr int8_t   pipRadioPower = 7;
 
    horusV3ExtraSensorsEnable adds extra telemetry fields to each standard packet:
      temperatures.custom1   - humidity-module heater temperature (extHeaterTemperatureValue)
-     temperatures.custom2   - cut-out thermistor temperature (readThermistorTemp)
      extraSensors "gpspwr"  - GPS power/operation mode (gpsStatus). Its meaning
                               depends on the board revision:
        RSM4x4 / RSM4x5 (M10) - the NFW Intelligent GPS tier (active in GPS mode 3):
@@ -172,7 +188,7 @@ constexpr float aprsFreqTable[] = {432.5};
 // lowAltitudeFastTxMode uses the first entry only.
 
 char aprsCall[]   = "N0CALL";       // Your amateur radio callsign - USE UPPERCASE LETTERS ONLY (lowercase may not be decoded correctly; the firmware does not convert case)
-String aprsComment = " NFWv68";     // Comment appended to every APRS packet
+String aprsComment = " NFWv69";     // Comment appended to every APRS packet
 
 constexpr char aprsSsid          = 11;       // Callsign SSID
 constexpr char aprsDigi[]        = "WIDE2";  // Digipeater callsign
@@ -542,9 +558,11 @@ constexpr uint8_t       humidityCalibrationMeasurementTemperature = 125;  // Min
      0 - Pressure disabled (reported as 0)
      1 - Vaisala RPM411 BARO-CAP sensor (RS41-SGP required; highly recommended)
          Plug the RPM411 into the rear connector. No calibration needed.
-     2 - Pressure estimation from altitude, temperature and humidity.
+     2 - Pressure estimation from altitude (ISA barometric model).  RSM4x4 / RSM4x5 ONLY.
          Set seaLevelPressure to the current MSL pressure for your region.
-         Order-of-magnitude accuracy only.
+         Order-of-magnitude accuracy only. NOT available on RSM4x2 / RSM4x1: the
+         estimation maths does not fit the F100's 64 KB flash, so on those boards
+         mode 2 behaves like mode 0 (no pressure). Use mode 1 (RPM411) there instead.
    ============================================================ */
 
 constexpr uint8_t pressureMode     = 1;

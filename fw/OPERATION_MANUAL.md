@@ -1,6 +1,6 @@
 # RS41-NFW Operation manual
 
-This manual describes how an RS41-NFW sonde behaves and how each feature works. It is current for **firmware v68**.
+This manual describes how an RS41-NFW sonde behaves and how each feature works. It is current for **firmware v69**.
 
 > **Where the settings live:** all user options are in a single file, [`CONFIG.h`](../rs41-nfw_sonde-firmware/CONFIG.h), grouped into clearly numbered sections with a short comment on every line. You do **not** edit the main `.ino`. The easiest way to set everything is the **[NFW Sounding Software](../README.md#rs41-nfw-sounding-software)** ([nfw.flada.ovh](https://nfw.flada.ovh)), which shows the same options as a guided form and compiles the firmware for you. The per-line comments in `CONFIG.h` are always the authoritative reference; this manual explains the *why* and the *how it behaves*.
 
@@ -113,11 +113,11 @@ The button only acts after start-up has fully completed. Hold time may vary roug
 
 ### TX timing - the GPS-clock scheduler
 
-Every mode is scheduled against the GPS clock (Section 2). For each mode you set:
-* `[mode]TimeSyncSeconds` - transmit every N seconds, aligned to the top of the hour. Example: `15` transmits at :00, :15, :30, :45 of each minute. `0` disables that mode's scheduled transmissions.
+At **5 s and above**, every mode is scheduled against the GPS clock (Section 2). For each mode you set:
+* `[mode]TimeSyncSeconds` - transmit every N seconds, aligned to the top of the hour. Example: `15` transmits at :00, :15, :30, :45 of each minute.
 * `[mode]TimeSyncOffsetSeconds` - an extra delay after each slot. Example: period 15, offset 2 transmits at :02, :17, :32, :47. Handy for separating several sondes in the air.
 
-Intervals shorter than about 7 s leave little CPU time for sensors and GPS; test carefully.
+**Simple fast-TX (interval 0-4).** Setting a *data* mode (Horus V3/V2, APRS, RTTY, Morse) below 5 s switches the whole sonde out of GPS-clock scheduling and into a plain loop: each cycle it refreshes the GPS and the sensor boom, transmits every enabled mode back-to-back, then waits the configured number of seconds (`0` = no wait, as fast as possible). Offsets and slot alignment do not apply - below 5 s the scheduler is oriented for **data density rather than clock synchronisation**. Keep the interval at **5 s or above to retain the GPS-clock-synced slots and offsets** (needed, for example, to interleave several sondes on one frequency or land packets on exact times). The real rate is still bounded by one packet's air-time plus a GPS/sensor read (about 4-5 s for a Horus V3 packet). Your chosen **GPS operation mode is not changed**. The sensor boom is refreshed every cycle, unless its power saving (Section 15) is on - then only every `sensorBoomPowerSavingInterval`. To disable a mode, use its enable switch: in fast mode a `0` interval means quickest, not off. A short Pip interval alone does not trigger fast mode (Pip is only a beacon), but Pip is still sent each cycle when fast mode is active.
 
 ### Horus Binary V3
 <p align="center">
@@ -208,12 +208,12 @@ The firmware also reads the **MCU's own internal temperature sensor** (both boar
 
 ### Sensor calibration mode (Vaisala calibration data vs NFW calibrations)
 
-> **Board support (v68).** Both board families now run the **Vaisala factory calibration**. On **RSM4x4 / RSM4x5 (STM32L412)** you can pick either mode with the switch below (default factory). The older **RSM4x1 / RSM4x2 (STM32F100)** boards are **factory-only**: the NFW calibration path is no longer built for the F100 (the factory maths was moved to single precision so it fits, and dropping NFW frees the room), so those boards always use the manufacturer coefficients. Because the F100 has no NFW fallback, its build **requires** a downloaded factory calibration - the Firmware Builder enforces this by asking for the measurement-boom serial before it will compile.
+> **Board support (v69).** Both board families now run the **Vaisala factory calibration**. On **RSM4x4 / RSM4x5 (STM32L412)** you can pick either mode with the switch below (default factory). The older **RSM4x1 / RSM4x2 (STM32F100)** boards are **factory-only**: the NFW calibration path is no longer built for the F100 (the factory maths was moved to single precision so it fits, and dropping NFW frees the room), so those boards always use the manufacturer coefficients. Because the F100 has no NFW fallback, its build **requires** a downloaded factory calibration when the sensor boom is enabled - the Firmware Builder enforces this by asking for the measurement-boom serial before it will compile (unless the boom is disabled, in which case no calibration is needed).
 
 On RSM4x4 / RSM4x5 a master switch, `sensorCalibrationMode` (Section 15b), chooses how sensors are computed - it governs the whole measurement chain. On RSM4x2 / RSM4x1 it is fixed at factory.
 
 * **`1` - NFW algorithms** (RSM4x4 / RSM4x5 only). The in-house calibration and compensation model. A simplified but close approximation that brings any boom to life - even one whose factory calibration data was never received. Readings are good and usable, but not at the manufacturer's accuracy. This mode uses the [Temperature calibration](#temperature-calibration) and [Humidity calibration](#humidity-calibration) routines described below.
-* **`2` - Vaisala factory (default).** Reproduces the boom's **original Vaisala factory calibration**, using the per-boom coefficients (temperature polynomials and the full humidity `matrixU` surface) downloaded from SondeHub by serial number. **Expected accuracy is the same you get from a normally received factory sonde** - full manufacturer-grade temperature and humidity. The factory data belongs to one specific boom, so coefficients are never interchangeable between serials.
+* **`2` - Vaisala factory (default; the only mode on RSM4x2 / RSM4x1).** Reproduces the boom's **original Vaisala factory calibration**, using the per-boom coefficients (temperature polynomials and the full humidity `matrixU` surface) downloaded from SondeHub by serial number. **Expected accuracy is the same you get from a normally received factory sonde** - full manufacturer-grade temperature and humidity. The factory data belongs to one specific boom, so coefficients are never interchangeable between serials.
 
 > Factory mode is set up in the Sounding Software's sensor-boom section: choose *Factory (Vaisala)* and enter the serial **engraved on the silver measurement boom** (the central part of its structure, not the mainboard). For best results use a matching boom + sonde pair that share the same serial (printed on the styrofoam packaging and on the boom). You may also pair the boom with any mainboard and enter only the boom serial, but because the factory data also captures the original mainboard's small imperfections, expect a deviation of readings with a mismatched board (from empirical home testing) - it may equally well read perfectly, this is just the worst case to be aware of.
 
@@ -254,7 +254,7 @@ The sensor has a few seconds of reaction time, longer at low temperatures. Expec
 `pressureMode` (Section 18):
 * **0** - disabled (reported as 0).
 * **1** - **Vaisala RPM411** BARO-CAP sensor (the RS41-SGP pressure board). Plug it into the rear connector; no calibration needed. Highly recommended and required for accurate ozone work. Readings are smoothed with a light Kalman filter.
-* **2** - estimation from altitude, temperature and humidity (the barometric formula). Set `seaLevelPressure` to the current MSL pressure for your region. Order-of-magnitude accuracy only, for when no RPM411 is fitted.
+* **2** - estimation from GPS altitude (the ISA barometric model). Set `seaLevelPressure` to the current MSL pressure for your region. Order-of-magnitude accuracy only, for when no RPM411 is fitted. **RSM4x4 / RSM4x5 only** - the estimation maths does not fit the RSM4x2 / RSM4x1 flash, so on those boards mode 2 reports 0 (use mode 1 with an RPM411 instead). The Sounding Software hides the option for the older boards.
 
 ### Heating
 

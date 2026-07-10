@@ -537,7 +537,13 @@ html[data-theme="light"] #app-home::before{ opacity:.5; }
 .flash-status{ font-size:.76rem; color:var(--text-muted); }
 .flash-note{ font-size:.72rem; color:var(--text-muted); margin-top:10px; line-height:1.5; }
 .flash-link{ color:var(--accent); text-decoration:underline; }
-.flash-log{ margin-top:12px; background:var(--log-bg); border:1px solid var(--border); border-radius:10px; padding:10px 12px; height:180px; overflow-y:auto; font-family:'IBM Plex Mono',monospace; font-size:.72rem; color:var(--log-text); line-height:1.5; }
+.flash-log{ margin-top:12px; background:var(--log-bg); border:1px solid var(--border); border-radius:10px; padding:12px 14px; height:340px; overflow-y:auto; font-family:'IBM Plex Mono',monospace; font-size:.75rem; color:var(--log-text); line-height:1.55; resize:vertical; box-shadow:inset 0 1px 6px rgba(0,0,0,.15); }
+/* Compilation progress bar - indeterminate animated sweep (server build reports no %) */
+.compile-bar{ height:8px; border-radius:6px; background:var(--app-bg2, rgba(120,130,150,.18)); overflow:hidden; margin-bottom:12px; position:relative; }
+.compile-bar>span{ position:absolute; top:0; bottom:0; width:38%; border-radius:6px;
+  background:linear-gradient(90deg,#16a34a,#22c55e,#0ea5a4); animation:compileSweep 1.25s cubic-bezier(.4,0,.2,1) infinite; }
+.compile-bar.done>span{ animation:none; width:100%; left:0; }
+@keyframes compileSweep{ 0%{ left:-40%; } 100%{ left:102%; } }
 .flash-log .error{ color:#ef4444; } .flash-log .warning{ color:#d97706; } .flash-log .info{ color:var(--text); }
 .flash-log .progress{ display:flex; align-items:center; gap:8px; margin:5px 0; color:var(--text-muted); animation:flashLogIn .25s ease; }
 .flash-log>div{ animation:flashLogIn .2s ease; }
@@ -1796,7 +1802,7 @@ document.addEventListener('DOMContentLoaded', function(){
   <div class="p-5">
     <p class="text-sm text-slate-400 mb-3">GPS-clock synchronised transmission timing. Each mode below has two values:</p>
     <ul class="help-list mb-5">
-      <li><strong class="text-white">Interval</strong> - transmit every N seconds, aligned to the top of the hour. Example: 15 transmits at :00, :15, :30, :45. Set to <strong class="text-white">0</strong> to disable that mode's scheduled TX. Intervals under ~7 s leave little CPU for sensors and GPS, so test carefully.</li>
+      <li><strong class="text-white">Interval</strong> - at <strong class="text-white">5 s and above</strong>, transmit every N seconds aligned to the top of the hour (example: 15 transmits at :00, :15, :30, :45). <strong class="text-white">Below 5 s (0-4)</strong> a data mode switches the sonde to <strong class="text-white">simple fast-TX</strong>: no GPS-clock timing, just refresh GPS + sensors, send every enabled mode back-to-back, then wait that many seconds (0 = quickest). Below 5 s the scheduler is oriented for <strong class="text-white">data density, not clock sync</strong> - keep the interval at <strong class="text-white">5 s or above to retain GPS-clock-synced slots and offsets</strong> (e.g. for interleaving several sondes on one frequency). To turn a mode off use its enable switch, not a 0 interval.</li>
       <li><strong class="text-white">Offset</strong> - extra delay added after each interval slot. Example: interval 15, offset 2 transmits at :02, :17, :32, :47. Handy for separating several sondes flying at once.</li>
     </ul>
     <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -1819,7 +1825,7 @@ document.addEventListener('DOMContentLoaded', function(){
         <label class="field-label">Interval</label><div class="unit-wrap"><input type="number" class="input-base" id="cfg-morseTimeSyncSeconds" value="15" min="0" onchange="cfgChanged()"><span class="unit-label">s</span></div>
         <label class="field-label mt-2">Offset</label><div class="unit-wrap"><input type="number" class="input-base" id="cfg-morseTimeSyncOffsetSeconds" value="0" min="0" onchange="cfgChanged()"><span class="unit-label">s</span></div></div>
     </div>
-    <details class="flash-details mt-4"><summary style="font-size:.78rem">Want the highest density of downlink data?</summary><div class="flash-details-body">Set that mode's <strong>interval to 1 s</strong> and the sonde transmits it as fast as it possibly can. Allow up to about a second on top of each packet for GPS and sensor updates and the transmission air-time.</div></details>
+    <details class="flash-details mt-4"><summary style="font-size:.78rem">Want the highest density of downlink data?</summary><div class="flash-details-body">Set a data mode's interval <strong>below 5 s</strong> (0-4) and the sonde switches to <strong>simple fast-TX</strong>: it drops GPS-clock timing and just loops - refresh GPS and sensors, transmit every enabled mode back-to-back, then wait that many seconds (<strong>0 = no wait, quickest</strong>). The real rate is still bounded by one packet's air-time plus a GPS/sensor read (about 4-5 s for a Horus V3 packet). Your chosen GPS mode is respected, and the sensor boom refreshes every cycle (or every power-saving interval, if that is enabled). Below 5 s the scheduler is oriented for <strong>density rather than clock sync</strong>; keep the interval at <strong>5 s or above to keep GPS-clock-synced slots and offsets</strong>. To turn a mode off, use its enable switch - a 0 interval means quickest here, not off.</div></details>
   </div>
 </div>
 
@@ -2294,7 +2300,7 @@ document.addEventListener('DOMContentLoaded', function(){
     <div><label class="field-label">Power-saving read interval</label><div class="unit-wrap"><input type="number" class="input-base" id="cfg-sensorBoomPowerSavingInterval" value="30000" min="1000" onchange="cfgChanged()"><span class="unit-label">ms</span></div>
       <p class="field-desc">Used only when power saving is on. Default 30000 (30 s).</p></div>
 
-    <!-- Sensor calibration mode. RSM4x4/RSM4x5: selectable. RSM4x2/RSM4x1: factory-only. -->
+    <!-- Sensor calibration mode. RSM4x4/RSM4x5: selectable (NFW or factory). RSM4x2/RSM4x1: factory (Vaisala) only. -->
     <div id="sensorcal-mode-wrap" class="md:col-span-2 mode-box">
       <div class="mode-head"><span class="text-amber-300">🧪</span> Sensor calibration mode</div>
       <p class="field-desc mb-2"><strong class="text-white">This is the master switch for the whole sensor boom.</strong> It decides how temperature and humidity are computed - and the rest of this section changes with it.</p>
@@ -2449,9 +2455,9 @@ document.addEventListener('DOMContentLoaded', function(){
       <select class="input-base" id="cfg-pressureMode" onchange="pressureModeChanged()">
         <option value="0">0 - Disabled (reported as 0)</option>
         <option value="1" selected>1 - Vaisala RPM411 BARO-CAP (RS41-SGP)</option>
-        <option value="2">2 - Estimated from altitude/temp/humidity</option>
+        <option value="2" id="pressmode-opt-2">2 - Estimated from altitude (RSM4x4 only)</option>
       </select>
-      <p class="field-desc">Mode 1 needs the RPM411 in the rear connector; no calibration required. Mode 2 is order-of-magnitude only.</p></div>
+      <p class="field-desc">Mode 1 needs the RPM411 in the rear connector; no calibration required. Mode 2 is order-of-magnitude only and is <strong>RSM4x4 / RSM4x5 only</strong> - it does not fit the older RSM4x2 / RSM4x1 flash, so it is hidden for those boards.</p></div>
     <div><label class="field-label">Sea-level pressure (mode 2 only)</label><div class="unit-wrap"><input type="number" step="0.01" class="input-base" id="cfg-seaLevelPressure" value="1013.25" onchange="cfgChanged()"><span class="unit-label">hPa</span></div>
       <p class="field-desc">Current MSL pressure for your region.</p></div>
   </div>
@@ -2637,12 +2643,14 @@ document.addEventListener('DOMContentLoaded', function(){
     <button class="btn btn-green" id="btn-compile" onclick="startCompile(currentPlatform)">
       <span>⚡</span> Compile for <strong id="compile-btn-platform" class="ml-1">RSM4x4</strong>
     </button>
-    <div id="compile-status" class="hidden">
+    <div id="compile-status" class="hidden mt-5">
       <div class="flex items-center gap-2 text-sm text-slate-400 mb-2">
         <span id="compile-spinner" class="spinner"></span>
         <span id="compile-msg">Compiling...</span>
         <span id="compile-platform-badge" class="badge bg-slate-700 text-slate-300 ml-1"></span>
+        <span id="compile-elapsed" class="text-xs text-slate-500 ml-auto font-mono"></span>
       </div>
+      <div id="compile-progress" class="compile-bar"><span></span></div>
       <div class="log-box" id="compile-log"></div>
     </div>
     <div id="download-section" class="hidden">
@@ -2660,7 +2668,7 @@ document.addEventListener('DOMContentLoaded', function(){
       </div>
 
       <!-- Post-compile flashing: browser flashing is the recommended, no-install path -->
-      <div class="flash-card mt-4">
+      <div class="flash-card mt-7">
         <div class="flash-card-head">
           <span class="flash-ico">⚡</span>
           <div>
@@ -2685,7 +2693,7 @@ document.addEventListener('DOMContentLoaded', function(){
 
         <div id="webusb-log" class="flash-log hidden"></div>
 
-        <p id="webusb-l4-note" class="flash-note">Both board families (F100 and L412) are supported. This writes to your sonde and, on a factory-locked one, mass-erases it while clearing protection. It is newer than the desktop tools - keep an ST-Link and OpenOCD handy, and try a spare sonde first. A failed SWD flash is always recoverable.</p>
+        <p id="webusb-l4-note" class="flash-note">This writes to your sonde and, on a factory-locked one, mass-erases it while clearing protection. It is newer than the desktop tools - keep an ST-Link and OpenOCD handy, and try a spare sonde first. A failed SWD flash is always recoverable.</p>
 
         <!-- Wiring guide -->
         <details class="flash-details">
@@ -4058,12 +4066,24 @@ function setPlatform(p) {
   const lbl = document.getElementById('compile-btn-platform');
   if (lbl) lbl.textContent = p;
   updateGpsModeOptions();
+  updatePressureModeOptions();
   updateM10Visibility();
   updateSensorCalVisibility();
   // Show/hide every option flagged "RSM4x4 only" (whole sections like Horus V2, RTTY,
   // Morse, Low-Altitude Fast-TX, and individual fields) to match the selected board.
   const is4x4 = (p === 'RSM4x4');
   document.querySelectorAll('.rsm4x4-only').forEach(el => { el.style.display = is4x4 ? '' : 'none'; });
+}
+
+// Estimated pressure (mode 2) is RSM4x4-only: it does not fit the RSM4x2 flash. Hide the
+// option on the old board and snap a mode-2 selection back to RPM411 (mode 1).
+function updatePressureModeOptions() {
+  const sel = document.getElementById('cfg-pressureMode');
+  if (!sel) return;
+  const opt2 = document.getElementById('pressmode-opt-2');
+  const is4x4 = currentPlatform === 'RSM4x4';
+  if (opt2) { opt2.hidden = !is4x4; opt2.disabled = !is4x4; }
+  if (!is4x4 && sel.value === '2') sel.value = '1';
 }
 
 // GPS operation modes differ by board: mode 3 (Intelligent M10) is RSM4x4-only,
@@ -4110,6 +4130,7 @@ function cfgChanged() {
   updateCalVisibility();
   updateM10Visibility();
   applyBoomDependentUI();
+  updateSensorCalVisibility();   // hide/show the calibration section with the sensor-boom toggle
 }
 
 // ── Advisory popups ─────────────────────────────────────────────────────────────
@@ -4222,13 +4243,16 @@ function pressureModeChanged() {
   const el = document.getElementById('cfg-pressureMode');
   cfgChanged();
   if (el.value === '0') {
+    const est4x4 = currentPlatform === 'RSM4x4'
+      ? 'Consider <strong>mode 2 - estimated pressure</strong> (from GPS altitude - free, no extra hardware, '
+        + 'order-of-magnitude accuracy), or best of all the '
+      : 'Consider the ';
     showAdvisory({
       icon: '🧭', title: 'No pressure at all?',
       confirmText: 'Leave pressure off',
-      cancelText: 'Pick a pressure mode',
-      html: 'Pressure is a valuable atmospheric channel and easy to add. Consider <strong>mode 2 - estimated pressure</strong> '
-          + '(from altitude, temperature and humidity - free, no extra hardware, order-of-magnitude accuracy), or best of all '
-          + 'the <strong>Vaisala RPM411 BARO-CAP sensor (mode 1)</strong>, a precise barometric add-on that plugs into the rear '
+      cancelText: 'Use the RPM411 (mode 1)',
+      html: 'Pressure is a valuable atmospheric channel and easy to add. ' + est4x4
+          + '<strong>Vaisala RPM411 BARO-CAP sensor (mode 1)</strong>, a precise barometric add-on that plugs into the rear '
           + 'connector and needs no calibration. Only leave pressure disabled if you specifically do not want it.',
       onCancel: () => { el.value = '1'; cfgChanged(); }
     });
@@ -4319,10 +4343,10 @@ function updateCalVisibility() {
 // ── Factory (Vaisala) sensor calibration - mode 2 ──
 let factoryCal = null;   // { serial, cal:{factory*...}, mainboard, telemetry, fetched }
 
-// The mode selector lives in the Sensor Boom card. Both board families now run factory
-// (Vaisala) calibration: RSM4x4 / RSM4x5 can choose NFW or factory, while RSM4x2 / RSM4x1
-// are factory-only (the NFW calibration path is no longer built for the F100), so the
-// NFW/factory picker is hidden there and the mode is forced to factory.
+// The mode selector lives in the Sensor Boom card. RSM4x4 / RSM4x5 can choose NFW or
+// factory (Vaisala) calibration. RSM4x2 / RSM4x1 run factory (Vaisala) only. With the
+// sensor boom disabled there are no measurements at all, so the whole calibration section
+// (mode switch + NFW cal cards) is hidden and nothing is required.
 function updateSensorCalVisibility() {
   const wrap = document.getElementById('sensorcal-mode-wrap');
   const sel  = document.getElementById('cfg-sensorCalibrationMode');
@@ -4332,12 +4356,24 @@ function updateSensorCalVisibility() {
   const picker = document.getElementById('sensorcal-mode-picker');
   const note   = document.getElementById('sensorcal-factory-only');
 
-  wrap.style.display = '';   // the sensor-calibration card is shown on both boards now
+  // Sensor boom off -> hide the entire calibration section (nothing to calibrate).
+  const boomEl = document.getElementById('cfg-sensorBoomEnable');
+  const boomOn = !boomEl || boomEl.checked;
+  if (!boomOn) {
+    wrap.style.display = 'none';
+    document.querySelectorAll('.nfw-cal-card').forEach(el => { el.style.display = 'none'; });
+    setFactoryCalStatus('', null);   // clear any leftover "download required" status
+    document.getElementById('factory-cal-status')?.classList.add('hidden');
+    return;
+  }
+
+  // RSM4x4 / RSM4x5 can choose NFW or factory. RSM4x2 / RSM4x1 run factory (Vaisala) only,
+  // so hide the NFW/factory picker there and force factory (mode 2).
+  wrap.style.display = '';
   if (is4x4) {
     if (picker) picker.style.display = '';
     if (note)   note.classList.add('hidden');
   } else {
-    // RSM4x2 / RSM4x1: factory only. Hide the mode picker and force factory (mode 2).
     if (picker) picker.style.display = 'none';
     if (note)   note.classList.remove('hidden');
     sel.value = '2';
@@ -4438,7 +4474,7 @@ function setFetchStatus(msg, ok) {
   el.classList.remove('hidden');
 }
 
-// human verification - a 10-minute session unlocked by one captcha solve
+// human verification - a 1-hour session unlocked by one captcha solve
 let authToken   = sessionStorage.getItem('nfwAuth') || null;
 let authExpiry  = Number(sessionStorage.getItem('nfwAuthExp')) || 0;
 let captchaToken = null;
@@ -4485,8 +4521,8 @@ async function submitCaptcha() {
     if (d.ok) {
       authToken = d.auth;
       sessionStorage.setItem('nfwAuth', authToken);
-      // Track when the session expires so the UI can re-prompt after the 10-minute window.
-      authExpiry = Date.now() + (Number(d.expires_in) || 600) * 1000;
+      // Track when the session expires so the UI can re-prompt after the window ends.
+      authExpiry = Date.now() + (Number(d.expires_in) || 3600) * 1000;
       sessionStorage.setItem('nfwAuthExp', String(authExpiry));
       setVerified(true);
     } else {
@@ -4662,6 +4698,7 @@ function applyConfigToForm(cfg) {
   }
   syncAprsSymbolUI();
   updateGpsModeOptions(); // values are now set: hide/snap GPS modes to the board
+  updatePressureModeOptions(); // hide/snap estimated-pressure (mode 2) to the board
   updateSensorCalVisibility(); // show/snap the factory-calibration panel to the board
   cfgChanged(); // sync conditional sections (e.g. OIF411 visibility)
   configDirty = false; // applyConfigToForm is called on load - mark clean after sync
@@ -4691,11 +4728,11 @@ function collectConfig() {
   // reach the firmware (the firmware itself does no case conversion, to save string ops).
   if (typeof cfg.aprsCall === 'string') cfg.aprsCall = cfg.aprsCall.toUpperCase();
 
-  // Sensor calibration. Both boards can use factory (Vaisala) mode 2; RSM4x2/4x1 are
-  // factory-only. When factory is selected we splice in the downloaded coefficients.
-  // startCompile() already blocks compiling factory mode without a downloaded calibration,
-  // so we never ship zeroed-out factory coefficients (critical on RSM4x2, where there is
-  // no NFW fallback to fall back to).
+  // Sensor calibration. Both boards can use factory (Vaisala) mode 2; RSM4x2 / RSM4x1 are
+  // factory-only. When factory is selected and a calibration is downloaded, splice in the
+  // coefficients. startCompile() blocks compiling factory mode without a download WHILE THE
+  // BOOM IS ENABLED, so we never ship zeroed factory coefficients that would matter (with
+  // the boom off the coefficients are unused).
   if ('sensorCalibrationMode' in cfg) {
     const wantFactory = (parseInt(cfg.sensorCalibrationMode, 10) === 2) || currentPlatform !== 'RSM4x4';
     if (wantFactory && factoryCal && factoryCal.cal) {
@@ -4703,11 +4740,12 @@ function collectConfig() {
       Object.assign(cfg, factoryCal.cal);   // factory* coefficients at full precision
       cfg.boomSerialNumber = (factoryCal.serial || '').toUpperCase();   // reported in telemetry
     } else if (currentPlatform === 'RSM4x4') {
-      // RSM4x4 without a downloaded calibration -> NFW (mode 1).
-      cfg.sensorCalibrationMode = 1;
+      cfg.sensorCalibrationMode = 1;   // RSM4x4 without a downloaded calibration -> NFW (mode 1)
+      cfg.boomSerialNumber = '';
+    } else {
+      cfg.sensorCalibrationMode = 2;   // RSM4x2 is factory-only (unused coefficients when boom is off)
       cfg.boomSerialNumber = '';
     }
-    // (RSM4x2 without a calibration cannot reach here: startCompile blocks it.)
   }
   return cfg;
 }
@@ -4744,14 +4782,17 @@ function syncAprsSymbolUI() {
 let pendingCompilePlatform = null;
 function startCompile(platform) {
   if (!ensureVerified()) return;
-  // Factory calibration needs a downloaded coefficient set first. RSM4x2 / RSM4x1 are
-  // factory-only, so they always require it; RSM4x4 only when mode 2 is selected.
+  // Factory (Vaisala) calibration needs a downloaded coefficient set first: RSM4x2 / RSM4x1
+  // are factory-only, RSM4x4 only in mode 2. BUT only when the sensor boom is actually
+  // enabled - with the boom off there are no measurements, so no calibration is required.
   const calSel = document.getElementById('cfg-sensorCalibrationMode');
-  const needsFactory = (platform !== 'RSM4x4') || (calSel && calSel.value === '2');
+  const boomEl = document.getElementById('cfg-sensorBoomEnable');
+  const boomOn = !boomEl || boomEl.checked;
+  const needsFactory = boomOn && ((platform !== 'RSM4x4') || (calSel && calSel.value === '2'));
   if (needsFactory && !(factoryCal && factoryCal.cal)) {
     updateSensorCalVisibility();
     const msg = (platform !== 'RSM4x4')
-      ? 'RSM4x2 / RSM4x1 use factory (Vaisala) calibration only. Enter the measurement-boom serial and download its calibration before compiling.'
+      ? 'RSM4x2 / RSM4x1 use factory (Vaisala) calibration only. Enter the measurement-boom serial and download its calibration before compiling (or disable the sensor boom).'
       : 'Download the factory calibration for your sonde serial before compiling in mode 2, or switch back to NFW calibration.';
     setFactoryCalStatus(msg, false);
     document.getElementById('sensorcal-mode-wrap').scrollIntoView({behavior:'smooth', block:'center'});
@@ -4765,6 +4806,17 @@ function confirmCompileStart() {
   runCompile(pendingCompilePlatform || currentPlatform);
 }
 
+let _compileStartMs = 0, _compileTimer = null;
+function startCompileClock() {
+  _compileStartMs = Date.now();
+  const el = document.getElementById('compile-elapsed');
+  const tick = () => { if (el) el.textContent = ((Date.now() - _compileStartMs) / 1000).toFixed(0) + 's'; };
+  tick();
+  clearInterval(_compileTimer);
+  _compileTimer = setInterval(tick, 250);
+}
+function stopCompileClock() { clearInterval(_compileTimer); _compileTimer = null; }
+
 async function runCompile(platform) {
   document.getElementById('btn-compile').disabled = true;
   document.getElementById('download-section').classList.add('hidden');
@@ -4773,6 +4825,8 @@ async function runCompile(platform) {
   document.getElementById('compile-platform-badge').textContent = platform;
   document.getElementById('compile-log').innerHTML = '';
   document.getElementById('compile-spinner').style.display = '';
+  document.getElementById('compile-progress').classList.remove('done');   // restart the animated bar
+  startCompileClock();
 
   currentJobId = null;
   const cfg = collectConfig();
@@ -4869,6 +4923,8 @@ async function pollQueue() {
 function compileDone(ok, detail) {
   document.getElementById('compile-spinner').style.display = 'none';
   document.getElementById('btn-compile').disabled = false;
+  document.getElementById('compile-progress').classList.add('done');   // fill + stop the bar
+  stopCompileClock();
   logOffset = 0;
 
   const msg = document.getElementById('compile-msg');
@@ -4881,6 +4937,15 @@ function compileDone(ok, detail) {
     msg.classList.remove('compile-success-anim', 'compile-fail-anim');
     void msg.offsetWidth;
     msg.classList.add('compile-success-anim');
+    // Scroll down to the ready/flash section so the user sees it, leaving a little margin
+    // at the top so it doesn't jump all the way and feel jarring.
+    setTimeout(() => {
+      const sec = document.getElementById('download-section');
+      if (sec) {
+        const y = sec.getBoundingClientRect().top + window.scrollY - 90;   // ~90px top margin
+        window.scrollTo({ top: y, behavior: 'smooth' });
+      }
+    }, 200);
   } else {
     msg.textContent = '✗ Compilation failed';
     msg.style.color = '#f87171';
@@ -4890,7 +4955,7 @@ function compileDone(ok, detail) {
     msg.classList.add('compile-fail-anim');
   }
 
-  // The verification is a 10-minute session, not single-use: keep it so the user can
+  // The verification is a 1-hour session, not single-use: keep it so the user can
   // build again without re-solving. It expires on its own (client + server); a later
   // build that hits an expired session gets a 401 and re-prompts then.
   refreshVerifyState();
@@ -4966,12 +5031,41 @@ async function webusbPickStlink() {
   } catch (e) {
     // NotFoundError = user closed the picker with nothing selected (nothing to access yet).
     if (e && e.name === 'NotFoundError') {
-      set('No ST-Link selected. If the picker was empty, open "First-time setup" below and follow the Windows/Linux access step, then reconnect the ST-Link.', false);
-      document.getElementById('webusb-setup-details')?.setAttribute('open', '');
+      set('No ST-Link selected or found.', false);
+      stlinkNotFoundPopup();
     } else {
       set('Could not access USB: ' + (e && e.message ? e.message : e), false);
     }
   }
+}
+
+// Friendly popups for the two common flashing snags, reusing the advisory modal.
+function stlinkNotFoundPopup() {
+  showAdvisory({
+    icon: '🔌', title: 'No ST-Link found',
+    confirmText: 'Open first-time setup',
+    cancelText: 'Close',
+    html: 'The browser could not reach an ST-Link. Two things to check: it is plugged in, and - the first time on this computer - your OS is actually exposing it to the browser. The one-time setup (Zadig / WinUSB on Windows, a udev rule on Linux) takes care of that. Open it below and follow the step for your OS, then reconnect the ST-Link.',
+    onConfirm: () => {
+      const d = document.getElementById('webusb-setup-details');
+      if (d) { d.setAttribute('open', ''); d.scrollIntoView({ behavior: 'smooth', block: 'center' }); }
+    },
+    onCancel: () => {}
+  });
+}
+function stlinkNoMcuPopup(detail) {
+  showAdvisory({
+    icon: '⚠️', title: 'No sonde detected on the ST-Link',
+    confirmText: 'Show wiring guide',
+    cancelText: 'Close',
+    html: 'The ST-Link is connected, but no MCU answered over SWD. Check the <strong>SWDIO, SWCLK, GND and 3V3</strong> wiring to the sonde\'s XDATA pads and that the <strong>sonde is powered on</strong>.'
+        + (detail ? '<br><span style="opacity:.75;font-size:.85em">' + detail + '</span>' : ''),
+    onConfirm: () => {
+      const d = document.querySelector('.flash-card .flash-details');
+      if (d) { d.setAttribute('open', ''); d.scrollIntoView({ behavior: 'smooth', block: 'center' }); }
+    },
+    onCancel: () => {}
+  });
 }
 
 // One-click flash of the just-built firmware over WebUSB (via flasher.js -> webstlink).
@@ -4997,8 +5091,15 @@ async function webusbFlashNow() {
     });
     openRatingModal();   // flashed successfully -> invite a rating
   } catch (e) {
-    setStatus((e && e.message) ? e.message : String(e), 'err');
-    if (e && e.openSetup) document.getElementById('webusb-setup-details')?.setAttribute('open', '');
+    const emsg = (e && e.message) ? e.message : String(e);
+    setStatus(emsg, 'err');
+    if (e && e.openSetup) {
+      stlinkNotFoundPopup();
+    } else if (/identify the MCU|Could not identify|does not match the selected board|DataView|outside the bounds|out of bounds/i.test(emsg)) {
+      // "Offset is outside the bounds of the DataView" = webstlink got a truncated/empty SWD
+      // reply, which is what happens when the ST-Link has no sonde connected/powered.
+      stlinkNoMcuPopup(emsg);
+    }
   } finally {
     if (btn) btn.disabled = false;
     if (ico) ico.classList.remove('flashing');

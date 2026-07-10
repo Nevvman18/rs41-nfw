@@ -2,7 +2,7 @@
 RS41-NFW - versatile, feature-rich and user-friendly custom firmware for ALL revisions of Vaisala RS41 radiosondes
 Authors: Franek Łada (nevvman, SP5FRA)
 
-Version 68 (public, stable)
+Version 69 (public, stable)
 
 All code and dependencies used or modified here that don't origin from me are described in code comments and repo details.
 https://github.com/Nevvman18/rs41-nfw
@@ -42,7 +42,7 @@ I wish You high, successful flights with a lot of data gathered with this firmwa
 Franek,
 Author of RS41-NFW
 */
-#define NFW_VERSION "RS41-NFW v68, GPL-3.0 Franek Lada (nevvman, SP5FRA)"  //This is the firmware version You are running
+#define NFW_VERSION "RS41-NFW v69, GPL-3.0 Franek Lada (nevvman, SP5FRA)"  //This is the firmware version You are running
 
 //===== Libraries and lib-dependant definitions (nothing to modify)
 /* No libraries are required to be installed, all dependencies are shipped within the project folder. */
@@ -55,6 +55,23 @@ Author of RS41-NFW
 TinyGPSPlus gps;
 
 #include <HardwareTimer.h>
+#include <new>   // placement new - build the big Horus V3 ASN.1 struct directly into g_txScratch
+
+// Shared transmit scratch RAM. On the tight 8 KB F100 there is not room for all of these at
+// once, but they are never live at the same time - each belongs to a different, non-overlapping
+// step: the $NFW telemetry frame (interfaceHandler), the two APRS message buffers (aprsTx, and
+// only one APRS mode is built per packet), and the >1 KB Horus V3 ASN.1 packet (buildHorusV3Packet
+// / the data recorder). Overlapping them in a union keeps the big Horus struct OFF the stack -
+// on the stack it overflowed into the heap and corrupted the humidity-heater PWM timer handle,
+// hard-faulting the sonde after the first transmission - without needing RAM the F100 lacks.
+union NfwTxScratch {
+  char           nfwFrame[1024];   // $NFW telemetry frame (interfaceHandler)
+  char           aprsOthers[256];  // APRS HAB comment (aprsTx, mode 1)
+  char           aprsWx[256];      // APRS WX report  (aprsTx, mode 2)
+  char           dbgHex[256];      // Horus debug hex dump (written only after the packet is encoded)
+  horusTelemetry horusMsg;         // Horus V3 ASN.1 packet (buildHorusV3Packet / data recorder)
+};
+NfwTxScratch g_txScratch;
 
 /*
  * ============================================================
@@ -298,8 +315,8 @@ int referenceHeaterStatus = 0;
 bool aprsTone = 0;
 char statusMessage[320];  // Status message
 char aprsLocationMsg[32];
-char aprsOthersMsg[256];
-char aprsWxMsg[256];
+char* const aprsOthersMsg = g_txScratch.aprsOthers;   // shares g_txScratch (not live during Horus TX)
+char* const aprsWxMsg     = g_txScratch.aprsWx;
 char aprsBitStuffingCounter = 0;  // Bit stuffing counter
 unsigned short aprsCrc = 0xffff;  // CRC for error checking
 unsigned int aprsPacketNum = 0;
@@ -334,6 +351,17 @@ unsigned long sch_lastPressure   = 0;
 unsigned long sch_lastInterface  = 0;
 unsigned long sch_lastGps        = 0;
 unsigned long sch_lastOzone      = 0;
+
+// Simple fast-TX mode. When any enabled DATA mode (Horus V3/V2, APRS, RTTY, Morse) has its
+// interval set below FAST_TX_MIN_SYNC_SECONDS, the sonde drops GPS-clock scheduling for a
+// plain loop: refresh GPS + sensor boom, transmit every enabled mode back-to-back, then
+// wait fastTxDelayMs (0 = no wait = quickest). No slot alignment or per-mode offsets apply.
+// The sensor boom is refreshed every cycle unless its own power saving is on (then only
+// every sensorBoomPowerSavingInterval). Computed once in schedulerInit(); when no interval
+// is that short the flag is false and the normal GPS-clock scheduler runs unchanged.
+#define FAST_TX_MIN_SYNC_SECONDS 5   // intervals below this (0-4) select fast mode
+bool          fastTxMode    = false;
+unsigned long fastTxDelayMs = 0;
 
 #ifdef RSM4x4
 //Based on https://github.com/cturvey/RandomNinjaChef/blob/main/uBloxHABceiling.c , and  https://github.com/Nevvman18/rs41-nfw/issues/3
@@ -503,7 +531,7 @@ struct HorusBinaryPacketV2 {
 char rawbuffer[HORUS_UNCODED_BUFFER_SIZE];    // Buffer to temporarily store a raw binary packet.
 // QI - Expanded to 256 bytes to fit the big 128 byte (Coded) v3 packet
 char codedbuffer[HORUS_CODED_BUFFER_SIZE];  // Buffer to store an encoded binary packet
-char debugbuffer[256];  // Buffer to store debug strings
+char* const debugbuffer = g_txScratch.dbgHex;  // shares g_txScratch (written only after packet encode)
 
 uint32_t fsk4_base = 0, fsk4_baseHz = 0;
 uint32_t fsk4_shift = 0, fsk4_shiftHz = 0;
@@ -962,7 +990,8 @@ int buildHorusV3Packet(char* uncoded_buffer){
   const int16_t  asn_tempCust1 = constrain((int32_t)(extHeaterTemperatureValue*10), -1023,  1023);
   const uint8_t  asn_humidity  = constrain((int32_t)humidityValue,                   0,     100);
 
-  horusTelemetry asnMessage = {
+  horusTelemetry& asnMessage = g_txScratch.horusMsg;   // shared off-stack instance (see g_txScratch)
+  new (&asnMessage) horusTelemetry{
         .payloadCallsign  = HORUS_V3_CALLSIGN,
         .sequenceNumber = horusV3PacketCount,
         .timeOfDaySeconds  = gpsHours*3600 + gpsMinutes*60 + gpsSeconds,
@@ -1136,7 +1165,8 @@ int buildHorusV3PacketDataRecorder(char* uncoded_buffer, uint8_t page){
   const int16_t  dr_tempCust1 = constrain((int32_t)(extHeaterTemperatureValue*10), -1023, 1023);
   const uint8_t  dr_humidity  = constrain((int32_t)humidityValue,                   0,    100);
 
-  horusTelemetry asnMessage = {
+  horusTelemetry& asnMessage = g_txScratch.horusMsg;   // shared off-stack instance (see g_txScratch)
+  new (&asnMessage) horusTelemetry{
       .payloadCallsign = HORUS_V3_CALLSIGN,
       .sequenceNumber = horusV3PacketCount,
       .timeOfDaySeconds = gpsHours * 3600 + gpsMinutes * 60 + gpsSeconds,
@@ -2383,9 +2413,10 @@ float lastRefFreq1100 = 0;
 
 #if defined(RSM4x4) || defined(RSM4x2)
 /* Factory (Vaisala) calibration conversion - sensor calibration mode 2.
-   On RSM4x4 / RSM4x5 it is selectable; on RSM4x2 / RSM4x1 it is the only mode.
    Reproduces the rs1729 (zilog80) RS41 PTU math using
-   the sonde's original factory coefficients fetched from SondeHub.
+   the sonde's original factory coefficients fetched from SondeHub. Kept in single
+   precision (float, expf/logf) so it also fits the 64 KB flash of the RSM4x2 (F100),
+   which has no double-precision FPU - the accuracy loss is far below the sensor's.
      f       - sensor frequency
      f1 / f2 - low / high reference frequencies
    For temperatures f1 = getSensorBoomFreq(1) (750 Ohm), f2 = getSensorBoomFreq(2)
@@ -2422,14 +2453,14 @@ float getFactoryTH(float fr, float fr1, float fr2) {   // heater / RH-sensor tem
 
 // Saturation water-vapour pressure [Pa] (Hyland & Wexler), used to convert RH
 // referenced to the sensor temperature into RH referenced to the air temperature.
-double factoryVaporSatP(double Tc) {
-  double T = Tc + 273.15;
-  return exp(-5800.2206 / T
-             + 1.3914993
-             + 6.5459673 * log(T)
-             - 4.8640239e-2 * T
-             + 4.1764768e-5 * T * T
-             - 1.4452093e-8 * T * T * T);
+float factoryVaporSatP(float Tc) {
+  float T = Tc + 273.15f;
+  return expf(-5800.2206f / T
+             + 1.3914993f
+             + 6.5459673f * logf(T)
+             - 4.8640239e-2f * T
+             + 4.1764768e-5f * T * T
+             - 1.4452093e-8f * T * T * T);
 }
 
 // Full Vaisala factory relative-humidity calculation Reproduces the matrixU 7x6 calibration surface in (capacitance, sensor temp).
@@ -2444,15 +2475,15 @@ float getFactoryRH(float fr, float fr1, float fr2, float Tair, float Tsensor) {
   float f  = measFromFreq(fr), f1 = measFromFreq(fr1), f2 = measFromFreq(fr2);
   float cfh = (f - f1) / (f2 - f1);
   float cap = factoryRefCapLow + (factoryRefCapHigh - factoryRefCapLow) * cfh;
-  double Cp = ((double)cap / factoryCalibU0 - 1.0) * factoryCalibU1;
+  float Cp = ((float)cap / factoryCalibU0 - 1.0f) * factoryCalibU1;
 
-  double Trh = ((double)Tsensor - 20.0) / 180.0;
-  double b[6];
-  double bk = 1.0;
+  float Trh = ((float)Tsensor - 20.0f) / 180.0f;
+  float b[6];
+  float bk = 1.0f;
   for (int k = 0; k < 6; k++) { b[k] = bk; bk *= Trh; }   // b[k] = Trh^k
 
-  double rh = 0.0;
-  double aj = 1.0;                                          // aj = Cp^j
+  float rh = 0.0f;
+  float aj = 1.0f;                                          // aj = Cp^j
   for (int j = 0; j < 7; j++) {
     for (int k = 0; k < 6; k++) {
       rh += aj * b[k] * factoryMatrixU[6 * j + k];
@@ -2460,12 +2491,12 @@ float getFactoryRH(float fr, float fr1, float fr2, float Tair, float Tsensor) {
     aj *= Cp;
   }
 
-  if (Tair < -40.0) rh += (Tair - (-40.0)) / 12.0;         // low-temperature correction
+  if (Tair < -40.0f) rh += (Tair - (-40.0f)) / 12.0f;      // low-temperature correction
   rh *= factoryVaporSatP(Tsensor) / factoryVaporSatP(Tair);
 
-  if (rh < 0.0)   rh = 0.0;
-  if (rh > 100.0) rh = 100.0;
-  return (float)rh;
+  if (rh < 0.0f)   rh = 0.0f;
+  if (rh > 100.0f) rh = 100.0f;
+  return rh;
 }
 #endif
 
@@ -3767,7 +3798,11 @@ void dataRecorderTx() {
   setRadioModulation(0);
   setRadioFrequency(horusV3FreqTable[0]);
 
-  // Send 3 standard pages (A=GPS, B=stats, C=thermal) + 2 OIF411 pages (D=pump, E=oif) when in ozone mode
+  // Send all pages A=GPS, B=stats, C=thermal (+ D=pump, E=oif in ozone mode) back-to-back in
+  // this ONE interval, refreshing GPS and the sensors between frames so each carries fresh
+  // data. The whole set goes out together every dataRecorderInterval. On very short TX
+  // intervals the burst can occasionally overrun a scheduled slot (that mode's window is then
+  // skipped once) - that is acceptable, the recorder data is worth it.
   const uint8_t totalDrPages = (xdataPortMode == 3) ? 5 : 3;
   for (uint8_t page = 0; page < totalDrPages; page++) {
     int pkt_len = buildHorusV3PacketDataRecorder(rawbuffer, page);
@@ -3799,17 +3834,9 @@ void dataRecorderTx() {
     radioDisableTx();
 
     // Refresh GPS time and the sensors between every page except the last. Without this
-    // the later pages (C/D/E in ozone mode) reuse the timestamp captured before page A,
-    // so a decoder sees several frames with an identical time and drops them as repeats.
+    // the later pages reuse the timestamp captured before the first page, so a decoder
+    // sees several frames with an identical time and drops them as repeats.
     if (page < totalDrPages - 1) {
-      // A full burst (pages + the GPS/boom refresh between them) blocks for several
-      // seconds. If a scheduled transmission is now close, stop here and leave the
-      // remaining pages for the next cycle rather than overrunning the slot and pushing
-      // APRS / Horus late. The pages are independent frames, so a partial burst is fine.
-      if (sch_msToNextTx() < 5000UL) {
-        if (xdataPortMode == 1) xdataSerial.println("[info]: dataRecorder yielding to scheduled TX");
-        break;
-      }
       gpsHandler();
       sensorBoomHandler();
       if (!rpm411Error) readRPM411();
@@ -4397,7 +4424,6 @@ void flightHeatingHandler() {
 
   //humidity module heating algorithm - above -40C target is equal to air_temp+offset, below -40C ambient temp the module maintains -40C
   if (humidityModuleHeating && !sensorBoomFault) {
-
     if (extHeaterTemperatureValue < humidityModuleHeatingTemperatureThreshold) {
       extHeaterHandler(true, max((float)humicapMinimumTemperature, mainTemperatureValue + defrostingOffset), extHeaterTemperatureValue);
     } else {
@@ -4783,6 +4809,24 @@ void schedulerInit() {
   sch_nextAprsMs = sch_nextRttyMs = sch_nextMorseMs = 0;
   sch_lastSensorBoom = sch_lastPressure = sch_lastInterface = 0;
   sch_lastGps = sch_lastOzone = 0;
+
+  // Select simple fast-TX mode from the shortest enabled DATA-mode interval. Pip is not a
+  // data packet (it is a tiny beacon burst), so a short Pip interval alone does not switch
+  // the whole sonde into fast mode - but Pip is still sent each cycle when fast mode is on.
+  uint16_t fastIv = 0xFFFF;
+  if (horusV3Enable && horusV3TimeSyncSeconds < FAST_TX_MIN_SYNC_SECONDS && horusV3TimeSyncSeconds < fastIv) fastIv = horusV3TimeSyncSeconds;
+  if (horusEnable   && horusTimeSyncSeconds   < FAST_TX_MIN_SYNC_SECONDS && horusTimeSyncSeconds   < fastIv) fastIv = horusTimeSyncSeconds;
+  if (aprsEnable    && aprsTimeSyncSeconds    < FAST_TX_MIN_SYNC_SECONDS && aprsTimeSyncSeconds    < fastIv) fastIv = aprsTimeSyncSeconds;
+  if (rttyEnable    && rttyTimeSyncSeconds    < FAST_TX_MIN_SYNC_SECONDS && rttyTimeSyncSeconds    < fastIv) fastIv = rttyTimeSyncSeconds;
+  if (morseEnable   && morseTimeSyncSeconds   < FAST_TX_MIN_SYNC_SECONDS && morseTimeSyncSeconds   < fastIv) fastIv = morseTimeSyncSeconds;
+  fastTxMode    = (fastIv != 0xFFFF);
+  fastTxDelayMs = fastTxMode ? ((unsigned long)fastIv * 1000UL) : 0;
+
+  if (xdataPortMode == 1 && fastTxMode) {
+    xdataSerial.print(F("[sch]: simple fast-TX mode - delay "));
+    xdataSerial.print(fastTxDelayMs);
+    xdataSerial.println(F(" ms between cycles, no GPS-clock sync"));
+  }
 }
 
 void schedulerLoop() {
@@ -4821,6 +4865,50 @@ void schedulerLoop() {
   if (improvedGpsPerformance && !cancelGpsImprovement && gpsSats < 4) {
     gpsQuietMode();
     sch_tickTime();
+  }
+
+  // ===== Simple fast-TX mode (no GPS-clock scheduling) =====
+  // Refresh GPS + sensors, transmit every enabled mode back-to-back, then wait the
+  // configured delay. Chosen when a data mode's interval is set below 5 s (see schedulerInit).
+  if (fastTxMode) {
+    gpsHandler();        sch_lastGps = millis();
+
+    if (sensorBoomEnable) {
+      // Every cycle, unless boom power saving is on - then only every its interval.
+      if (!sensorBoomPowerSaving || (millis() - sch_lastSensorBoom) >= sensorBoomPowerSavingInterval) {
+        sensorBoomHandler(); sch_lastSensorBoom = millis();
+      }
+    }
+    pressureHandler();   sch_lastPressure = millis();
+    ozoneHandler();
+    interfaceHandler();  sch_lastInterface = millis();   // keep $NFW telemetry / Ground Control alive
+
+    if (pipEnable)     { pipTx();     }
+    if (horusV3Enable) { horusV3Tx(); }
+    #ifdef RSM4x4
+    if (horusEnable)   { horusTx();   }
+    #endif
+    if (aprsEnable)    { aprsTx();    }
+    #ifdef RSM4x4
+    if (rttyEnable)    { rttyTx();    }
+    #endif
+    if (morseEnable)   { morseTx();   }
+
+    // Keep the essential periodic handlers running (same set the normal path runs).
+    xdataCmdDrain();
+    deviceStatusHandler();
+    flightComputing();
+    buttonHandler();
+    powerHandler();
+    initRecorderData();
+    flightHeatingHandler();
+    #ifdef RSM4x4
+    ultraPowerSaveHandler();
+    #endif
+    autoResetHandler();
+
+    if (fastTxDelayMs) delay(fastTxDelayMs);
+    return;
   }
 
   unsigned long nowMs = sch_sysMs;
@@ -5156,7 +5244,7 @@ void interfaceHandler() {
   // Mode 3: the xdata UART is full-duplex, so NFW frames (GCS link) and the OIF411
   // instrument share it full-time at 9600 baud; the ozone parser runs separately.
   static uint16_t nfw_seq = 0;
-  static char buf[1024];
+  char* buf = g_txScratch.nfwFrame;   // shares g_txScratch (not live during Horus/APRS TX)
   uint16_t pos = 0;
   uint8_t  chk = 0;
 
@@ -5645,12 +5733,15 @@ void pressureHandler() {
     }
 
   }
+#ifndef RSM4x2
+  // Estimated pressure (mode 2) is RSM4x4 / RSM4x5 only. It is not built for the F100:
+  // even single-precision powf()/expf() pull in enough soft-float libm to overflow the
+  // 64 KB flash. On RSM4x2 mode 2 therefore falls through to the "no pressure" branch
+  // below (reported as 0); the Sounding Software hides the option for that board.
   else if (pressureMode == 2) {
 
     // Barometric pressure from GPS altitude using the ISA layer model.
-    // Kept deliberately in single precision: neither MCU has a double-precision FPU,
-    // so double pow()/exp() pull in several KB of soft-float libm and can overflow the
-    // 64 KB F100 flash (this is what tips it over when switching pressure to mode 2).
+    // Kept deliberately in single precision: neither MCU has a double-precision FPU.
     // float powf()/expf() reproduce the same hPa to far better than 0.1 hPa. The three
     // inter-layer factors are compile-time constants (verified against the standard
     // atmosphere: 226.3 / 54.7 / 8.7 hPa base pressures for P0 = 1013.25).
@@ -5674,6 +5765,7 @@ void pressureHandler() {
       pressureValue = (term > 0.0f) ? Pb * powf(term, -gMR / Lb) : 0.0f;  // clamp below the model
     }
   }
+#endif
   else {
     pressureValue = 0;
   }
@@ -5702,6 +5794,13 @@ float kalmanFilter(float measurement, float &est, float &err_est, float err_meas
   err_est = (1.0 - kalman_gain) * err_est;
 
   return est;
+}
+
+// Safety net: if the MCU ever takes a hard fault it would otherwise spin forever in the
+// default handler (a dead sonde). Instead, reset so it recovers on its own.
+extern "C" void HardFault_Handler(void) {
+  NVIC_SystemReset();
+  while (1) {}
 }
 
 void setup() {
