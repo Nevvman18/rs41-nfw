@@ -1,6 +1,6 @@
 # RS41-NFW Operation manual
 
-This manual describes how an RS41-NFW sonde behaves and how each feature works. It is current for **firmware v69**.
+This manual describes how an RS41-NFW sonde behaves and how each feature works. It is current for **firmware v70**.
 
 > **Where the settings live:** all user options are in a single file, [`CONFIG.h`](../rs41-nfw_sonde-firmware/CONFIG.h), grouped into clearly numbered sections with a short comment on every line. You do **not** edit the main `.ino`. The easiest way to set everything is the **[NFW Sounding Software](../README.md#rs41-nfw-sounding-software)** ([nfw.flada.ovh](https://nfw.flada.ovh)), which shows the same options as a guided form and compiles the firmware for you. The per-line comments in `CONFIG.h` are always the authoritative reference; this manual explains the *why* and the *how it behaves*.
 
@@ -81,13 +81,13 @@ The firmware reports a numeric **operation stage** (e.g. `01`...`59`) throughout
 This is the same scheme the Sounding Software shows next to the ground-check steps.
 
 LED meaning during **normal operation**:
-* **Solid green** - all OK, a GPS fix is held and there are no warnings. Ready, or flying normally.
-* **Solid orange** - running OK but no GPS fix yet.
-* **Solid red** - an error is active (sensor-boom fault, RPM411 fault, calibration error or battery warning). Check the serial log / Ground Control.
+* **Solid green** - running OK, a GPS fix is held and there are no warnings. Ready, or flying normally.
+* **Solid orange** - running OK, waiting for a GPS fix, searching for satellites.
+* **Solid red** - on-board diagnostics have detected an error (sensor-boom fault, RPM411 fault, calibration error, battery warning, etc.). See Ground Control diagnostics / serial log.
 * **Off** - LEDs disabled, or the sonde climbed above the auto-disable altitude.
 
 LED meaning during **start-up and calibration**:
-* **Solid red** - hardware initialisation right after power-on (stages 01-04).
+* **Solid red** - hardware initialisation right after power-on.
 * **Blinking orange** - a calibration is in progress (temperature / reconditioning / zero-humidity). During reconditioning and zero-humidity the module is hot (~140 C) - keep clear of the boom.
 * **Red blinks** - an error during start-up or calibration (e.g. sensor-boom fault or calibration error). Check the log.
 * **5 quick green blinks** - boot complete, system started and entering normal operation.
@@ -129,14 +129,14 @@ The **primary, recommended** telemetry mode. A 3rd-generation 4FSK protocol from
 Key points (Section 5):
 * No payload ID to request - the callsign (`HORUS_V3_CALLSIGN`) travels inside the packet. Each character adds 6 bits.
 * `horusV3FreqTable` can hold several frequencies; the sonde cycles through them, one per TX window. The data recorder and low-altitude fast-TX always use the first entry.
-* `horusV3ExtraSensorsEnable` adds extended fields to every standard packet: humidity-module heater temperature, cut-out thermistor temperature, and the GPS power/operation mode (`gpspwr`). With it off, the payload matches the Horus V2 field set.
+* `horusV3ExtraSensorsEnable` adds extended fields to every standard packet: humidity-module heater temperature and cut-out thermistor temperature (in ozone mode also the raw OIF411 partial pressure and ppbv). With it off, the payload matches the Horus V2 field set. As of v70 `gpspwr` is **no longer** in the standard packet - it moved to Data Recorder page A.
 
-The `gpspwr` value (also sent in Data Recorder packet A) reports the GPS power/operation mode, and **its meaning depends on the board revision**:
-* **RSM4x4 / RSM4x5** (M10 receiver) - the NFW Intelligent GPS tier, active in GPS mode 3:
+The `gpspwr` value (in Data Recorder page A) reports the GNSS power/operation mode, and **its meaning depends on the board revision**:
+* **RSM4x4 / RSM4x5** (M10 receiver) - the NFW Intelligent GNSS tier, active in operation mode 2:
   * `1` - weak fix (10 sats or fewer): all / optimised constellations, continuous tracking (fastest acquisition).
   * `2` - moderate fix (11-15 sats): continuous or cyclic power-save tracking.
   * `3` - strong fix (15 sats or more): cyclic power-save tracking (lowest power).
-  * In GPS mode 1 it stays `1` (always max performance).
+  * In operation mode 1 it stays `1` (always max performance).
 * **RSM4x2 / RSM4x1** (older u-blox) - the GPS power state:
   * `0` - not set yet (for example with GPS disabled, mode 0).
   * `1` - max-performance / continuous tracking.
@@ -176,7 +176,7 @@ A 2-FSK signal in the UKHAS format (improvements by OM3BC). Section 8. Baud rate
 <img src="./photos/morse-waterfall.png" alt="morse-waterfall" style="height:20%"/><br>
 </p>
 
-CW telemetry in the UKHAS format. Section 9. `morseUnitTime` sets the dot length. Setting `morseBeaconMode = true` transmits a fixed custom text (`morseBeaconText`) instead of live telemetry, repeated `morseBeaconRepeat` times per window. RSM4x4 only.
+CW telemetry in the UKHAS format. Section 9. `morseUnitTime` sets the dot length. Setting `morseBeaconMode = true` transmits a fixed custom text (`morseBeaconText`) instead of live telemetry, repeated `morseBeaconRepeat` times per window. Available on both board families.
 
 ### Pip
 <p align="center">
@@ -208,7 +208,7 @@ The firmware also reads the **MCU's own internal temperature sensor** (both boar
 
 ### Sensor calibration mode (Vaisala calibration data vs NFW calibrations)
 
-> **Board support (v69).** Both board families now run the **Vaisala factory calibration**. On **RSM4x4 / RSM4x5 (STM32L412)** you can pick either mode with the switch below (default factory). The older **RSM4x1 / RSM4x2 (STM32F100)** boards are **factory-only**: the NFW calibration path is no longer built for the F100 (the factory maths was moved to single precision so it fits, and dropping NFW frees the room), so those boards always use the manufacturer coefficients. Because the F100 has no NFW fallback, its build **requires** a downloaded factory calibration when the sensor boom is enabled - the Firmware Builder enforces this by asking for the measurement-boom serial before it will compile (unless the boom is disabled, in which case no calibration is needed).
+> **Board support (v70).** Both board families now run the **Vaisala factory calibration**. On **RSM4x4 / RSM4x5 (STM32L412)** you can pick either mode with the switch below (default factory). The older **RSM4x1 / RSM4x2 (STM32F100)** boards are **factory-only**: the NFW calibration path is no longer built for the F100 (the factory maths was moved to single precision so it fits, and dropping NFW frees the room), so those boards always use the manufacturer coefficients. Because the F100 has no NFW fallback, its build **requires** a downloaded factory calibration when the sensor boom is enabled - the Firmware Builder enforces this by asking for the measurement-boom serial before it will compile (unless the boom is disabled, in which case no calibration is needed).
 
 On RSM4x4 / RSM4x5 a master switch, `sensorCalibrationMode` (Section 15b), chooses how sensors are computed - it governs the whole measurement chain. On RSM4x2 / RSM4x1 it is fixed at factory.
 
@@ -263,18 +263,20 @@ Two independent heaters (Section 19), both PWM / PID controlled:
 * **Humidity module heating** (`humidityModuleHeating`): keeps the sensor `defrostingOffset` K (default 5 K) above air temperature and never below `humicapMinimumTemperature`, preventing frost and condensation. Activates below `humidityModuleHeatingTemperatureThreshold`. Recommended whenever the boom is installed. The PID constants live in Section 25; do not change them unless you know what you are doing.
 
 
-## GPS
+## GNSS
 
-`gpsOperationMode` selects the GPS **power mode** (Section 14). Each one maps to a concrete receiver configuration:
-* **0 - GPS fully off.** The receiver is shut down completely and never started. For a stationary station: set the fixed position in `gpsLat` / `gpsLong` / `gpsAlt` and the firmware reports those constant coordinates.
-* **1 - always on, maximum performance.** The receiver runs continuously and never enters a power-saving state. On the newer M10 boards all four constellations (GPS, GLONASS, Galileo, BeiDou) are enabled; on the older u-blox boards the NAV5 max-performance profile is loaded. The safe, simplest default, at the cost of the highest GPS current draw.
-* **2 - automatic power-save.** On the older boards the firmware switches the receiver between power-save and max-performance on its own: it uses power-save while the fix is strong (7 or more satellites) and falls back to max performance when the fix weakens (below 7 satellites), saving roughly 30 mA whenever conditions allow. On the newer M10 boards this selection is handed straight to mode 3.
-* **3 - NFW Intelligent GPS Algorithms (4x4/4x5 boards, recommended).** The firmware continuously balances tracking and power against the live signal quality, in three tiers by satellite count: with a weak fix (10 sats or fewer) it runs all constellations continuously for the fastest acquisition; with a moderate fix (11-15 sats) it keeps continuous tracking or steps into cyclic power-save; with a strong fix (15 or more sats) it switches to cyclic power-save tracking to save energy. The behaviour is shaped by the M10 options `m10ConstellationOptimization`, `m10AggressiveOpt`, `m10CyclicTracking`, `m10PerformanceImprovements` and `m10SuperS`; these only apply in mode 3 (the Sounding Software hides them otherwise). On the older boards mode 3 falls back to mode 2.
+Since v70 the receiver is driven entirely in the native binary **UBX** protocol (no NMEA); the reader returns the instant a fresh fix arrives. `gpsOperationMode` (the uBlox receiver operation mode, Section 14) selects the power strategy:
+* **0 - GNSS fully off.** The receiver is shut down completely and never started. For a stationary station: set the fixed position in `gpsLat` / `gpsLong` / `gpsAlt` and the firmware reports those constant coordinates.
+* **1 - always on, maximum performance.** The receiver runs continuously and never enters a power-saving state. The safe, simplest default, at the cost of the highest GNSS current draw.
+* **2 - NFW Intelligent GNSS Algorithms (default, recommended).** The firmware balances tracking and power against the live signal quality. On the **RSM4x4 / RSM4x5** (M10) it runs three tiers by satellite count: a weak fix (10 sats or fewer) keeps all constellations continuous for fastest acquisition; a moderate fix (11-15) keeps continuous or steps into cyclic power-save; a strong fix (16 or more) sheds the secondary GNSS and moves to cyclic power-save. This is shaped by the M10 options `m10ConstellationOptimization`, `m10AggressiveOpt`, `m10CyclicTracking` (with `m10CyclicPeriodSec`) and `m10SuperS` (the Sounding Software shows these only for RSM4x4). **Cyclic tracking (PSMCT) has a hardware constraint:** the M10 power-save modes do not support the BeiDou **B1C** signal and cannot process **SBAS**, so `m10CyclicTracking` only works with `gpsSecondaryGnss` = 1 (B1I only) or 2 (GLONASS only) **and** `gpsSbasEnable` = false. With the default B1C + GLONASS + SBAS set it is not PSM-legal, so the firmware keeps the receiver continuous instead of sending a command the M10 would reject (`m10CyclicTrackingUsable` checks this; the Firmware Builder interlocks it with a prompt). The other tiers still save power through constellation shedding, the tracking profile and Super-S. On the **RSM4x2 / RSM4x1** (G6010, whose only power lever is the power-save nav mode) it runs max performance while satellites are scarce and switches to power-save once comfortably above 9, saving roughly 30 mA whenever conditions allow.
+
+The single-band M10 tracks GPS + Galileo + SBAS plus a secondary GNSS chosen by `gpsSecondaryGnss`: **0** = BeiDou (B1C) + GLONASS (default), **1** = BeiDou (B1I) only, **2** = GLONASS only. BeiDou's modern **B1C** signal shares the 1575.42 MHz L1 centre with GPS/Galileo, so the single-band receiver can run it *together* with GLONASS for the most satellites; the older **B1I** signal sits on its own frequency (1561 MHz) away from the crowded L1 band, so B1I-only is more resilient to interference/jamming centred on L1 but cannot coexist with GLONASS. QZSS (`gpsQzssEnable`) is optional and only visible where its regional satellites are. The **satellites engine profile** (`gpsTrackingProfile`: Max sensitivity / Balanced / Ultra power saving) sets the elevation and C/N0 masks, and the **uBlox dynamic model** (`gpsDynamicModel`, applied when `ubloxGpsAirborneMode` is on) defaults to Airborne <1g. The multi-constellation options, QZSS, spoofing and the per-constellation satellite counts apply to the **M10 (RSM4x4 / RSM4x5) only**; the u-blox 6 on **RSM4x2 / RSM4x1** is a single-constellation GPS receiver (with SBAS), so the Sounding Software hides those fields for it.
 
 Other GPS settings:
 * `ubloxGpsAirborneMode` (Airborne 1G dynamic model) - keep true; required to keep a fix above 18 km.
 * `gpsTimeoutWatchdog` - resets the GPS module after this long without a valid fix (default 15 min). Helps it recover a fix faster.
-* **`improvedGpsPerformance`** - the Si4032 radio emits wideband spurious noise that desensitises the GPS receiver. While the sonde has fewer than 4 satellites, the radio is silenced for `radioSilenceDuration` (default 2 min), which dramatically speeds up cold starts. `disableGpsImprovementInFlight` (default true) stops this during flight to avoid up to ~2 min data gaps; set it false only if you fly in very high interference.
+* **`improvedGpsPerformance`** - the Si4032 radio emits wideband spurious noise that desensitises the GPS receiver. While the sonde has fewer than 4 satellites, the radio is silenced for `radioSilenceDuration` (default 2 min), which dramatically speeds up cold starts. `disableGpsImprovementInFlight` (default true) stops this during flight to avoid up to ~2 min data gaps; set it false only if you fly in very high interference. `improvedGpsHoldAfterFix` (default 20 s) keeps the radio silent for that much longer *after* a fix is acquired, so the fix can settle and gather more satellites before the first transmission (which briefly desensitises the receiver) hits it; losing the fix restarts the hold, and it is still capped by `radioSilenceDuration`. Set it to 0 to resume the instant a fix is acquired.
+* **`simultaneousGnssSetup`** (default true) - decides when the GPS is powered up during boot, independently of `improvedGpsPerformance`. On (default), the GPS is brought up at the very start and searches for satellites in parallel with hardware setup and sensor-boom calibration; with the boom fitted, calibration takes a while and the receiver uses that time to get a head start on its first fix, so the sonde reaches a valid position much sooner, at the cost of a little extra RF during calibration. Off holds the GPS on reset through setup and calibration and powers it up only afterwards, keeping the sensitive ring-oscillator temperature/humidity measurements fully radio-quiet at the cost of a slower first fix.
 
 
 ## XDATA port and OIF411 ozone
@@ -310,12 +312,14 @@ For almost everyone a far better approach is to clearly label the payload as har
 
 ### Data Recorder
 
-When enabled (`dataRecorderEnable`, Section 24), the sonde sends extended diagnostics as dedicated Horus V3 pages every `dataRecorderInterval` (default 5 min). GPS, the sensor boom and the RPM411 are refreshed between pages so each carries fresh data. The ASN.1 format allows 4 named fields per packet, so three packets carry twelve diagnostics:
-* **Packet A - GPS quality:** `hdop` (fix geometry), `jam` (interference/spoofing flag), `resets` (GPS reset counter), `gpspwr` (GPS power/operation mode).
-* **Packet B - flight statistics:** `flying`, `burst`, `hmax` (max altitude), `vmax` (max horizontal speed).
-* **Packet C - thermal / heater:** `radiotemp` (Si4032 die temp), `rpmtemp` (RPM411 internal temp), `extpwr` (humidity-heater PWM duty), `refpwr` (reference heater state).
+When enabled (`dataRecorderEnable`, Section 24), the sonde sends extended diagnostics as dedicated Horus V3 pages every `dataRecorderInterval` (default 5 min). GNSS, the sensor boom and the RPM411 are refreshed between pages so each carries fresh data. The ASN.1 format allows 4 named fields per packet, so five pages carry the flight diagnostics (RSM4x2 / RSM4x1 skip the two M10-only GNSS pages B and C, sending three):
+* **Page A - GNSS diagnostics:** `gpspwr` (power/tier), `pdop` (position DOP), `resets` (receiver reset counter), `ubxerrs` (rejected config messages / NAKs; frame-checksum errors are not counted, as they are mostly UART-overrun noise on the slower RSM4x2).
+* **Page B - GNSS integrity (RSM4x4 / RSM4x5 only):** `jamlvl` (0-255 raw CW jamming indicator), `spoofing` and `integrity` (combined warning). The u-blox 6 on RSM4x2 / RSM4x1 exposes neither jamming nor spoofing, so this page is not sent there at all.
+* **Page C - satellite counts (RSM4x4 / RSM4x5 only):** `gpscount`, `galcount`, `beicount`, `glocount` - the satellites actually used in the fix per ranging constellation, from UBX-NAV-SAT (an inactive constellation reads 0). The single-constellation u-blox 6 does not report these, so this page is not sent on RSM4x2 / RSM4x1.
+* **Page D - flight statistics:** `flying`, `burst`, `hmax` (max altitude), `vmax` (max horizontal speed).
+* **Page E - thermal / heater:** `radiotemp` (Si4032 die temp), `rpmtemp` (RPM411 internal temp), `extpwr` (humidity-heater PWM duty), `refpwr` (reference heater state).
 
-When the XDATA port is in OIF411 mode, two further pages carry the ozone telemetry. `dataRecorderFlightNoiseFiltering` keeps ground-level / pre-fix noise out of the recorded statistics.
+When the XDATA port is in OIF411 mode, two further pages (F ozone pump, G OIF411) carry the ozone telemetry. `dataRecorderFlightNoiseFiltering` keeps ground-level / pre-fix noise out of the recorded statistics.
 
 The Data Recorder runs on **both** board revisions (the older RSM4x2 fits it because that build uses LTO). The older APRS-comment data recorder and its standalone decoder have been retired in favour of this Horus V3 format.
 

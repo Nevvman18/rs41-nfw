@@ -188,7 +188,7 @@ constexpr float aprsFreqTable[] = {432.5};
 // lowAltitudeFastTxMode uses the first entry only.
 
 char aprsCall[]   = "N0CALL";       // Your amateur radio callsign - USE UPPERCASE LETTERS ONLY (lowercase may not be decoded correctly; the firmware does not convert case)
-String aprsComment = " NFWv69";     // Comment appended to every APRS packet
+String aprsComment = " NFWv70";     // Comment appended to every APRS packet
 
 constexpr char aprsSsid          = 11;       // Callsign SSID
 constexpr char aprsDigi[]        = "WIDE2";  // Digipeater callsign
@@ -293,8 +293,9 @@ constexpr int16_t ledAutoDisableHeight = 1000; // Altitude (m) above which LEDs 
    Mode 0 - disabled
    Mode 1 - combined log + telemetry (recommended): human-readable [info]/[warn]/[err] lines
             AND periodic compact $NFW telemetry frames readable by Ground Control Software at nfw.flada.ovh
-   Mode 2 - GPS bridge: raw NMEA echoed to the xdata port at 115200 bps
    Mode 3 - OIF411 ozone sonde (9600 bps) - see Section 12b for OIF411 settings
+   (Mode 2, the old raw-NMEA GPS bridge, was removed in v68: the GPS now runs
+    the binary UBX protocol, so there is no NMEA stream to echo.)
    ============================================================ */
 
 constexpr uint8_t  xdataPortMode     = 1;    // XDATA port mode (see above)
@@ -337,36 +338,115 @@ constexpr bool ultraPowerSaveAfterLanding = false;
 
 
 /* ============================================================
-   SECTION 14 - GPS CONFIGURATION
+   SECTION 14 - GNSS CONFIGURATION
 
-   gpsOperationMode:
-     0 - GPS fully OFF (stationary WX station; set coordinates below)
-     1 - Always ON / max performance (default)
-     2 - Standard power-save when stable fix (RSM4x2 only)
-     3 - Intelligent GPS management with M10 (RSM4x4 only - recommended)
+   uBlox receiver operation mode (gpsOperationMode):
+     0 - GNSS fully OFF (stationary WX station; set coordinates below)
+     1 - Always ON / max performance (highest power, fastest updates)
+     2 - NFW Intelligent GNSS Algorithms (default, recommended). On RSM4x4 (M10)
+         this is the full adaptive constellation + power-tier manager; on RSM4x2
+         (G6010, which has only a power-save nav mode) it switches to power-save
+         once satellites are comfortably above ~9, and back to max when scarce.
    ============================================================ */
 
-uint8_t gpsOperationMode = 3;
+uint8_t gpsOperationMode = 2;
 
-/* RSM4x4 / M10 intelligent GPS options (only when gpsOperationMode = 3):
-   m10ConstellationOptimization - auto-select constellations for best perf/power balance
-   m10AggressiveOpt             - maximise power saving (may reduce tracking quality!)
-   m10CyclicTracking            - cyclic tracking: fix every 10 s then sleep (big power saving)
-   m10PerformanceImprovements   - enable all M10 performance enhancements (always recommended)
-   m10SuperS                    - u-blox Super-S adaptive power management */
-constexpr bool m10ConstellationOptimization = true;
-constexpr bool m10AggressiveOpt             = false;
-constexpr bool m10CyclicTracking            = true;
-constexpr bool m10PerformanceImprovements   = true;
-constexpr bool m10SuperS                    = true;
+/* NFW Intelligent GNSS options (RSM4x4 / M10, active in operation mode 2). The
+   power figures are rough, relative to continuous max-performance tracking:
+   m10ConstellationOptimization - auto-shed constellations by fix strength: drops only
+                                  Galileo at a strong fix (keeps GPS + BeiDou/GLONASS + SBAS),
+                                  a modest ~5% GNSS-power saving. Off by default.
+   m10AggressiveOpt             - maximise power saving (also drops the secondary GNSS at a
+                                  moderate fix and shortens duty cycles; may reduce tracking quality)
+   m10CyclicTracking            - cyclic power-save tracking once the fix is strong: the
+                                  receiver sleeps between fixes (~40-70% less GNSS power,
+                                  scaling with the cyclic period).
+                                  IMPORTANT - the M10 power-save modes will NOT run with the
+                                  BeiDou B1C signal or with SBAS (u-blox M10 integration
+                                  manual). So cyclic tracking REQUIRES gpsSecondaryGnss = 1
+                                  (BeiDou B1I only) or 2 (GLONASS only) AND gpsSbasEnable =
+                                  false. If B1C (gpsSecondaryGnss = 0) or SBAS is on, cyclic
+                                  tracking is ignored and the receiver stays continuous - the
+                                  firmware checks this (m10CyclicTrackingUsable) so a bad combo
+                                  never sends a command the M10 would reject. The Firmware
+                                  Builder enforces the same interlock with a warning.
+   m10CyclicPeriodSec           - cyclic on/off period in seconds (longer = more saving,
+                                  slower position updates)
+   m10SuperS                    - u-blox Super-S adaptive power management (extra fine-grained
+                                  saving on top of the above) */
+constexpr bool     m10ConstellationOptimization = false;
+constexpr bool     m10AggressiveOpt             = false;
+constexpr bool     m10CyclicTracking            = false;  // OFF by default: the accuracy-focused default
+                                                          // GNSS set (B1C + GLONASS + SBAS) is not PSM-legal.
+                                                          // To use it, set gpsSecondaryGnss to 1 or 2 and gpsSbasEnable false.
+constexpr uint8_t  m10CyclicPeriodSec           = 10;   // cyclic-tracking period (s)
+constexpr bool     m10SuperS                    = true;
 
 /* Airborne 1G dynamic model - required for tracking above 18 km altitude.
    Set false only for stationary use below 18 km (marginally better accuracy). */
 constexpr bool ubloxGpsAirborneMode = true;
 
+/* ---- Native UBX data path (v68: the GPS is driven entirely in binary UBX,
+   NMEA is disabled). These control the UBX solution stream. ---- */
+
+/* GPS solution / output rate in Hz (1, 2 or 4). The firmware reads the newest
+   streamed fix the instant it arrives (no fixed ~1 s wait like the old NMEA
+   path). 2 Hz is a good responsiveness/power balance; 4 Hz is heaviest and is
+   near the u-blox 6 limit. */
+constexpr uint8_t gpsUpdateRateHz = 2;
+
+/* Dynamic model, applied when ubloxGpsAirborneMode is true (that switch is just
+   the master "set a custom dynamic model" enable; this picks which one):
+     0 = Portable      2 = Stationary    3 = Pedestrian   4 = Automotive
+     5 = Sea           6 = Airborne <1g  7 = Airborne <2g 8 = Airborne <4g
+   6 (Airborne <1g) is the default and the right choice for a high-altitude
+   balloon; 8 (<4g) tolerates higher accelerations; 2 (Stationary) suits a fixed
+   WX station. */
+constexpr uint8_t gpsDynamicModel = 6;
+
+/* Secondary GNSS (RSM4x4 / M10 only). GPS + Galileo + SBAS always run; this picks what
+   else the single-band M10 tracks. gpsSecondaryGnss:
+     0 - BeiDou (B1C) + GLONASS. BeiDou's modern B1C signal shares the 1575.42 MHz L1
+         centre with GPS/Galileo, so the single-band receiver CAN process it together with
+         GLONASS - the most satellites (GPS + Galileo + BeiDou-3 + GLONASS). Default.
+     1 - BeiDou (B1I) only. The older B1I signal is on its own frequency (1561.098 MHz),
+         away from the crowded 1575 MHz L1 band, so it is more resilient to interference or
+         jamming centred on L1 - but it cannot run alongside GLONASS on this receiver, and
+         it tracks fewer constellations overall.
+     2 - GLONASS only.
+   Note: B1I (mode 1) cannot coexist with GLONASS because it needs a separate RF path at
+   1561 MHz; using BeiDou's B1C signal instead is what makes mode 0 possible.
+   Power-save note: BeiDou B1C is NOT allowed in the M10 power-save modes, so mode 0 is
+   incompatible with m10CyclicTracking - use mode 1 (B1I) or 2 (GLONASS) for cyclic tracking
+   (and turn gpsSbasEnable off).
+   QZSS is a separate regional system whose satellites are only visible over Japan, East/
+   South-East Asia, Australia and the west Pacific - off by default, turn it on only if you
+   launch inside that region. The older u-blox 6 boards ignore all of this. */
+constexpr uint8_t gpsSecondaryGnss = 0;  // 0 = BeiDou B1C + GLONASS, 1 = BeiDou B1I only, 2 = GLONASS only
+constexpr bool gpsQzssEnable = false;  // regional (Asia-Pacific only); no effect elsewhere
+
+/* Extra u-blox options (v68). Each is checked against the receiver's ACK; a
+   rejected one is logged (gpsCfgNakCount) but never blocks operation. */
+constexpr bool gpsSbasEnable             = true;  // SBAS (EGNOS/WAAS/MSAS): differential corrections plus an extra ranging source.
+                                                  // Must be false to use m10CyclicTracking (the M10 cannot process SBAS in power-save mode).
+constexpr bool gpsAssistNowAutonomous    = true;  // predict orbits on-board -> much faster re-acquisition after signal loss
+constexpr bool gpsSpoofingDetection      = true;  // poll UBX-NAV-STATUS spoofing flags (surfaced in telemetry / integrity warning)
+constexpr bool gpsHardwareJammingMonitor = true;  // poll the 0..255 CW jamming indicator from UBX-MON-RF (M10) /
+                                                  // MON-HW (u-blox 6). This is a raw interference level only; there is
+                                                  // no jamming state on these modules.
+
+/* Satellites engine profile - satellite acceptance vs power. Sets the receiver's
+   minimum-elevation and C/N0 (signal-strength) masks. More sensitive settings
+   keep weaker and lower satellites for better availability/accuracy at the cost
+   of a little more power.
+     0 = Max sensitivity     (0 deg elevation, low C/N0 - fight for every satellite) - default
+     1 = Balanced            (4 deg elevation, moderate C/N0)
+     2 = Ultra power saving  (8 deg elevation, high C/N0) */
+constexpr uint8_t gpsTrackingProfile = 0;
+
 /* GPS timeout watchdog - resets the GPS module if no valid fix for this many ms.
-   0 = disabled. Recommended: 900000 ms (15 min). */
-unsigned long gpsTimeoutWatchdog = 900000;
+   0 = disabled. Recommended: 1200000 ms (20 min). */
+unsigned long gpsTimeoutWatchdog = 1200000;
 
 /* Improved GPS fix performance:
    While GPS has fewer than 4 satellites, the Si4032 radio is silenced for
@@ -377,6 +457,27 @@ unsigned long gpsTimeoutWatchdog = 900000;
 constexpr bool improvedGpsPerformance        = true;
 constexpr bool disableGpsImprovementInFlight = true;
 unsigned long radioSilenceDuration          = 120000; // Radio-silence window (ms)
+// After a fix is acquired in radio-quiet mode, stay quiet this much longer before letting
+// the radio resume, so the fix can settle and gather more satellites before a transmission
+// (which briefly desensitises the receiver) hits it. Reset if the fix is lost again; still
+// capped by radioSilenceDuration. 0 = leave immediately on fix (old behaviour).
+unsigned long improvedGpsHoldAfterFix        = 20000; // Extra quiet hold after a fix (ms)
+
+/* Simultaneous GNSS setup:
+   Controls WHEN the GPS is powered up and configured during boot, independently of the
+   radio-quiet improvement above.
+     true  (default) - the GPS is brought up at the very start, so it searches for
+                       satellites in parallel with the hardware setup and the sensor-boom
+                       calibration. With the boom fitted, calibration takes a while and
+                       the receiver uses that time to get a head start on its first fix,
+                       so the sonde reaches a valid position much sooner.
+     false           - the GPS is held on reset through setup and calibration and only
+                       powered up afterwards. Its RF then cannot disturb the sensitive
+                       ring-oscillator temperature/humidity measurements, at the cost of a
+                       slower first fix.
+   This is the only thing that decides GPS start timing; improvedGpsPerformance no longer
+   affects it. */
+constexpr bool simultaneousGnssSetup         = true;
 
 /* Static coordinates - used when gpsOperationMode = 0, overwritten once GPS active. */
 float gpsLat  = 0;   // Latitude  (decimal degrees)
@@ -384,7 +485,7 @@ float gpsLong = 0;   // Longitude (decimal degrees)
 float gpsAlt  = 0;   // Altitude  (m)
 
 constexpr uint8_t gpsSatsWarnValue     = 4;      // Satellite count below which a warning is shown
-unsigned long     gpsPowerSaveDebounce = 300000; // Min interval between GPS power-mode changes (ms)
+unsigned long     gpsPowerSaveDebounce = 60000;  // Min interval before climbing to a lighter GPS tier (ms). Downgrades to a harder-tracking tier ignore this and apply at once.
 
 
 /* ============================================================
@@ -593,7 +694,7 @@ constexpr int8_t referenceAreaTargetTemperature         = 18;  // Target tempera
 bool          humidityModuleHeating                     = true;
 constexpr int8_t defrostingOffset                       = 5;   // K above air temp to prevent frost
 constexpr int8_t humicapMinimumTemperature              = -44; // °C - humicap accuracy degrades below this
-constexpr int8_t humidityModuleHeatingTemperatureThreshold = 35; // Heating activates below this °C
+constexpr int8_t humidityModuleHeatingTemperatureThreshold = 45; // Heating activates below this °C (upper cap on module heating)
 
 
 /* ============================================================
@@ -655,10 +756,13 @@ constexpr float morsePrivateFreq   = 434.6;  // Morse private frequency (MHz)
    SECTION 21 - FLIGHT COMPUTING
    ============================================================ */
 
-constexpr uint16_t flightStartClimbThreshold = 150; // Climb (m) above the launch baseline that marks the start of flight.
-                                                    // Detection is relative to the altitude at the first GPS fix, so it
-                                                    // works at any launch elevation and for any ascent rate (incl. slow
-                                                    // solar / zero-pressure balloons). Replaces previous flightDetectionAltitude.
+constexpr uint16_t flightStartClimbThreshold = 300; // Climb (m) above the launch baseline that marks the start of flight.
+                                                    // Detection is relative to a launch baseline captured after the GPS
+                                                    // altitude has settled (see flightBaselineSettleTime), so it works at
+                                                    // any launch elevation and for any ascent rate (incl. slow solar /
+                                                    // zero-pressure balloons). Replaces previous flightDetectionAltitude.
+constexpr uint16_t flightBaselineSettleTime = 15000; // Time (ms) to wait after the first GPS fix before latching the launch
+                                                     // baseline, so a cold-start altitude (often 100-200 m off) can converge.
 constexpr uint16_t burstDetectionThreshold = 800; // Altitude drop below maxAlt confirming burst (m)
 
 
@@ -730,8 +834,10 @@ constexpr int8_t buttonMode = 0;
    (APRS data recorder deprecated due to memory issues - V3 only.)
 
    --- Packet A - GPS diagnostics ---
-   hdop     (float, no unit)  - GPS Horizontal Dilution of Precision.
-                                Measures fix geometry quality.
+   hdop     (float, no unit)  - GPS Dilution of Precision. Since v68 (native UBX)
+                                this field carries pDOP (position DOP) from
+                                NAV-PVT/NAV-SOL - it measures overall 3D fix
+                                geometry (always >= the old hDOP).
                                 <1.0 = excellent, 1-2 = good,
                                 2-5 = moderate, >5 = poor / unreliable.
    jam      (0 / 1)           - Jamming/spoofing warning flag.

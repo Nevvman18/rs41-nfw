@@ -1,18 +1,18 @@
 # RS41-NFW - Versatile, custom firmware for ALL revisions of Vaisala RS41 radiosondes
 ## **Vaisala RS41 New Firmware** (*RS41 Nevvman's Firmware*) <br>
-**NOTE:** This firmware works with the **ALL** variants of RS41 radiosondes, with the new (2023 and 2025) ones too, bringing full hardware and software support with lots of features for everyone. More below.<br><br>
-Vaisala some time ago began launching new RS41 sonde revisions, with new internal design. They can be recognized by a last digit of 4 or 5 of the PCB model (eg. `RSM414`, `RSM424`, `RSM425`). This firmware is an approach for reusing them as amateur devices for many different purposes. It brings full and thorough support for [all revisions](../hw/README.md#older-vs-newer---how-do-i-know-which-one-im-holding-now).<br>
+
+This project is an approach for reusing [all revisions](../hw/README.md#older-vs-newer---how-do-i-know-which-one-im-holding-now) of **Vaisala RS41** radiosonde as amateur tracking and measurement devices for many different purposes - as **balloon trackers**, **atmosphere sounding** devices, weather stations, radio beacons and more. It provides advanced support of **original measurement sensors** (such as **factory-calibrated sensor boom** readings or **RPM411** pressure add-on module measurements), good algorithms and operation modes, **very advanced GPS** support and more.
 
 > ## 🎈 Start here - do everything in your browser at [nfw.flada.ovh](https://nfw.flada.ovh)
 > **This is all you need. No Arduino IDE, no toolchain, no desktop flashing tool.** The
 > **NFW Sounding Software** takes you from a blank sonde to a flight-ready one, entirely in
-> the browser (desktop Chrome, Edge or Opera). Three steps:
+> the browser (preferably Chromium-based). You don't even need to go through all the docs. Just do these three steps:
 >
 > 1. **Configure** - open the **Firmware Builder**, pick your board (`RSM4x4/4x5` or `RSM4x2/4x1`) and set your options with guided help.
 > 2. **Compile** - one click builds your firmware on the server and hands you a ready `.bin`.
 > 3. **Flash** - press **Flash over WebUSB** and the page writes it to your sonde through your ST-Link. A factory-new sonde is **unlocked automatically** first. You do **not** need to flash manually - the browser does it. A full flashing reference is in [FLASHING.md](./fw/FLASHING.md).
 >
-> The same page also has a **Ground Station**: connect the sonde over USB-serial for pre-flight checks, live sensor readout, calibration values and a map. Wiring for both the programmer and the serial adapter is in the [flashing guide](./fw/FLASHING.md).
+> The same page also has a **Ground Control**: connect the sonde over USB-serial for pre-flight checks, live sensor readout, diagnostics and a map. Wiring for both the programmer and the serial adapter is in the [flashing guide](./fw/FLASHING.md).
 >
 > Full description in the [RS41-NFW Sounding Software](#rs41-nfw-sounding-software) section below. Prefer to do it by hand? The [manual flashing](#firmware-flashing) and [local build](#firmware-compilation) routes are still fully documented.
 
@@ -55,9 +55,9 @@ Vaisala some time ago began launching new RS41 sonde revisions, with new interna
     * PIP
         * Beacon operation, transmitting short beep with a specified interval, which could be used as a foxhunting TX device
 * Thorough support of RS41 hardware, including GPS, radio, power circuitry, heaters etc., timers ...and:
-* **Precise atmospheric measurements from the original silver sensor boom** - external air **temperature** and **relative humidity**, read through hardware timers with custom correction algorithms for fast, low-noise output!
+* **Precise atmospheric measurements from the original silver sensor boom** - external air **temperature** and **relative humidity**, read through hardware timers with custom correction algorithms, using **factory calibration** data, for fast, low-noise output!
 * **Usage of original Vaisala sensor stalk calibration data** - allows to reproduce readings 1:1 of what you see when you receive one! There is also a legacy NFW calibration mode which doesn't use Vaisala calibration data
-* Simple usage of sensor boom - just type in the serial number in the sounding software and the firmware will be compiled ready-to-launch, without the need for any hard calibration procedures!
+* **Simple usage** of sensor boom - just type in the serial number in the sounding software and the firmware will be compiled ready-to-launch, without the need for any hard calibration procedures!
 * Automatic calibration modes - **temperature check**, **humidity check** and reconditioning - all automatic to ensure best accuracy
 * **Onboard pressure sensing** via the original Vaisala **RPM411** BARO-CAP board (RS41-SGP), or a built-in pressure estimation when no sensor is fitted (RS41-SG approach)
 * **Intelligent GPS management** on the RSM4x4 boards - automatic constellation, power and tracking optimisation, u-blox Super-S, and a radio-silence cold-start booster on all boards. One of the best hobbyist GPS HAB trackers
@@ -83,7 +83,7 @@ Vaisala some time ago began launching new RS41 sonde revisions, with new interna
 * Most of the firmware and the whole Sounding Software stay **GPL-3.0**, now with an explicit **linking exception** so the GPL code and the source-available modules below can legally share one compiled binary.
 * The **sensor boom** acquisition/calibration and the **GPS readout** code are carved out as **Source-Available Modules** under the [RS41-NFW Source-Available License](LICENSE.source-available). You can read, build and use them for personal/non-commercial purposes, but not sell them or ship modified closed versions. Every covered function is marked in-source with an `// [RS41-NFW-SA]` banner.
 
-This software is **open source** and **free to use for amateur projects**, **which cannot lead to profit** in any kind. This excludes usage of this firmware as a commercial product. **For commercial use, please contact me**. Bundled third-party code (TinyGPS++, Horus/Golay, STM32 variant files) keeps its own upstream license.
+This software is **open source** and **free to use for amateur projects**, **which cannot lead to profit** in any kind. This excludes usage of this firmware as a commercial product. **For commercial use, please contact me**. Bundled third-party code (Horus/Golay, STM32 variant files) keeps its own upstream license.
 The creator of this project isn't at all responsible for any kind of harm made by devices operated with these instructions. Follow your local law about radio transmissions and balloon flights. Altough the firmware **tested successfully** on several dozen of flights, keep in mind that it is still a *hobbyst project*.
 
 
@@ -147,6 +147,14 @@ See: [hw/README.md](./hw/README.md)
 
 
 ## Firmware changelog
+* `v70` - a large GNSS overhaul: the receiver is now driven entirely in the native **binary UBX protocol** (NMEA removed), for lower latency, much richer data, and no external-libraries dependency.
+  * **Native UBX driver.** Both boards talk UBX only: `UBX-NAV-PVT` on the M10 (RSM4x4/4x5), the legacy `NAV-POSLLH`/`VELNED`/`SOL`/`TIMEUTC` set on the u-blox 6 (RSM4x2/4x1). The reader is event-driven and returns the instant a fresh fix arrives (no more fixed ~1 s NMEA wait). New data: true GPS-computed **vertical speed** (velD), **fix type**, horizontal/vertical/speed **accuracy estimates**, and satellite counts beyond the old NMEA cap of 12. Every config message is **ACK-validated** and retried; a rejected one is logged with its key.
+  * **NFW Intelligent GNSS Algorithms** are now **available for all revisions**. On the M10 it adaptively tunes constellations and power tiers by fix strength, and also uses many uBlox algorithms and options; on the G6010 it automatically uses the chip's power-save nav mode. Configurable **cyclic-tracking period**. **Cyclic tracking (M10 PSMCT)** obeys the uBlox rules and works properly.
+  * **Constellations.** The M10 runs **GPS + Galileo + SBAS** plus a selectable secondary GNSS: **BeiDou (B1C) + GLONASS** together (default - B1C shares the 1575.42 MHz L1 centre so it can coexist with GLONASS, giving the most satellites), **BeiDou (B1I) only** (older signal on 1561 MHz, more resilient to L1-band interference, but no GLONASS), or **GLONASS only**. Optional **QZSS** (regional). **Per-constellation satellite stats** are decoded from `NAV-SAT` and sent to Ground Control and the data recorder now!
+  * **GPS Interference & integrity.** A raw 0-255 CW **jamming** indicator (from `UBX-MON-RF` on the M10, `UBX-MON-HW` on the u-blox 6) and **spoofing** detection (from `UBX-NAV-STATUS`).
+  * **Data recorder** pages reworked: A GNSS diagnostics (gpspwr, pdop, resets, ubxerrs), B GNSS integrity (jam level, spoofing, integrity), C satellite counts, D flight stats, E thermal, then the ozone pages. RSM4x2 (single-constellation u-blox 6) skips the M10-only pages B and C.
+  * **Scheduler & clock.** The transmit scheduler now locks to **sub-second GPS time** (using the NAV-PVT/NAV-TIMEUTC nanosecond fraction), so transmissions land on the GPS second rather than up to a second off. Fixes: the minimum-interval guard now holds a slot instead of skipping it; the heavy GPS read and the sensor-boom read no longer run right before a slot (they were landing transmissions seconds late); the stale NAV-PVT backlog after a transmission is flushed so the clock cannot lurch; the interface keeps sending telemetry through the pre-TX wait (no more Ground Control freeze); and a momentary post-transmission GPS glitch no longer drops the clock or triggers acquisition mode. The `flightHeatingHandler` now runs at ~1 Hz instead of every loop (it was flooding the log and starving GPS reads).
+  * **Extras & fixes.** **SBAS, AssistNow Autonomous**, **better uBlox dynamic model configuration** and **satellites engine profile/filter** (Max sensitivity / Balanced / Ultra power saving), **simultaneous GNSS setup** (default on) that powers the receiver up during sensor calibration for a faster first fix, and a configurable **extra radio-quiet hold after fix** (default 20 s) so the fix can settle before the first transmission. Firmware Builder: **pre-defined settings** (Accurate / Energy-efficient), an RSM4x4-only algorithm section, and renamed GNSS options. `gpspwr` dropped from the standard Horus V3 packet (available in data recorder).
 * `v69` - stability and polish on top of v68.
   * **Fixed a rare in-flight hard fault on `RSM4x2`.** The Horus V3 telemetry packet (a >1 KB ASN.1 structure) was built on the stack every transmission; on the tight 8 KB F100 this could overrun the stack into the heap and corrupt other data, hard-faulting the sonde after the first transmission. It is now built in a shared, off-stack buffer, so the fault is gone.
   * **Factory (Vaisala) calibration on `RSM4x2` / `RSM4x1`.** The older F100 boards now run the same **Vaisala factory calibration** as the new boards (the maths was moved to single precision so it fits the 64 KB flash), for manufacturer-grade temperature and humidity. They no longer use the NFW calibration model. **Estimated pressure (`pressureMode = 2`)** is now available on the F100 too.
@@ -237,4 +245,3 @@ See: [hw/README.md](./hw/README.md)
 * [*RS41HUP* - also inspiration](https://github.com/darksidelemm/RS41HUP)<br>
 * [*radiosonde_hardware* - made reversing the new version easier](https://github.com/bazjo/radiosonde_hardware)<br>
 * [*Horus Binary* - awesome HAB radio protocol](https://github.com/projecthorus/horusdemodlib)<br>
-* [*Arduino APRS*](https://handiko.github.io/Arduino-APRS/) library, partially utilized here to create APRS messages

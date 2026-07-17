@@ -2,7 +2,7 @@ services:
   souding-software:
     build: ./backend
     ports:
-      - "30014:5000"
+      - "5005:5000"
     volumes:
       - ./workspace:/workspace          # repos + sketch + build cache (local dir, create before first run)
       - ./logs:/logs                    # compile history: logs/YYYY-MM-DD_HH-MM-SS/ (config + bin + log)

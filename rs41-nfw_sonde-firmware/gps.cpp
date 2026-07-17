@@ -1,279 +1,235 @@
+// ------------------------------------------------------------------------
+// [RS41-NFW-SA] Source-Available Module - this ENTIRE file is NOT under GPL-3.0.
+// It is covered by the RS41-NFW Source-Available License. See LICENSING.md and
+// LICENSE.source-available.
+//
+// RS41-NFW native u-blox UBX GNSS driver - parser implementation.
+// See gps.h for the message set and the rationale.
+// ------------------------------------------------------------------------
+
 #include "gps.h"
-#include <string.h>
-#include <ctype.h>
-#include <stdlib.h>
 
-#define _RMCterm "RMC"
-#define _GGAterm "GGA"
-#define _GNSterm "GNS"
+// little-endian field readers over the payload buffer
+static inline uint16_t rdU2(const uint8_t *p) {
+  return (uint16_t)p[0] | ((uint16_t)p[1] << 8);
+}
+static inline int16_t rdI2(const uint8_t *p) { return (int16_t)rdU2(p); }
+static inline uint32_t rdU4(const uint8_t *p) {
+  return (uint32_t)p[0] | ((uint32_t)p[1] << 8) | ((uint32_t)p[2] << 16) | ((uint32_t)p[3] << 24);
+}
+static inline int32_t rdI4(const uint8_t *p) { return (int32_t)rdU4(p); }
 
-TinyGPSPlus::TinyGPSPlus()
-  :  parity(0), isChecksumTerm(false), curSentenceType(GPS_SENTENCE_OTHER)
-  ,  curTermNumber(0), curTermOffset(0), sentenceHasFix(false)
-  ,  customElts(0), customCandidates(0), encodedCharCount(0)
-  ,  sentencesWithFixCount(0), failedChecksumCount(0), passedChecksumCount(0)
-{
-  term[0] = '\0';
+UbxGnss::UbxGnss() {
+  payload[0] = 0;
 }
 
-bool TinyGPSPlus::encode(char c)
-{
-  ++encodedCharCount;
-  switch(c)
-  {
-  case ',': parity ^= (uint8_t)c;
-  case '\r':
-  case '\n':
-  case '*':
-    {
-      bool isValidSentence = false;
-      if (curTermOffset < sizeof(term))
-      {
-        term[curTermOffset] = 0;
-        isValidSentence = endOfTermHandler();
-      }
-      ++curTermNumber;
-      curTermOffset = 0;
-      isChecksumTerm = c == '*';
-      return isValidSentence;
-    }
-  case '$': 
-    curTermNumber = curTermOffset = 0;
-    parity = 0;
-    curSentenceType = GPS_SENTENCE_OTHER;
-    isChecksumTerm = false;
-    sentenceHasFix = false;
-    return false;
-  default:
-    if (curTermOffset < sizeof(term) - 1)
-      term[curTermOffset++] = c;
-    if (!isChecksumTerm)
-      parity ^= c;
-    return false;
-  }
-}
-
-int TinyGPSPlus::fromHex(char a)
-{
-  if (a >= 'A' && a <= 'F') return a - 'A' + 10;
-  else if (a >= 'a' && a <= 'f') return a - 'a' + 10;
-  else return a - '0';
-}
-
-int32_t TinyGPSPlus::parseDecimal(const char *term)
-{
-  bool negative = *term == '-';
-  if (negative) ++term;
-  int32_t ret = 100 * (int32_t)atol(term);
-  while (isdigit(*term)) ++term;
-  if (*term == '.' && isdigit(term[1]))
-  {
-    ret += 10 * (term[1] - '0');
-    if (isdigit(term[2])) ret += term[2] - '0';
-  }
-  return negative ? -ret : ret;
-}
-
-void TinyGPSPlus::parseDegrees(const char *term, RawDegrees &deg)
-{
-  uint32_t leftOfDecimal = (uint32_t)atol(term);
-  uint16_t minutes = (uint16_t)(leftOfDecimal % 100);
-  uint32_t multiplier = 10000000UL;
-  uint32_t tenMillionthsOfMinutes = minutes * multiplier;
-  deg.deg = (int16_t)(leftOfDecimal / 100);
-  while (isdigit(*term)) ++term;
-  if (*term == '.')
-    while (isdigit(*++term))
-    {
-      multiplier /= 10;
-      tenMillionthsOfMinutes += (*term - '0') * multiplier;
-    }
-  deg.billionths = (5 * tenMillionthsOfMinutes + 1) / 3;
-  deg.negative = false;
-}
-
-#define COMBINE(sentence_type, term_number) (((unsigned)(sentence_type) << 5) | term_number)
-
-bool TinyGPSPlus::endOfTermHandler()
-{
-  if (isChecksumTerm)
-  {
-    byte checksum = 16 * fromHex(term[0]) + fromHex(term[1]);
-    if (checksum == parity)
-    {
-      passedChecksumCount++;
-      if (sentenceHasFix) ++sentencesWithFixCount;
-      switch(curSentenceType)
-      {
-        case GPS_SENTENCE_RMC:
-          date.commit(); time.commit();
-          if (sentenceHasFix) { location.commit(); speed.commit(); course.commit(); }
-          break;
-        case GPS_SENTENCE_GGA:
-        case GPS_SENTENCE_GNS:
-          time.commit();
-          if (sentenceHasFix) { location.commit(); altitude.commit(); }
-          satellites.commit();
-          hdop.commit();
-          break;
-      }
-      return true;
-    }
-    else { ++failedChecksumCount; }
-    return false;
-  }
-
-  if (curTermNumber == 0)
-  {
-    // Recognizes GN (Global), GP (GPS), GL (GLONASS), GA (Galileo), GB (BeiDou)
-    bool isGHeader = (term[0] == 'G' && strchr("PNABL DQ", term[1]) != NULL);
-    if (isGHeader && !strcmp(term + 2, _RMCterm)) curSentenceType = GPS_SENTENCE_RMC;
-    else if (isGHeader && !strcmp(term + 2, _GGAterm)) curSentenceType = GPS_SENTENCE_GGA;
-    else if (isGHeader && !strcmp(term + 2, _GNSterm)) curSentenceType = GPS_SENTENCE_GNS;
-    else curSentenceType = GPS_SENTENCE_OTHER;
-    return false;
-  }
-
-  if (curSentenceType != GPS_SENTENCE_OTHER && term[0])
-    switch(COMBINE(curSentenceType, curTermNumber))
-  {
-    case COMBINE(GPS_SENTENCE_RMC, 1):
-    case COMBINE(GPS_SENTENCE_GGA, 1):
-    case COMBINE(GPS_SENTENCE_GNS, 1): time.setTime(term); break;
-    case COMBINE(GPS_SENTENCE_RMC, 2): sentenceHasFix = term[0] == 'A'; break;
-    case COMBINE(GPS_SENTENCE_RMC, 3):
-    case COMBINE(GPS_SENTENCE_GGA, 2):
-    case COMBINE(GPS_SENTENCE_GNS, 2): location.setLatitude(term); break;
-    case COMBINE(GPS_SENTENCE_RMC, 4):
-    case COMBINE(GPS_SENTENCE_GGA, 3):
-    case COMBINE(GPS_SENTENCE_GNS, 3): location.rawNewLatData.negative = term[0] == 'S'; break;
-    case COMBINE(GPS_SENTENCE_RMC, 5):
-    case COMBINE(GPS_SENTENCE_GGA, 4):
-    case COMBINE(GPS_SENTENCE_GNS, 4): location.setLongitude(term); break;
-    case COMBINE(GPS_SENTENCE_RMC, 6):
-    case COMBINE(GPS_SENTENCE_GGA, 5):
-    case COMBINE(GPS_SENTENCE_GNS, 5): location.rawNewLngData.negative = term[0] == 'W'; break;
-    case COMBINE(GPS_SENTENCE_RMC, 7): speed.set(term); break;
-    case COMBINE(GPS_SENTENCE_GGA, 6): // GGA Fix Status
-      sentenceHasFix = term[0] > '0';
-      location.newFixQuality = (TinyGPSLocation::Quality)term[0];
+// Feed one byte through the UBX frame state machine. Verifies the 8-bit
+// Fletcher checksum and, on a good frame, decodes it. Returns true only when
+// a fresh position solution was committed (so the read loop can stop early).
+bool UbxGnss::encode(uint8_t b) {
+  switch (st) {
+    case S_SYNC1:
+      if (b == 0xB5) st = S_SYNC2;
       break;
-    case COMBINE(GPS_SENTENCE_GNS, 6): // GNS Fix Status (Mode Indicator)
-      sentenceHasFix = (strpbrk(term, "ADRF") != NULL);
-      location.newFixMode = (TinyGPSLocation::Mode)term[0];
+
+    case S_SYNC2:
+      st = (b == 0x62) ? S_CLASS : (b == 0xB5 ? S_SYNC2 : S_SYNC1);
       break;
-    case COMBINE(GPS_SENTENCE_GGA, 7):
-    case COMBINE(GPS_SENTENCE_GNS, 7): satellites.set(term); break;
-    case COMBINE(GPS_SENTENCE_GGA, 8):
-    case COMBINE(GPS_SENTENCE_GNS, 8): hdop.set(term); break;
-    case COMBINE(GPS_SENTENCE_GGA, 9):
-    case COMBINE(GPS_SENTENCE_GNS, 9): altitude.set(term); break;
+
+    case S_CLASS:
+      msgClass = b; ckA = b; ckB = b; st = S_ID;          // checksum starts at class
+      break;
+
+    case S_ID:
+      msgId = b; ckA += b; ckB += ckA; st = S_LEN1;
+      break;
+
+    case S_LEN1:
+      payloadLen = b; ckA += b; ckB += ckA; st = S_LEN2;
+      break;
+
+    case S_LEN2: {
+      payloadLen |= (uint16_t)b << 8; ckA += b; ckB += ckA;
+      payloadIdx = 0;
+      bool isNavSat = (msgClass == CLS_NAV && msgId == NAV_SAT);
+      if (isNavSat) { nsGps = nsGal = nsBds = nsGlo = nsSbas = nsQzss = 0; }  // reset counts
+      // Robustness: a corrupted length (e.g. after a UART RX overrun during a long
+      // radio TX) must not make us sit and swallow thousands of "payload" bytes -
+      // that stalls the parser and freezes every reading. NAV-SAT is streamed (not
+      // buffered) and can be large: 8 + 12*numSvs bytes, which with several constellations
+      // enabled (GPS + Galileo + BeiDou + GLONASS + SBAS) runs to ~700+ bytes, so it needs
+      // a generous cap. Everything else must fit the payload buffer. A length past the cap
+      // is corruption - bail to the sync hunt.
+      if (payloadLen > (isNavSat ? 1024 : sizeof(payload))) { st = S_SYNC1; break; }
+      st = (payloadLen == 0) ? S_CKA : S_PAYLOAD;
+      break;
+    }
+
+    case S_PAYLOAD:
+      ckA += b; ckB += ckA;
+      if (msgClass == CLS_NAV && msgId == NAV_SAT) navSatByte(b);   // stream-decode, do not buffer
+      else if (payloadIdx < sizeof(payload))       payload[payloadIdx] = b;  // keep what fits
+      if (++payloadIdx >= payloadLen) st = S_CKA;
+      break;
+
+    case S_CKA:
+      rxCkA = b; st = S_CKB;
+      break;
+
+    case S_CKB: {
+      bool navPos = false;
+      if (rxCkA == ckA && b == ckB) {
+        if (msgClass == CLS_NAV && msgId == NAV_SAT) {
+          satGps = nsGps; satGal = nsGal; satBds = nsBds;          // commit streamed counts
+          satGlo = nsGlo; satSbas = nsSbas; satQzss = nsQzss;
+          navSatUpdated = true;
+        } else if (payloadLen <= sizeof(payload)) {
+          navPos = dispatch();
+        }
+      } else {
+        if (frameErrors < 65535) frameErrors++;                    // checksum failure
+      }
+      st = S_SYNC1;
+      return navPos;
+    }
   }
   return false;
 }
 
-// Distance and Math Functions
-double TinyGPSPlus::distanceBetween(double lat1, double long1, double lat2, double long2)
-{
-  double delta = radians(long1-long2);
-  double sdlong = sin(delta);
-  double cdlong = cos(delta);
-  lat1 = radians(lat1); lat2 = radians(lat2);
-  double slat1 = sin(lat1); double clat1 = cos(lat1);
-  double slat2 = sin(lat2); double clat2 = cos(lat2);
-  delta = sq((clat1 * slat2) - (slat1 * clat2 * cdlong));
-  delta += sq(clat2 * sdlong);
-  delta = sqrt(delta);
-  double denom = (slat1 * slat2) + (clat1 * clat2 * cdlong);
-  delta = atan2(delta, denom);
-  return delta * _GPS_EARTH_MEAN_RADIUS;
+// Decode a checksum-valid frame into the value holders.
+// Returns true if a position solution was committed.
+bool UbxGnss::dispatch() {
+  const uint8_t *p = payload;
+
+  if (msgClass == CLS_NAV) {
+    switch (msgId) {
+
+      // ---- u-blox M8/M9/M10: everything in one 92-byte message ----------
+      case NAV_PVT: {
+        if (payloadLen < 92) return false;
+        uint8_t validFlags = p[11];
+        fixType   = p[20];
+        gnssFixOK = (p[21] & 0x01);
+        psmState  = (p[21] >> 2) & 0x07;       // flags bits 4..2 = power-save mode state
+        satellites.set(p[23]);                 // numSV (used-in-fix), can be > 12
+        uint16_t pdop = rdU2(p + 76);
+        hdop.setRaw(pdop);
+
+        if ((validFlags & 0x02)) {             // validTime
+          time.set(p[8], p[9], p[10]);
+          timeNano = rdI4(p + 16);             // sub-second fraction (ns, signed)
+        }
+
+        if (gnssFixOK && fixType >= 3) {        // 3D fix -> trust position/velocity
+          location.set(rdI4(p + 28), rdI4(p + 24));   // lat, lon (1e-7 deg)
+          altitude.setMillimeters(rdI4(p + 36));      // hMSL (mm)
+          speed.setMillimetersPerSec(rdI4(p + 60));   // gSpeed (mm/s)
+          verticalVelocity = -rdI4(p + 56) / 1000.0f; // velD (mm/s) -> +up m/s
+          headingDeg       = rdI4(p + 64) / 1.0e5f;   // headMot (1e-5 deg)
+          hAccMm  = rdU4(p + 40);
+          vAccMm  = rdU4(p + 44);
+          sAccMmS = rdU4(p + 68);
+        }
+        navUpdated = true;
+        return true;
+      }
+
+      // ---- u-blox 6 legacy set -----------------------------------------
+      case NAV_POSLLH: {                        // position + altitude (28 bytes)
+        if (payloadLen < 28) return false;
+        if (gnssFixOK) {                         // gated by the last NAV-SOL
+          location.set(rdI4(p + 8), rdI4(p + 4));     // lat, lon (1e-7 deg)
+          altitude.setMillimeters(rdI4(p + 16));      // hMSL (mm)
+          hAccMm = rdU4(p + 20);
+          vAccMm = rdU4(p + 24);
+          navUpdated = true;
+          return true;                           // this is the M6 position anchor
+        }
+        return false;
+      }
+
+      case NAV_VELNED: {                         // velocity (36 bytes, cm/s)
+        if (payloadLen < 36) return false;
+        if (gnssFixOK) {
+          verticalVelocity = -rdI4(p + 12) / 100.0f;  // velD (cm/s) -> +up m/s
+          speed.setMillimetersPerSec(rdU4(p + 20) * 10); // gSpeed (cm/s) -> mm/s
+          headingDeg = rdI4(p + 24) / 1.0e5f;          // heading (1e-5 deg)
+          sAccMmS    = rdU4(p + 28) * 10;              // sAcc (cm/s) -> mm/s
+        }
+        return false;
+      }
+
+      case NAV_SOL: {                            // fix status, numSV, pDOP (52 bytes)
+        if (payloadLen < 52) return false;
+        fixType   = p[10];                        // gpsFix
+        gnssFixOK = (p[11] & 0x01);
+        hdop.setRaw(rdU2(p + 44));                // pDOP
+        satellites.set(p[47]);                    // numSV
+        return false;
+      }
+
+      case NAV_TIMEUTC: {                        // UTC time of day (20 bytes)
+        if (payloadLen < 20) return false;
+        // Accept on validTOW (bit0) or validUTC (bit2): some u-blox 6 units set
+        // validUTC late, which left the clock reading as unset. validTOW is set as
+        // soon as there is a time solution and is good to ~1 s (refined once UTC
+        // fully resolves), which is fine for the scheduler and display.
+        if (p[19] & 0x05) {
+          time.set(p[16], p[17], p[18]);
+          timeNano = rdI4(p + 8);               // sub-second fraction (ns, signed)
+        }
+        return false;
+      }
+
+      case NAV_STATUS: {                         // fix + spoofing state (16 bytes)
+        if (payloadLen < 16) return false;
+        spoofState = (p[7] >> 3) & 0x03;          // flags2 bits 3-4 = spoofDetState
+        return false;
+      }
+    }
+    return false;
+  }
+
+  if (msgClass == CLS_MON) {
+    // Both MON-RF (M10) and MON-HW (u-blox 6) carry the raw 0..255 CW jamming
+    // indicator - that is the only interference value we report.
+    if (msgId == MON_RF) {                        // M10: one 24-byte block per RF path
+      if (payloadLen >= 4 + 24) jamIndicator = p[4 + 16];
+      return false;
+    }
+    if (msgId == MON_HW) {                         // u-blox 6: 68-byte block
+      if (payloadLen >= 68) jamIndicator = p[45];
+      return false;
+    }
+    if (msgId == MON_GNSS) {                        // M10: major-GNSS support/enable masks
+      if (payloadLen >= 4) { gnssSupported = p[1]; gnssEnabled = p[3]; monGnssSeen = true; }
+      return false;
+    }
+  }
+
+  return false;
 }
 
-double TinyGPSPlus::courseTo(double lat1, double long1, double lat2, double long2)
-{
-  double dlon = radians(long2-long1);
-  lat1 = radians(lat1); lat2 = radians(lat2);
-  double a1 = sin(dlon) * cos(lat2);
-  double a2 = sin(lat1) * cos(lat2) * cos(dlon);
-  a2 = cos(lat1) * sin(lat2) - a2;
-  a2 = atan2(a1, a2);
-  if (a2 < 0.0) a2 += TWO_PI;
-  return degrees(a2);
+// Stream one NAV-SAT payload byte. Header is 8 bytes; then 12-byte satellite
+// blocks. gnssId is block byte 0, and the svUsed flag is bit 3 of the 4-byte
+// flags at block bytes 8..11. We never store the whole (large) message.
+void UbxGnss::navSatByte(uint8_t b) {
+  if (payloadIdx < 8) return;                     // iTOW, version, numSvs, reserved
+  uint8_t inBlk = (uint8_t)((payloadIdx - 8) % 12);
+  nsBlk[inBlk] = b;
+  if (inBlk == 11) {                              // block complete
+    uint8_t qual   = nsBlk[8] & 0x07;             // flags bits0-2 = qualityInd (>=4 locked)
+    bool    svUsed = nsBlk[8] & 0x08;             // flags bit3    = used in the fix
+    switch (nsBlk[0]) {                            // gnssId
+      case 0: if (svUsed && nsGps  < 255) nsGps++;  break; // GPS
+      // SBAS is a correction source, not a ranging source, so u-blox almost never sets
+      // its svUsed bit - counting "used in fix" left this permanently 0. Count SBAS that
+      // are actually locked (qualityInd >= 4) instead, so the tile shows SBAS reception.
+      case 1: if (qual >= 4 && nsSbas < 255) nsSbas++; break; // SBAS
+      case 2: if (svUsed && nsGal  < 255) nsGal++;  break; // Galileo
+      case 3: if (svUsed && nsBds  < 255) nsBds++;  break; // BeiDou
+      case 5: if (svUsed && nsQzss < 255) nsQzss++; break; // QZSS
+      case 6: if (svUsed && nsGlo  < 255) nsGlo++;  break; // GLONASS
+    }
+  }
 }
-
-const char *TinyGPSPlus::cardinal(double course)
-{
-  static const char* directions[] = {"N", "NNE", "NE", "ENE", "E", "ESE", "SE", "SSE", "S", "SSW", "SW", "WSW", "W", "WNW", "NW", "NNW"};
-  int direction = (int)((course + 11.25f) / 22.5f);
-  return directions[direction % 16];
-}
-
-// Location and Data Object Management
-void TinyGPSLocation::commit()
-{
-   rawLatData = rawNewLatData;
-   rawLngData = rawNewLngData;
-   fixQuality = newFixQuality;
-   fixMode = newFixMode;
-   lastCommitTime = millis();
-   valid = updated = true;
-}
-
-void TinyGPSLocation::setLatitude(const char *term) { TinyGPSPlus::parseDegrees(term, rawNewLatData); }
-void TinyGPSLocation::setLongitude(const char *term) { TinyGPSPlus::parseDegrees(term, rawNewLngData); }
-
-double TinyGPSLocation::lat()
-{
-   updated = false;
-   double ret = rawLatData.deg + rawLatData.billionths / 1000000000.0;
-   return rawLatData.negative ? -ret : ret;
-}
-
-double TinyGPSLocation::lng()
-{
-   updated = false;
-   double ret = rawLngData.deg + rawLngData.billionths / 1000000000.0;
-   return rawLngData.negative ? -ret : ret;
-}
-
-void TinyGPSDate::commit() { date = newDate; lastCommitTime = millis(); valid = updated = true; }
-void TinyGPSDate::setDate(const char *term) { newDate = atol(term); }
-uint16_t TinyGPSDate::year() { updated = false; return (date % 100) + 2000; }
-uint8_t TinyGPSDate::month() { updated = false; return (date / 100) % 100; }
-uint8_t TinyGPSDate::day() { updated = false; return date / 10000; }
-
-void TinyGPSTime::commit() { time = newTime; lastCommitTime = millis(); valid = updated = true; }
-void TinyGPSTime::setTime(const char *term) { newTime = (uint32_t)TinyGPSPlus::parseDecimal(term); }
-uint8_t TinyGPSTime::hour() { updated = false; return time / 1000000; }
-uint8_t TinyGPSTime::minute() { updated = false; return (time / 10000) % 100; }
-uint8_t TinyGPSTime::second() { updated = false; return (time / 100) % 100; }
-uint8_t TinyGPSTime::centisecond() { updated = false; return time % 100; }
-
-void TinyGPSDecimal::commit() { val = newval; lastCommitTime = millis(); valid = updated = true; }
-void TinyGPSDecimal::set(const char *term) { newval = TinyGPSPlus::parseDecimal(term); }
-
-void TinyGPSInteger::commit() { val = newval; lastCommitTime = millis(); valid = updated = true; }
-void TinyGPSInteger::set(const char *term) { newval = atol(term); }
-
-// Custom Element Insertion
-void TinyGPSPlus::insertCustom(TinyGPSCustom *pElt, const char *sentenceName, int termNumber)
-{
-   TinyGPSCustom **ppelt;
-   for (ppelt = &this->customElts; *ppelt != NULL; ppelt = &(*ppelt)->next)
-   {
-      int cmp = strcmp(sentenceName, (*ppelt)->sentenceName);
-      if (cmp < 0 || (cmp == 0 && termNumber < (*ppelt)->termNumber)) break;
-   }
-   pElt->next = *ppelt; *ppelt = pElt;
-}
-
-// Custom Element Logic
-TinyGPSCustom::TinyGPSCustom(TinyGPSPlus &gps, const char *_sentenceName, int _termNumber) { begin(gps, _sentenceName, _termNumber); }
-void TinyGPSCustom::begin(TinyGPSPlus &gps, const char *_sentenceName, int _termNumber)
-{
-   lastCommitTime = 0; updated = valid = false; sentenceName = _sentenceName; termNumber = _termNumber;
-   memset(stagingBuffer, '\0', sizeof(stagingBuffer)); memset(buffer, '\0', sizeof(buffer));
-   gps.insertCustom(this, _sentenceName, _termNumber);
-}
-void TinyGPSCustom::commit() { strcpy(this->buffer, this->stagingBuffer); lastCommitTime = millis(); valid = updated = true; }
-void TinyGPSCustom::set(const char *term) { strncpy(this->stagingBuffer, term, sizeof(this->stagingBuffer) - 1); }

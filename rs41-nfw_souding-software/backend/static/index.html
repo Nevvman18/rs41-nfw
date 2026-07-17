@@ -508,6 +508,44 @@ html[data-theme="light"] #app-fw [class*="text-emerald-2"],
 html[data-theme="light"] #app-fw [class*="text-emerald-3"]{ color:#15803d!important; }
 html[data-theme="light"] #app-fw [class*="text-sky-2"],
 html[data-theme="light"] #app-fw [class*="text-sky-3"]{ color:#0369a1!important; }
+/* v70: the violet (OIF411) and blue (data recorder) note boxes were dark-on-dark
+   panels with light text; in light mode lighten the panel and darken the text. */
+html[data-theme="light"] #app-fw [class*="text-violet-1"],
+html[data-theme="light"] #app-fw [class*="text-violet-2"],
+html[data-theme="light"] #app-fw [class*="text-violet-3"]{ color:#6b21a8!important; }
+html[data-theme="light"] #app-fw [class*="text-teal-1"],
+html[data-theme="light"] #app-fw [class*="text-teal-2"],
+html[data-theme="light"] #app-fw [class*="text-teal-3"]{ color:#0f766e!important; }
+html[data-theme="light"] #app-fw [class*="text-rose-1"],
+html[data-theme="light"] #app-fw [class*="text-rose-2"],
+html[data-theme="light"] #app-fw [class*="text-rose-3"]{ color:#be123c!important; }
+html[data-theme="light"] #app-fw [class*="bg-violet-950"],
+html[data-theme="light"] #app-fw [class*="bg-indigo-950"],
+html[data-theme="light"] #app-fw [class*="bg-blue-950"],
+html[data-theme="light"] #app-fw [class*="bg-teal-950"]{ background:var(--surface-2)!important; }
+html[data-theme="light"] #app-fw [class*="bg-rose-950"]{ background:#fff1f2!important; }
+html[data-theme="light"] #app-fw [class*="border-violet-7"],
+html[data-theme="light"] #app-fw [class*="border-teal-7"],
+html[data-theme="light"] #app-fw [class*="border-rose-7"],
+html[data-theme="light"] #app-fw [class*="border-indigo-8"]{ border-color:var(--border)!important; }
+
+/* v70: Ground Control was built light-only (hard-coded bg-white / slate text), so
+   it never followed dark mode. Map its light surfaces and text to the theme. */
+html[data-theme="dark"] #app-gcs [class*="bg-white"]{ background:var(--surface)!important; }
+html[data-theme="dark"] #app-gcs [class*="bg-slate-50"]{ background:var(--surface-2)!important; }
+html[data-theme="dark"] #app-gcs [class*="bg-slate-100"]{ background:var(--surface-3)!important; }
+html[data-theme="dark"] #app-gcs [class*="border-slate-1"],
+html[data-theme="dark"] #app-gcs [class*="border-slate-2"]{ border-color:var(--border)!important; }
+html[data-theme="dark"] #app-gcs [class*="text-slate-9"],
+html[data-theme="dark"] #app-gcs [class*="text-slate-8"],
+html[data-theme="dark"] #app-gcs [class*="text-slate-7"],
+html[data-theme="dark"] #app-gcs [class*="text-slate-6"]{ color:var(--text)!important; }
+html[data-theme="dark"] #app-gcs [class*="text-slate-5"],
+html[data-theme="dark"] #app-gcs [class*="text-slate-4"]{ color:var(--text-muted)!important; }
+html[data-theme="dark"] #app-gcs [class*="bg-violet-50"]{ background:var(--tint-indigo)!important; }
+html[data-theme="dark"] #app-gcs [class*="border-violet-1"],
+html[data-theme="dark"] #app-gcs [class*="border-violet-2"]{ border-color:var(--tint-indigo-bd)!important; }
+html[data-theme="dark"] #app-gcs [class*="text-violet-8"]{ color:#c4b5fd!important; }
 
 /* Home landing: flip its scoped palette to a light "Apple-like" scheme in light mode.
    Every .lp-* rule reads these variables, so this one override lightens the whole page. */
@@ -872,6 +910,8 @@ document.addEventListener('DOMContentLoaded', function(){
       </div>
     </div>
     <span id="status-badge" class="px-2 py-0.5 rounded-full text-[10px] font-black tracking-widest bg-slate-200 text-slate-400">OFFLINE</span>
+    <button onclick="showSerialHelp()" title="How to connect the serial adapter" aria-label="How to connect the serial adapter"
+      class="w-7 h-7 flex items-center justify-center bg-slate-100 hover:bg-slate-200 text-slate-500 text-sm font-bold rounded-lg transition-colors">?</button>
     <button id="connect-btn" onclick="toggleConnect()"
       class="px-4 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold rounded-lg transition-colors">
       Connect
@@ -988,6 +1028,7 @@ document.addEventListener('DOMContentLoaded', function(){
           class="w-full py-2 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold rounded-lg transition-colors">
           Connect to Sonde
         </button>
+        <button onclick="showSerialHelp()" class="w-full mt-1.5 text-[11px] font-semibold text-blue-600 hover:text-blue-700 hover:underline">🔌 How to wire the serial adapter</button>
         <p id="serial-warn" class="hidden text-[10px] text-red-500 text-center mt-1.5">
           Web Serial not supported - use Chrome or Edge
         </p>
@@ -1030,7 +1071,7 @@ document.addEventListener('DOMContentLoaded', function(){
           <div>
             <p class="text-[10px] font-semibold text-slate-500 uppercase tracking-wider mb-1">System</p>
             <div class="flex gap-2">
-              <button onclick="sendCommand('CMD:REBOOT')" class="flex-1 py-1.5 bg-amber-500 hover:bg-amber-600 text-white text-xs font-bold rounded-lg transition-colors">Reboot CPU</button>
+              <button onclick="sendCommandReliable('CMD:REBOOT')" class="flex-1 py-1.5 bg-amber-500 hover:bg-amber-600 text-white text-xs font-bold rounded-lg transition-colors">Reboot CPU</button>
               <button onclick="confirmShutdown()" class="flex-1 py-1.5 bg-red-600 hover:bg-red-700 text-white text-xs font-bold rounded-lg transition-colors">Shutdown</button>
             </div>
             <p class="text-[10px] text-slate-400 mt-1 leading-relaxed">Reboot: immediate CPU reset. Shutdown: 3 red blinks then power cut.</p>
@@ -1058,7 +1099,7 @@ document.addEventListener('DOMContentLoaded', function(){
         <div id="cmd-confirm" class="hidden mt-3 p-3 rounded-lg border-2 border-red-400 bg-red-50">
           <div class="text-xs font-bold text-red-700 mb-2">Confirm shutdown - sonde will power off immediately (3 red blinks).</div>
           <div class="flex gap-2">
-            <button onclick="sendCommand('CMD:SHUTDOWN'); document.getElementById('cmd-confirm').classList.add('hidden')" class="flex-1 py-1.5 bg-red-600 hover:bg-red-700 text-white text-xs font-bold rounded-lg transition-colors">Yes, shut down</button>
+            <button onclick="sendCommandReliable('CMD:SHUTDOWN'); document.getElementById('cmd-confirm').classList.add('hidden')" class="flex-1 py-1.5 bg-red-600 hover:bg-red-700 text-white text-xs font-bold rounded-lg transition-colors">Yes, shut down</button>
             <button onclick="document.getElementById('cmd-confirm').classList.add('hidden')" class="flex-1 py-1.5 bg-slate-200 hover:bg-slate-300 text-slate-700 text-xs font-bold rounded-lg transition-colors">Cancel</button>
           </div>
         </div>
@@ -1350,13 +1391,18 @@ document.addEventListener('DOMContentLoaded', function(){
 <div id="tab-gps" class="tab-content hidden">
   <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
     <div class="data-card bg-white rounded-xl border border-slate-200 shadow-sm p-4">
-      <h2 class="text-[11px] font-black uppercase tracking-widest text-slate-400 mb-3">Position</h2>
+      <div class="flex items-baseline justify-between mb-3">
+        <h2 class="text-[11px] font-black uppercase tracking-widest text-slate-400">Position</h2>
+        <span id="gpsFixType" class="text-[10px] font-mono font-bold px-2 py-0.5 rounded bg-slate-100 text-slate-500">--</span>
+      </div>
       <div class="space-y-2 text-xs">
         <div class="flex justify-between"><span class="text-slate-400">Latitude</span><span id="gpsLat" class="font-mono font-bold">--</span></div>
         <div class="flex justify-between"><span class="text-slate-400">Longitude</span><span id="gpsLong" class="font-mono font-bold">--</span></div>
-        <div class="flex justify-between"><span class="text-slate-400">Altitude</span><span id="gpsAlt" class="font-mono font-bold">--</span> m</div>
-        <div class="flex justify-between"><span class="text-slate-400">Speed</span><span id="gpsSpeedKph" class="font-mono font-bold">--</span> km/h</div>
-        <div class="flex justify-between"><span class="text-slate-400">Vert. Velocity</span><span id="vVCalc" class="font-mono font-bold">--</span> m/s</div>
+        <div class="flex justify-between"><span class="text-slate-400">Altitude</span><span><span id="gpsAlt" class="font-mono font-bold">--</span> m</span></div>
+        <div class="flex justify-between"><span class="text-slate-400">Ground speed</span><span><span id="gpsSpeedKph" class="font-mono font-bold">--</span> km/h</span></div>
+        <div class="flex justify-between"><span class="text-slate-400">Vertical speed</span><span><span id="vVCalc" class="font-mono font-bold">--</span> m/s</span></div>
+        <div class="flex justify-between border-t border-slate-100 pt-2"><span class="text-slate-400">Horizontal accuracy</span><span>&plusmn; <span id="gpsHAcc" class="font-mono font-bold">--</span> m</span></div>
+        <div class="flex justify-between"><span class="text-slate-400">Vertical accuracy</span><span>&plusmn; <span id="gpsVAcc" class="font-mono font-bold">--</span> m</span></div>
       </div>
     </div>
     <div class="data-card bg-white rounded-xl border border-slate-200 shadow-sm p-4 md:col-span-2 xl:col-span-1 xl:row-span-2">
@@ -1369,25 +1415,50 @@ document.addEventListener('DOMContentLoaded', function(){
     </div>
 
     <div class="data-card bg-white rounded-xl border border-slate-200 shadow-sm p-4">
-      <h2 class="text-[11px] font-black uppercase tracking-widest text-slate-400 mb-2">GPS Time (UTC)</h2>
+      <h2 class="text-[11px] font-black uppercase tracking-widest text-slate-400 mb-2">GPS Time (UTC) &amp; Fix Quality</h2>
       <div id="gps-time-big" class="text-4xl font-black font-mono text-blue-600 mb-3">--:--:--</div>
       <div class="space-y-2 text-xs">
         <div class="flex justify-between"><span class="text-slate-400">Satellites</span><span id="gpsSats" class="font-mono font-bold">--</span></div>
-        <div class="flex justify-between"><span class="text-slate-400">HDOP</span><span id="gpsHdop" class="font-mono font-bold">--</span></div>
-        <div class="flex justify-between"><span class="text-slate-400">Jam Warning</span><span id="gpsJamWarning" class="font-mono font-bold">--</span></div>
-        <div class="flex justify-between"><span class="text-slate-400">Reset Count</span><span id="gpsResetCounter" class="font-mono font-bold">--</span></div>
+        <div class="flex justify-between"><span class="text-slate-400">pDOP (position DOP)</span><span id="gpsHdop" class="font-mono font-bold">--</span></div>
+        <div class="flex justify-between"><span class="text-slate-400">Speed accuracy</span><span>&plusmn; <span id="gpsSAcc" class="font-mono font-bold">--</span> m/s</span></div>
+        <div class="flex justify-between border-t border-slate-100 pt-2 rsm4x4-only"><span class="text-slate-400">Jam indicator</span><span><span id="gpsJamInd" class="font-mono font-bold">--</span> / 255</span></div>
+        <div class="flex justify-between rsm4x4-only"><span class="text-slate-400">Spoofing</span><span id="gpsSpoofState" class="font-mono font-bold">--</span></div>
+        <div class="flex justify-between border-t border-slate-100 pt-2 rsm4x4-only"><span class="text-slate-400">Integrity warning</span><span id="gpsJamWarning" class="font-mono font-bold">--</span></div>
+        <div class="flex justify-between border-t border-slate-100 pt-2"><span class="text-slate-400">Reset count</span><span id="gpsResetCounter" class="font-mono font-bold">--</span></div>
       </div>
+      <p class="text-[10px] text-slate-400 mt-2 leading-relaxed">Interference and integrity monitoring (jam indicator, spoofing, integrity warning) is M10-only, so it is shown for RSM4x4 / RSM4x5 only. The single-constellation u-blox 6 on RSM4x2 / RSM4x1 does not expose it.</p>
     </div>
     <div class="data-card bg-white rounded-xl border border-slate-200 shadow-sm p-4">
-      <h2 class="text-[11px] font-black uppercase tracking-widest text-slate-400 mb-3">GPS Configuration</h2>
+      <h2 class="text-[11px] font-black uppercase tracking-widest text-slate-400 mb-3">GPS Receiver (UBX)</h2>
       <div class="space-y-2 text-xs">
-        <div class="flex justify-between"><span class="text-slate-400">GPS Operation Mode</span><span id="gpsOperationMode" class="font-mono font-bold">--</span></div>
-        <div class="flex justify-between"><span class="text-slate-400">Current Power Mode</span><span id="currentGPSPowerMode" class="font-mono font-bold">--</span></div>
-        <div class="flex justify-between"><span class="text-slate-400">u-blox Airborne Mode</span><span id="ubloxGpsAirborneMode" class="font-mono font-bold">--</span></div>
-        <div class="flex justify-between"><span class="text-slate-400">Improved GPS Performance</span><span id="improvedGpsPerformance" class="font-mono font-bold">--</span></div>
-        <div class="flex justify-between"><span class="text-slate-400">Disable Improvement In-Flight</span><span id="disableGpsImprovementInFlight" class="font-mono font-bold">--</span></div>
-        <div class="flex justify-between"><span class="text-slate-400">GPS Timeout Watchdog</span><span id="gpsTimeoutWatchdog" class="font-mono font-bold">--</span> ms</div>
+        <div class="flex justify-between"><span class="text-slate-400">Operation mode</span><span id="gpsOperationMode" class="font-mono font-bold">--</span></div>
+        <div class="flex justify-between"><span class="text-slate-400">Power / tier</span><span id="currentGPSPowerMode" class="font-mono font-bold">--</span></div>
+        <div class="flex justify-between rsm4x4-only"><span class="text-slate-400">Power-save state (PSM)</span><span id="gpsPsmState" class="font-mono font-bold">--</span></div>
+        <div class="flex justify-between"><span class="text-slate-400">Update rate</span><span><span id="gpsUpdateRate" class="font-mono font-bold">--</span> Hz</span></div>
+        <div class="flex justify-between"><span class="text-slate-400">Dynamic model</span><span id="gpsDynModel" class="font-mono font-bold">--</span></div>
+        <div class="flex justify-between"><span class="text-slate-400">Tracking profile</span><span id="gpsTrackProfile" class="font-mono font-bold">--</span></div>
+        <div class="flex justify-between border-t border-slate-100 pt-2 rsm4x4-only"><span class="text-slate-400">Constellations</span><span class="font-mono font-bold text-slate-500">GPS + Galileo</span></div>
+        <div class="flex justify-between rsm4x4-only"><span class="text-slate-400">Secondary GNSS</span><span id="gpsSecondaryGnss" class="font-mono font-bold">--</span></div>
+        <div class="flex justify-between rsm4x4-only"><span class="text-slate-400">QZSS</span><span id="gpsQzss" class="font-mono font-bold">--</span></div>
+        <div class="flex justify-between rsm4x4-only"><span class="text-slate-400">SBAS</span><span id="gpsSbas" class="font-mono font-bold">--</span></div>
+        <div class="flex justify-between border-t border-slate-100 pt-2"><span class="text-slate-400">UBX errors</span><span id="gpsUbxErr" class="font-mono font-bold">--</span></div>
+        <div class="flex justify-between"><span class="text-slate-400">Airborne model</span><span id="ubloxGpsAirborneMode" class="font-mono font-bold">--</span></div>
+        <div class="flex justify-between"><span class="text-slate-400">Improved fix (radio quiet)</span><span id="improvedGpsPerformance" class="font-mono font-bold">--</span></div>
+        <div class="flex justify-between"><span class="text-slate-400">Disable improvement in flight</span><span id="disableGpsImprovementInFlight" class="font-mono font-bold">--</span></div>
+        <div class="flex justify-between"><span class="text-slate-400">Simultaneous GNSS setup</span><span id="simultaneousGnssSetup" class="font-mono font-bold">--</span></div>
+        <div class="flex justify-between"><span class="text-slate-400">Timeout watchdog</span><span><span id="gpsTimeoutWatchdog" class="font-mono font-bold">--</span> ms</span></div>
       </div>
+    </div>
+    <div class="data-card rsm4x4-only bg-white rounded-xl border border-slate-200 shadow-sm p-4 md:col-span-2 xl:col-span-3">
+      <h2 class="text-[11px] font-black uppercase tracking-widest text-slate-400 mb-3">Satellites used per constellation</h2>
+      <div class="grid grid-cols-3 sm:grid-cols-5 gap-2">
+        <div class="bg-slate-50 border border-slate-100 rounded-lg p-2 text-center"><div class="text-[10px] text-slate-400">GPS</div><div id="satGps" class="font-mono font-bold text-slate-700">--</div></div>
+        <div class="bg-slate-50 border border-slate-100 rounded-lg p-2 text-center"><div class="text-[10px] text-slate-400">Galileo</div><div id="satGal" class="font-mono font-bold text-slate-700">--</div></div>
+        <div id="satBds-tile" class="bg-slate-50 border border-slate-100 rounded-lg p-2 text-center"><div class="text-[10px] text-slate-400">BeiDou</div><div id="satBds" class="font-mono font-bold text-slate-700">--</div></div>
+        <div id="satGlo-tile" class="bg-slate-50 border border-slate-100 rounded-lg p-2 text-center"><div class="text-[10px] text-slate-400">GLONASS</div><div id="satGlo" class="font-mono font-bold text-slate-700">--</div></div>
+        <div class="bg-slate-50 border border-slate-100 rounded-lg p-2 text-center"><div class="text-[10px] text-slate-400">SBAS</div><div id="satSbas" class="font-mono font-bold text-slate-700">--</div></div>
+      </div>
+      <p class="text-[10px] text-slate-400 mt-2">Satellites used in the fix per constellation (from UBX-NAV-SAT). SBAS is the exception: it is a correction source rather than a ranging one, so it is counted when locked (received), not "used in fix". Which secondaries are active depends on the Secondary GNSS setting (BeiDou B1C + GLONASS, BeiDou B1I only, or GLONASS only), so an inactive one stays 0; the RSM4x2 (G6010) does not report per-constellation counts.</p>
     </div>
     <div class="data-card bg-white rounded-xl border border-slate-200 shadow-sm p-4 md:col-span-2 xl:col-span-3">
       <h2 class="text-[11px] font-black uppercase tracking-widest text-slate-400 mb-3">Flight Statistics</h2>
@@ -1619,6 +1690,47 @@ document.addEventListener('DOMContentLoaded', function(){
   </div>
 </div>
 </main>
+
+<!-- Serial connection help modal (Ground Control): how to wire a USB-serial adapter to the sonde. -->
+<div id="serial-help-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4" onclick="if(event.target===this)hideSerialHelp()">
+  <div class="bg-white rounded-2xl shadow-2xl max-w-2xl w-full p-6 max-h-[90vh] overflow-y-auto compile-modal-pop">
+    <div class="flex items-start gap-3 mb-4">
+      <div class="text-3xl leading-none">🔌</div>
+      <div>
+        <h3 class="text-lg font-bold text-slate-800">Connect the serial adapter</h3>
+        <p class="text-xs text-slate-500 mt-0.5">Wire a 3.3 V USB-serial (UART) adapter to the sonde's XDATA port, then click Connect.</p>
+      </div>
+    </div>
+    <div class="text-sm text-slate-600 leading-relaxed space-y-3">
+      <p>After flashing, plug a <strong>3.3 V USB-serial (UART) adapter</strong> into the sonde's <strong>XDATA</strong> connector (2 mm pitch - jumper wires push in fine). Only three wires are needed, and <strong>RX/TX are crossed</strong>:</p>
+      <ul class="list-disc pl-5 space-y-1">
+        <li>RS41 <strong>GND</strong> &rarr; adapter <strong>GND</strong> <span class="text-slate-400">(XDATA pin 1 or 10)</span></li>
+        <li>RS41 <strong>XDATA_RX</strong> <span class="text-slate-400">(pin 2)</span> &rarr; adapter <strong>TX</strong></li>
+        <li>RS41 <strong>XDATA_TX</strong> <span class="text-slate-400">(pin 3)</span> &rarr; adapter <strong>RX</strong></li>
+      </ul>
+      <p>Power the sonde from its own <strong>batteries</strong> (2&times;AA) - it can briefly draw a large current during the reconditioning phase, so do not rely on adapter power. Then choose the baud rate (<strong>115200</strong> for modes 1/2, <strong>9600</strong> for mode 3 / OIF411 ozone) and click <strong>Connect</strong>.</p>
+      <pre style="overflow-x:auto;white-space:pre;font-family:'IBM Plex Mono',monospace;font-size:.72rem;line-height:1.35;background:#0f172a;color:#e2e8f0;padding:12px 14px;border-radius:10px;">Pinout of XDATA connector                                    Pinout of connected ribbon cable
+                 -------
+           GND  | o   o |  XDATA_RX(PB11)                    &gt; 1  GND
+                |       |                                      2  XDATA_RX(PB11)
+XDATA_TX(PB10)  | o   o |  +3V_MCU                             3  XDATA_TX(PB10)
+               -        |                                      4  +3V_MCU
+       V_Boost|   o   o |  VBAT                                5  V_Boost
+               -        |                                      6  VBAT
+       MCU_RST  | o   o |  SWCLK(PA14)                         7  MCU_RST
+                |       |                                      8  SWCLK(PA14)
+   SWDIO(PA13)  | o   o |  GND                                 9  SWDIO(PA13)
+                 -------                                      10  GND
+
+PAY ATTENTION TO THE CUT-OUT</pre>
+      <p class="text-xs text-slate-500">No data after connecting? The two most common causes are <strong>RX/TX swapped</strong> (the adapter's TX must go to the sonde's RX) and the <strong>wrong baud rate</strong>. Full guide: <a href="https://github.com/Nevvman18/rs41-nfw/blob/main/fw/FLASHING.md#connecting-the-serial-interface-to-the-sonde" target="_blank" rel="noopener" class="text-blue-600 underline">FLASHING.md</a>.</p>
+    </div>
+    <div class="flex justify-end mt-5">
+      <button onclick="hideSerialHelp()" class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-bold rounded-lg">Got it</button>
+    </div>
+  </div>
+</div>
+
 </div><!-- /app-gcs -->
 
 <!-- FW -->
@@ -1651,7 +1763,7 @@ document.addEventListener('DOMContentLoaded', function(){
   <div class="p-5">
     <div id="verify-done" class="hidden text-sm text-green-400 font-semibold">✓ Verified. Fetching and compiling are unlocked for this session.</div>
     <div id="verify-form">
-      <p class="text-sm text-slate-400 mb-3">Retype the code below to unlock fetching and compiling. This is a simple in-app check to keep automated bots out (the public site also sits behind Cloudflare).</p>
+      <p class="text-sm text-slate-400 mb-3">Retype the code below to unlock fetching and compiling.</p>
       <div class="flex flex-wrap items-center gap-3">
         <img id="captcha-img" alt="verification code" class="rounded-lg border border-slate-700 bg-slate-900" style="height:60px; user-select:none; -webkit-user-select:none; pointer-events:none;" draggable="false">
         <button class="btn btn-slate" type="button" onclick="loadCaptcha()" title="New code"><span>🔄</span></button>
@@ -1722,15 +1834,15 @@ document.addEventListener('DOMContentLoaded', function(){
           <line x1="38" y1="22" x2="42" y2="22" stroke="#6366f1" stroke-width="1.2"/><line x1="38" y1="26" x2="42" y2="26" stroke="#6366f1" stroke-width="1.2"/>
           <line x1="38" y1="30" x2="42" y2="30" stroke="#6366f1" stroke-width="1.2"/><line x1="38" y1="34" x2="42" y2="34" stroke="#6366f1" stroke-width="1.2"/>
         </svg>
-        <div class="font-bold text-white text-sm">RSM4x4 / RSM4x5</div>
+        <div class="font-black text-white text-lg">RSM4x4 / RSM4x5</div>
         <div class="text-xs text-slate-400 mt-1">STM32<strong class="text-indigo-300">L412</strong>RBT6 · LQFP64</div>
-        <div class="text-[11px] text-indigo-200 mt-2 font-semibold leading-snug">★ Recommended</div>
-        <ul class="text-[11px] text-indigo-300/90 mt-1.5 space-y-0.5 text-left mx-auto inline-block leading-snug">
-          <li>✓ u-blox <strong>M10</strong> GPS - intelligent power mgmt</li>
-          <li>✓ 128 KB flash · 40 KB RAM (room to grow)</li>
-          <li>✓ Far lower power draw, longer flights</li>
-          <li>✓ Data Recorder &amp; all features supported</li>
-          <li>✓ Actively developed &amp; future-proof</li>
+        <div class="inline-block text-xs text-emerald-200 bg-emerald-500/15 border border-emerald-500/40 rounded-full px-3 py-1 mt-2 font-bold leading-snug">★ Recommended - reliable &amp; proven</div>
+        <ul class="text-[11px] text-indigo-300/90 mt-2 space-y-0.5 text-left mx-auto inline-block leading-snug">
+          <li>✓ u-Blox <strong>M10</strong> GPS</li>
+          <li>✓ NFW Intelligent GPS Algorithms</li>
+          <li>✓ Lower power draw and optimisation</li>
+          <li>✓ All features supported</li>
+          <li>✓ Actively developed and futureproof</li>
         </ul>
       </button>
       <button class="platform-btn" id="plat-4x2" onclick="selectPlatform('RSM4x2')">
@@ -1754,42 +1866,16 @@ document.addEventListener('DOMContentLoaded', function(){
         <div class="text-xs text-slate-400 mt-1">STM32<strong class="text-yellow-300">F100</strong>C8T6B · LQFP48</div>
         <div class="text-[11px] text-yellow-400 mt-2 font-semibold leading-snug">Older boards</div>
         <ul class="text-[11px] text-slate-400 mt-1.5 space-y-0.5 text-left mx-auto inline-block leading-snug">
-          <li>• Basic GPS - limited power options</li>
-          <li>• 64 KB flash · 8 KB RAM (tight)</li>
+          <li>• Old u-Blox <strong>M6</strong> GPS - very limited navigation</li>
+          <li>• Limited algorithms</li>
           <li>• Higher power draw</li>
-          <li>• Data Recorder included (via LTO)</li>
-          <li>• No Horus V2 / RTTY / Morse / fast-TX</li>
-          <li>• Factory (Vaisala) sensor calibration</li>
+          <li>• Some features missing by default due to flash budget</li>
+          <li>• Going extinct</li>
         </ul>
       </button>
     </div>
 
-    <!-- Full board comparison -->
-    <div class="mt-3 overflow-x-auto">
-      <table class="w-full text-xs border-collapse">
-        <thead>
-          <tr class="text-slate-300">
-            <th class="text-left font-semibold py-1.5 pr-3 border-b border-slate-700">Feature</th>
-            <th class="text-left font-semibold py-1.5 px-3 border-b border-slate-700 text-indigo-300">RSM4x4 / RSM4x5 <span class="text-[10px] text-indigo-400">(L412)</span></th>
-            <th class="text-left font-semibold py-1.5 px-3 border-b border-slate-700 text-yellow-300">RSM4x2 / RSM4x1 <span class="text-[10px] text-yellow-400">(F100)</span></th>
-          </tr>
-        </thead>
-        <tbody class="text-slate-400">
-          <tr><td class="py-1 pr-3 border-b border-slate-800">MCU</td><td class="py-1 px-3 border-b border-slate-800 font-mono">STM32L412RBT6 · LQFP64</td><td class="py-1 px-3 border-b border-slate-800 font-mono">STM32F100C8T6 · LQFP48</td></tr>
-          <tr><td class="py-1 pr-3 border-b border-slate-800">GPS module</td><td class="py-1 px-3 border-b border-slate-800">u-blox <strong class="text-indigo-300">M10</strong> · intelligent power mgmt</td><td class="py-1 px-3 border-b border-slate-800">basic · limited options</td></tr>
-          <tr><td class="py-1 pr-3 border-b border-slate-800">Sensor calibration</td><td class="py-1 px-3 border-b border-slate-800">NFW <span class="text-slate-500">or</span> Vaisala (factory)</td><td class="py-1 px-3 border-b border-slate-800">Vaisala (factory) <span class="text-[10px] text-yellow-400">only</span></td></tr>
-          <tr><td class="py-1 pr-3 border-b border-slate-800">Horus V3 + extraSensors + ozone</td><td class="py-1 px-3 border-b border-slate-800 text-emerald-400">✓</td><td class="py-1 px-3 border-b border-slate-800 text-emerald-400">✓</td></tr>
-          <tr><td class="py-1 pr-3 border-b border-slate-800">APRS (AX.25 / AFSK 1200)</td><td class="py-1 px-3 border-b border-slate-800 text-emerald-400">✓</td><td class="py-1 px-3 border-b border-slate-800 text-emerald-400">✓</td></tr>
-          <tr><td class="py-1 pr-3 border-b border-slate-800">Data Recorder (diagnostic frames)</td><td class="py-1 px-3 border-b border-slate-800 text-emerald-400">✓</td><td class="py-1 px-3 border-b border-slate-800 text-emerald-400">✓ <span class="text-[10px] text-yellow-400">(via LTO)</span></td></tr>
-          <tr><td class="py-1 pr-3 border-b border-slate-800">Horus V2 (legacy)</td><td class="py-1 px-3 border-b border-slate-800 text-emerald-400">✓</td><td class="py-1 px-3 border-b border-slate-800 text-slate-600">✗</td></tr>
-          <tr><td class="py-1 pr-3 border-b border-slate-800">RTTY / Morse</td><td class="py-1 px-3 border-b border-slate-800 text-emerald-400">✓</td><td class="py-1 px-3 border-b border-slate-800 text-slate-600">✗</td></tr>
-          <tr><td class="py-1 pr-3 border-b border-slate-800">Low-altitude fast-TX (recovery)</td><td class="py-1 px-3 border-b border-slate-800 text-emerald-400">✓</td><td class="py-1 px-3 border-b border-slate-800 text-slate-600">✗</td></tr>
-          <tr><td class="py-1 pr-3 border-b border-slate-800">Post-landing ultra power save</td><td class="py-1 px-3 border-b border-slate-800 text-emerald-400">✓</td><td class="py-1 px-3 border-b border-slate-800 text-slate-600">✗</td></tr>
-          <tr><td class="py-1 pr-3">Build optimization</td><td class="py-1 px-3 font-mono">-Os</td><td class="py-1 px-3 font-mono">-Os + LTO <span class="text-[10px] text-slate-500">(to fit 64 KB)</span></td></tr>
-        </tbody>
-      </table>
-      <p class="text-[10px] text-slate-500 mt-2">Horus V2, RTTY / Morse, low-altitude fast-TX and post-landing power save are RSM4x4-only because the RSM4x2's 64 KB flash can't hold them. RSM4x2 still runs the full meteorological payload, Horus V3 (extra sensors + ozone), the data recorder, APRS and PIP - the data recorder fits only because the RSM4x2 build is compiled with LTO.</p>
-    </div>
+    <p class="text-[11px] text-slate-500 mt-4 leading-relaxed">Horus V2, RTTY, low-altitude fast-TX and post-landing ultra power save are RSM4x4-only, because the RSM4x2's 64 KB flash can't hold them. The RSM4x2 still runs the full meteorological payload, Horus V3 (with extra sensors and ozone), the data recorder, APRS, PIP and Morse - the data recorder fits only because the RSM4x2 build is compiled with LTO.</p>
   </div>
 </div>
 
@@ -1812,13 +1898,13 @@ document.addEventListener('DOMContentLoaded', function(){
       <div class="mode-box"><div class="mode-head"><span class="text-emerald-400">🛰️</span> Horus V3</div>
         <label class="field-label">Interval</label><div class="unit-wrap"><input type="number" class="input-base" id="cfg-horusV3TimeSyncSeconds" value="15" min="0" onchange="cfgChanged()"><span class="unit-label">s</span></div>
         <label class="field-label mt-2">Offset</label><div class="unit-wrap"><input type="number" class="input-base" id="cfg-horusV3TimeSyncOffsetSeconds" value="0" min="0" onchange="cfgChanged()"><span class="unit-label">s</span></div></div>
-      <div class="mode-box"><div class="mode-head"><span class="text-teal-400">📶</span> Horus V2</div>
+      <div class="mode-box rsm4x4-only"><div class="mode-head"><span class="text-teal-400">📶</span> Horus V2</div>
         <label class="field-label">Interval</label><div class="unit-wrap"><input type="number" class="input-base" id="cfg-horusTimeSyncSeconds" value="15" min="0" onchange="cfgChanged()"><span class="unit-label">s</span></div>
         <label class="field-label mt-2">Offset</label><div class="unit-wrap"><input type="number" class="input-base" id="cfg-horusTimeSyncOffsetSeconds" value="0" min="0" onchange="cfgChanged()"><span class="unit-label">s</span></div></div>
       <div class="mode-box"><div class="mode-head"><span class="text-orange-400">🌐</span> APRS</div>
         <label class="field-label">Interval</label><div class="unit-wrap"><input type="number" class="input-base" id="cfg-aprsTimeSyncSeconds" value="30" min="0" onchange="cfgChanged()"><span class="unit-label">s</span></div>
         <label class="field-label mt-2">Offset</label><div class="unit-wrap"><input type="number" class="input-base" id="cfg-aprsTimeSyncOffsetSeconds" value="0" min="0" onchange="cfgChanged()"><span class="unit-label">s</span></div></div>
-      <div class="mode-box"><div class="mode-head"><span class="text-rose-400">⌨️</span> RTTY</div>
+      <div class="mode-box rsm4x4-only"><div class="mode-head"><span class="text-rose-400">⌨️</span> RTTY</div>
         <label class="field-label">Interval</label><div class="unit-wrap"><input type="number" class="input-base" id="cfg-rttyTimeSyncSeconds" value="15" min="0" onchange="cfgChanged()"><span class="unit-label">s</span></div>
         <label class="field-label mt-2">Offset</label><div class="unit-wrap"><input type="number" class="input-base" id="cfg-rttyTimeSyncOffsetSeconds" value="0" min="0" onchange="cfgChanged()"><span class="unit-label">s</span></div></div>
       <div class="mode-box"><div class="mode-head"><span class="text-yellow-300">·-</span> Morse</div>
@@ -1899,11 +1985,11 @@ document.addEventListener('DOMContentLoaded', function(){
             <option value="6">6 - 17 dBm (50 mW)</option>
             <option value="7" selected>7 - 20 dBm (100 mW)</option>
           </select>
-      <p class="field-desc"><strong>25 mW (level 5) is recommended</strong> - Horus V3's 4FSK is extremely sensitive and decodes reliably across a whole flight at low power, saving battery and easing the RF budget. Use 100 mW (level 7) only if you know what you are doing (e.g. very long range with directional receivers).</p></div>
+      <p class="field-desc"><strong>25 mW (level 5) is recommended</strong> - Horus V3's 4FSK is extremely sensitive and decodes reliably across a whole flight at low power, saving battery and easing the RF budget. Use 100 mW (level 7) only if you know what you are doing.</p></div>
     <div class="flex items-start gap-3 md:col-span-2">
       <label class="toggle mt-1"><input type="checkbox" id="cfg-horusV3ExtraSensorsEnable" checked onchange="cfgChanged()"><span class="toggle-slider"></span></label>
       <div><span class="field-label cursor-pointer" onclick="toggleCheck('cfg-horusV3ExtraSensorsEnable')">Extra sensors in packet</span>
-      <p class="field-desc">Adds humidity-module heater temp, cut-out thermistor temp and GPS power mode (<span class="font-mono">gpspwr</span>) to each packet. False gives the same fields as Horus V2.<br><span class="text-slate-400"><span class="font-mono">gpspwr</span> meaning depends on the board: on <strong>RSM4x4 / RSM4x5</strong> it is the NFW Intelligent GPS tier (mode 3) - 1 = weak fix (&le;10 sats, continuous), 2 = moderate (11-15 sats), 3 = strong (&ge;15 sats, cyclic power-save). On <strong>RSM4x2 / RSM4x1</strong> it is the GPS power state - 0 = not set, 1 = max-performance / continuous, 2 = power-save.</span></p></div>
+      <p class="field-desc">Adds humidity-module heater temp and cut-out thermistor temp to each packet. False gives the same fields as Horus V2.</p></div>
     </div>
     <div class="md:col-span-2 mode-box">
       <div class="mode-head"><span class="text-emerald-300">🔗</span> Shared Horus V2 + V3 radio settings</div>
@@ -1963,7 +2049,7 @@ document.addEventListener('DOMContentLoaded', function(){
       <p class="field-desc">Comma-separated; the sonde cycles through every entry, one per TX window. Use the APRS frequency that is standard for your region. The data recorder and low-altitude fast-TX use the first entry only.</p></div>
     <div><label class="field-label">Callsign</label><input type="text" class="input-base font-mono" id="cfg-aprsCall" value="N0CALL" maxlength="10" oninput="this.value=this.value.toUpperCase()" onchange="cfgChanged()"><p class="field-desc">The station callsign the packet is sent from. Shown as the tracked object on the map. Automatically forced to <strong>UPPERCASE</strong> (APRS callsigns must be uppercase).</p></div>
     <div><label class="field-label">SSID</label><input type="number" class="input-base" id="cfg-aprsSsid" value="11" min="0" max="15" onchange="cfgChanged()"><p class="field-desc">Number appended to the callsign (CALL-11). By convention 11 means a balloon / high-altitude tracker.</p></div>
-    <div class="md:col-span-2"><label class="field-label">Comment</label><input type="text" class="input-base font-mono" id="cfg-aprsComment" value=" NFWv68" maxlength="64" onchange="cfgChanged()"><p class="field-desc">Free text added to the end of every packet (visible next to the station on the map).</p></div>
+    <div class="md:col-span-2"><label class="field-label">Comment</label><input type="text" class="input-base font-mono" id="cfg-aprsComment" value=" NFWv70" maxlength="64" onchange="cfgChanged()"><p class="field-desc">Free text added to the end of every packet (visible next to the station on the map).</p></div>
     <div><label class="field-label">Map icon</label>
       <select class="input-base" id="aprs-symbol-preset" onchange="aprsSymbolPreset()">
         <option value="O">🎈 Balloon</option>
@@ -2026,11 +2112,10 @@ document.addEventListener('DOMContentLoaded', function(){
 </div>
 
 <!-- SECTION 9 - MORSE -->
-<div class="card rsm4x4-only">
+<div class="card">
   <div class="card-header px-5 py-3 flex items-center gap-2">
     <span class="text-yellow-300 text-lg">•-</span>
     <span class="font-bold text-white">9 · Morse</span>
-    <span class="badge bg-indigo-500/20 text-indigo-300 border border-indigo-500/40 ml-2">RSM4x4 only</span>
   </div>
   <div class="p-5 grid grid-cols-1 md:grid-cols-2 gap-5">
     <div class="flex items-start gap-3 md:col-span-2">
@@ -2119,16 +2204,16 @@ document.addEventListener('DOMContentLoaded', function(){
     <div class="md:col-span-2 mode-box">
       <div class="mode-head"><span class="text-lime-300">🟢</span> Normal operation (after boot)</div>
       <ul class="help-list">
-        <li><strong class="text-emerald-300">Solid green</strong> - all OK, GPS fix held, no warnings. Ready / flying normally.</li>
-        <li><strong class="text-amber-300">Blinking orange</strong> - running but no GPS fix yet, or a non-critical warning (searching for satellites, low-ish battery).</li>
-        <li><strong class="text-red-400">Blinking / solid red</strong> - an error is active (sensor-boom fault, RPM411 fault, calibration error or battery warning). Check Ground Control's log.</li>
+        <li><strong class="text-emerald-300">Solid green</strong> - running OK, a GPS fix is held and there are no warnings. Ready / flying normally.</li>
+        <li><strong class="text-amber-300">Solid orange</strong> - running OK, waiting for a GPS fix, searching for satellites.</li>
+        <li><strong class="text-red-400">Solid red</strong> - on-board diagnostics have detected an error (sensor-boom fault, RPM411 fault, calibration error, battery warning, etc.). See Ground Control diagnostics / serial log.</li>
         <li><strong>Off</strong> - LEDs disabled, or the sonde climbed above the auto-disable altitude.</li>
       </ul>
     </div>
     <div class="md:col-span-2 mode-box">
       <div class="mode-head"><span class="text-amber-300">🟠</span> Start-up &amp; calibration phase</div>
       <ul class="help-list">
-        <li><strong class="text-red-400">Solid red</strong> - hardware initialisation right after power-on (stages 01-04).</li>
+        <li><strong class="text-red-400">Solid red</strong> - hardware initialisation right after power-on.</li>
         <li><strong class="text-amber-300">Blinking orange</strong> - calibration in progress (temperature / reconditioning / zero-humidity). During reconditioning &amp; zero-humidity the module is hot (~140 °C) - keep clear of the boom.</li>
         <li><strong class="text-red-400">Red blinks</strong> - an error during start-up or calibration (e.g. sensor-boom fault or calibration error). Check the log.</li>
         <li><strong class="text-emerald-300">5 quick green blinks</strong> - boot complete, system started and entering normal operation.</li>
@@ -2141,20 +2226,18 @@ document.addEventListener('DOMContentLoaded', function(){
 <div class="card">
   <div class="card-header px-5 py-3 flex items-center gap-2">
     <span class="text-cyan-400 text-lg">🔌</span>
-    <span class="font-bold text-white">12 · XDATA Port / Instruments</span>
+    <span class="font-bold text-white">12 · XDATA Port Mode and serial Ground Control / XDATA Instruments / OIF411 ozone interface</span>
   </div>
   <div class="p-5">
     <label class="field-label">XDATA port mode</label>
     <select class="input-base md:w-2/3" id="cfg-xdataPortMode" onchange="cfgChanged()">
       <option value="0">0 - Disabled</option>
       <option value="1" selected>1 - Log + telemetry (recommended, used by Ground Control)</option>
-      <option value="2">2 - Standalone UART receiver / GPS bridge (115200 bps)</option>
       <option value="3">3 - OIF411 ozone sonde (9600 bps, Ground Control compatible)</option>
     </select>
     <div class="mt-3 space-y-2 text-xs text-slate-300">
       <div class="flex gap-2 items-baseline"><span class="font-mono text-slate-400 w-16 shrink-0 font-bold">Mode 0</span><span>Port disabled. Nothing is transmitted or read - use when no instrument is connected and the XDATA port is unused.</span></div>
       <div class="flex gap-2 items-baseline"><span class="font-mono text-cyan-400 w-16 shrink-0 font-bold">Mode 1</span><span><strong class="text-white">115200 bps - the standard Ground Control link.</strong> Outputs human-readable <code>[info]</code>/<code>[warn]</code>/<code>[err]</code> diagnostics <em>and</em> compact <code>$NFW</code> telemetry frames that Ground Control decodes, and accepts commands back. The everyday choice for bench work, calibration and pre-flight: connect a USB-UART adapter and open Ground Control at 115200 bps.</span></div>
-      <div class="flex gap-2 items-baseline"><span class="font-mono text-slate-400 w-16 shrink-0 font-bold">Mode 2</span><span><strong class="text-white">115200 bps.</strong> A plain UART pass-through: the raw GPS NMEA stream is echoed to the port. Useful as a standalone UART/NMEA source for other devices (loggers, a PC, another tracker) or for GPS-module debugging. Not a Ground Control link.</span></div>
       <div class="flex gap-2 items-baseline"><span class="font-mono text-violet-400 w-16 shrink-0 font-bold">Mode 3</span><span><strong class="text-white">9600 bps - OIF411 ozone + Ground Control together.</strong> The firmware reads OIF411 xdata frames and sends <code>$NFW</code> telemetry extended with ozone data (fields 130-146). The XDATA UART is full-duplex, so <strong class="text-white">Ground Control is fully supported the whole time</strong> alongside the instrument - just set the ground-station baud rate to <strong>9600</strong> (a one-click change in Ground Control) and you get the live dashboard, the OIF411 card and the full command set, exactly like Mode 1.</span></div>
     </div>
   </div>
@@ -2208,9 +2291,10 @@ document.addEventListener('DOMContentLoaded', function(){
       <p class="field-desc">Auto power-off below this voltage. Useful for NiMH (damage below 0.8 V/cell). 0 = disabled / max runtime.</p></div>
     <div class="flex items-start gap-3 md:col-span-2 rsm4x4-only">
       <label class="toggle mt-1"><input type="checkbox" id="cfg-ultraPowerSaveAfterLanding" onchange="cfgChanged()"><span class="toggle-slider"></span></label>
-      <div><span class="field-label cursor-pointer" onclick="toggleCheck('cfg-ultraPowerSaveAfterLanding')">Ultra power save after landing</span>
+      <div><span class="field-label cursor-pointer" onclick="toggleCheck('cfg-ultraPowerSaveAfterLanding')">🔋 Ultra power save after landing</span>
         <span class="badge bg-indigo-500/20 text-indigo-300 border border-indigo-500/40 ml-1 align-middle">RSM4x4 only</span>
-      <p class="field-desc">20 min after landing: GPS off, sensors off, TX every 5 min (Horus + APRS only). Maximises battery life before recovery.</p></div>
+        <span class="badge bg-emerald-500/15 text-emerald-300 border border-emerald-500/40 ml-1 align-middle">Recommended for recovery</span>
+      <p class="field-desc">20 minutes after landing the sonde powers down the GPS and sensors and transmits only its last known position (Horus + APRS) every 3 minutes. This <strong class="text-emerald-300">lowers power consumption significantly</strong>, so the sonde keeps beaconing far longer on its remaining battery - giving you the best chance to find and recover it.</p></div>
     </div>
   </div>
 </div>
@@ -2219,54 +2303,162 @@ document.addEventListener('DOMContentLoaded', function(){
 <div class="card">
   <div class="card-header px-5 py-3 flex items-center gap-2">
     <span class="text-green-400 text-lg">📡</span>
-    <span class="font-bold text-white">14 · GPS Configuration</span>
+    <span class="font-bold text-white">14 · GNSS configuration</span>
+    <div class="ml-auto flex items-center gap-2">
+      <label class="text-[10px] uppercase tracking-wide text-slate-400 font-semibold">Pre-defined settings</label>
+      <select id="gnss-preset" class="input-base text-xs py-1 w-auto" onchange="applyGnssPreset(this.value)">
+        <option value="">Custom</option>
+        <option value="accurate" selected>Accurate tracking</option>
+        <option value="efficient">Energy-efficient tracking</option>
+      </select>
+    </div>
+  </div>
+  <div class="px-5 pt-5">
+    <div class="mode-box p-4">
+      <label class="field-label">uBlox GNSS receiver operation mode</label>
+      <select class="input-base md:w-2/3 mt-1" id="cfg-gpsOperationMode" onchange="gpsModeChanged()">
+        <option value="0">0 - GNSS fully disabled (stationary location)</option>
+        <option value="1">1 - Always on / max performance</option>
+        <option value="2" id="gpsmode-opt-2" selected>2 - NFW Intelligent GNSS Algorithms (recommended)</option>
+      </select>
+      <p class="field-desc mt-1">The core GNSS power and tracking strategy, and the most important GNSS setting - everything below tunes it. <strong>NFW Intelligent GNSS Algorithms (mode 2) are very recommended</strong> - they track as well as always-on while using far less power.</p>
+    </div>
   </div>
   <div class="p-5 grid grid-cols-1 md:grid-cols-2 gap-5">
-    <div><label class="field-label">GPS operation mode</label>
-      <select class="input-base" id="cfg-gpsOperationMode" onchange="gpsModeChanged()">
-        <option value="0">0 - GPS fully disabled (stationary location)</option>
-        <option value="1">1 - Always on / max performance</option>
-        <option value="2" id="gpsmode-opt-2">2 - Standard power-save (RSM4x2 only)</option>
-        <option value="3" id="gpsmode-opt-3" selected>3 - Intelligent M10 management (RSM4x4 only)</option>
-      </select></div>
-    <div><label class="field-label">GPS timeout watchdog</label><div class="unit-wrap"><input type="number" class="input-base" id="cfg-gpsTimeoutWatchdog" value="900000" onchange="cfgChanged()"><span class="unit-label">ms</span></div>
-      <p class="field-desc">Resets the GPS module if no valid fix for this long. 0 = disabled. Recommended 900000 (15 min).</p></div>
-    <div class="flex items-start gap-3 md:col-span-2">
-      <label class="toggle mt-1"><input type="checkbox" id="cfg-ubloxGpsAirborneMode" checked onchange="cfgChanged()"><span class="toggle-slider"></span></label>
-      <div><span class="field-label cursor-pointer" onclick="toggleCheck('cfg-ubloxGpsAirborneMode')">Airborne &lt;1G dynamic model</span>
-      <p class="field-desc">Sets the u-blox dynamic model for high-altitude flight: it lets the receiver keep a fix <strong>above 18 km</strong> and at the <strong>much higher speeds and accelerations</strong> a balloon flight reaches (a normal model drops the fix there). <strong>Strongly recommended to leave on</strong> - turn it off only if you are certain the tracker will stay below 18 km <em>and</em> you need the slightly tighter accuracy of a ground model (e.g. a fixed/stationary station).</p></div>
+    <div><label class="field-label">Receiver timeout watchdog</label><div class="unit-wrap"><input type="number" class="input-base" id="cfg-gpsTimeoutWatchdog" value="1200000" onchange="cfgChanged()"><span class="unit-label">ms</span></div>
+      <p class="field-desc">Resets the receiver if there is no valid fix for this long. 0 = disabled. Recommended 1200000 (20 min).</p></div>
+    <div><label class="field-label">GNSS update rate</label>
+      <select class="input-base" id="cfg-gpsUpdateRateHz" onchange="cfgChanged()">
+        <option value="1">1 Hz - lowest power</option>
+        <option value="2" selected>2 Hz - recommended</option>
+        <option value="4">4 Hz - fastest (heaviest; near u-blox 6 limit)</option>
+      </select>
+      <p class="field-desc">How often the receiver computes and streams a fix over the native UBX protocol. The firmware reads the newest fix the <strong>instant it arrives</strong>, so there is no fixed ~1 s wait like the old NMEA path. 2 Hz is a good responsiveness/power balance.</p></div>
+    <div><label class="field-label">Satellites engine profile</label>
+      <select class="input-base" id="cfg-gpsTrackingProfile" onchange="cfgChanged()">
+        <option value="0" selected>Max sensitivity (0&deg; elevation, fight for every sat)</option>
+        <option value="1">Balanced (4&deg; elevation, moderate C/N0)</option>
+        <option value="2">Ultra power saving (8&deg; elevation, high C/N0)</option>
+      </select>
+      <p class="field-desc">Sets the receiver's minimum satellite elevation and C/N0 (signal-strength) masks. More sensitive settings keep weaker and lower satellites for better availability and geometry, at the cost of a little more power.</p></div>
+
+    <!-- Dynamic model: one control group (the toggle enables it, the list picks
+         which model) - replaces the old duplicated switch + list. -->
+    <div class="md:col-span-2 mode-box">
+      <div class="mode-head"><span class="text-sky-300">🛰️</span> uBlox dynamic model</div>
+      <div class="flex items-start gap-3 mb-3">
+        <label class="toggle mt-1"><input type="checkbox" id="cfg-ubloxGpsAirborneMode" checked onchange="cfgChanged()"><span class="toggle-slider"></span></label>
+        <div><span class="field-label cursor-pointer" onclick="toggleCheck('cfg-ubloxGpsAirborneMode')">Set a custom dynamic model</span>
+        <p class="field-desc">Tells the navigation engine what kind of usage to expect. For HAB flight, it is recommended to use an Airborne dynamic model. Note that only the airborne model allows the GNSS to operate above 18km altitude. For other use cases, consider selecting others.</p></div>
+      </div>
+      <div class="ml-12">
+        <label class="field-label">Model (applied when the switch above is on)</label>
+        <select class="input-base md:w-2/3" id="cfg-gpsDynamicModel" onchange="cfgChanged()">
+          <option value="6" selected>Airborne &lt;1g (balloons, high altitude) - default</option>
+          <option value="7">Airborne &lt;2g (moderate acceleration)</option>
+          <option value="8">Airborne &lt;4g (high acceleration tolerance)</option>
+          <option value="3">Pedestrian (slow, low altitude)</option>
+          <option value="0">Portable (general purpose, no assumptions)</option>
+          <option value="4">Automotive (ground vehicle)</option>
+          <option value="5">Sea (surface vessel)</option>
+          <option value="2">Stationary (fixed WX station, tightest when still)</option>
+        </select>
+        <p class="field-desc"><strong>Airborne &lt;1g</strong> fits almost every sounding. Use <strong>&lt;4g</strong> for fast/aggressive profiles, <strong>Stationary</strong> for a fixed ground station.</p>
+      </div>
+    </div>
+
+    <!-- Constellations (RSM4x4 / M10) -->
+    <div class="md:col-span-2 mode-box rsm4x4-only">
+      <div class="mode-head"><span class="text-sky-300">🌐</span> Constellations (RSM4x4 / M10)</div>
+      <p class="field-desc mb-3">GPS, Galileo and SBAS are always on. This picks the secondary GNSS the single-band M10 adds, plus optionally QZSS.</p>
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div>
+          <label class="field-label">Secondary GNSS</label>
+          <select class="input-base mt-1" id="cfg-gpsSecondaryGnss" onchange="secondaryGnssChanged()">
+            <option value="0" selected>BeiDou (B1C) + GLONASS</option>
+            <option value="1">BeiDou (B1I) only</option>
+            <option value="2">GLONASS only</option>
+          </select>
+          <p class="field-desc">Which secondary GNSS the single-band M10 adds (GPS + Galileo are always on):</p>
+          <ul class="field-desc list-disc pl-5 space-y-1 mt-1">
+            <li><strong>BeiDou (B1C) + GLONASS</strong> (default, recommended): uses BeiDou's modern <strong>B1C</strong> signal together with GLONASS. This gives accurate positioning, the <strong>largest number of satellites</strong> (GPS + Galileo + BeiDou-3 + GLONASS all at once), and GLONASS improves tracking at <strong>higher latitudes</strong> thanks to its steeper orbits. B1C sits on the slightly higher 1575.42 MHz L1 centre it shares with GPS/Galileo, which is what lets the single-band receiver run all four together. The best all-round choice for practically every flight.</li>
+            <li><strong>BeiDou (B1I) only</strong>: worth choosing only in strong-interference conditions. The older B1I signal is on its own frequency (1561 MHz), further from the crowded L1 band, so it is more resilient to jamming centred there - but GLONASS already adds similar frequency diversity, so <strong>B1C + GLONASS together is usually the better pick</strong> anyway. B1I cannot run alongside GLONASS.</li>
+            <li><strong>GLONASS only</strong>: not recommended without BeiDou. GLONASS is the oldest of the three systems, so on its own it gives the <strong>weakest performance</strong> of all the options here.</li>
+          </ul>
+        </div>
+        <div class="flex items-start gap-3">
+          <label class="toggle mt-1"><input type="checkbox" id="cfg-gpsQzssEnable" onchange="cfgChanged()"><span class="toggle-slider"></span></label>
+          <div><span class="field-label cursor-pointer" onclick="toggleCheck('cfg-gpsQzssEnable')">Enable QZSS</span>
+          <p class="field-desc">Regional system visible only over Japan, East and South-East Asia, Australia and the west Pacific. It adds nothing in Europe, the Americas or Africa, so leave it off unless you launch inside that region.</p></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- New UBX augmentation & integrity options -->
+    <div class="md:col-span-2 mode-box">
+      <div class="mode-head"><span class="text-sky-300">📡</span> Augmentation &amp; integrity</div>
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div class="flex items-start gap-3">
+          <label class="toggle mt-1"><input type="checkbox" id="cfg-gpsSbasEnable" checked onchange="sbasToggle()"><span class="toggle-slider"></span></label>
+          <div><span class="field-label cursor-pointer" onclick="toggleCheck('cfg-gpsSbasEnable')">SBAS (EGNOS / WAAS / MSAS)</span>
+          <p class="field-desc">Satellite-based augmentation: differential corrections plus an extra ranging source, for better absolute accuracy where SBAS is in view. Small power cost.</p></div>
+        </div>
+        <div class="flex items-start gap-3">
+          <label class="toggle mt-1"><input type="checkbox" id="cfg-gpsAssistNowAutonomous" checked onchange="cfgChanged()"><span class="toggle-slider"></span></label>
+          <div><span class="field-label cursor-pointer" onclick="toggleCheck('cfg-gpsAssistNowAutonomous')">AssistNow Autonomous</span>
+          <p class="field-desc">The GNSS engine predicts future satellite orbits, which results in quicker re-acquisition times after a satellite loss and improves signal stability.</p></div>
+        </div>
+        <div class="flex items-start gap-3 rsm4x4-only">
+          <label class="toggle mt-1"><input type="checkbox" id="cfg-gpsSpoofingDetection" checked onchange="cfgChanged()"><span class="toggle-slider"></span></label>
+          <div><span class="field-label cursor-pointer" onclick="toggleCheck('cfg-gpsSpoofingDetection')">Spoofing detection</span>
+          <p class="field-desc">Communicates with the receiver to monitor spoofing detection algorithms and reports them to the user.</p></div>
+        </div>
+        <div class="flex items-start gap-3">
+          <label class="toggle mt-1"><input type="checkbox" id="cfg-gpsHardwareJammingMonitor" checked onchange="cfgChanged()"><span class="toggle-slider"></span></label>
+          <div><span class="field-label cursor-pointer" onclick="toggleCheck('cfg-gpsHardwareJammingMonitor')">Hardware jamming monitor</span>
+          <p class="field-desc">Performs spectrum analysis to detect unwanted jamming signals and interference, and reports the interference strength and diagnosis.</p></div>
+        </div>
+      </div>
     </div>
 
     <div class="md:col-span-2 mode-box">
-      <div class="mode-head"><span class="text-sky-300">🛰️</span> Improved GPS fix gathering</div>
+      <div class="mode-head"><span class="text-sky-300">🛰️</span> Improved GNSS fix gathering</div>
       <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div class="flex items-start gap-3">
           <label class="toggle mt-1"><input type="checkbox" id="cfg-improvedGpsPerformance" checked onchange="cfgChanged()"><span class="toggle-slider"></span></label>
           <div><span class="field-label cursor-pointer" onclick="toggleCheck('cfg-improvedGpsPerformance')">Improved GPS fix performance</span>
-          <p class="field-desc">Silences the Si4032 radio while GPS has &lt;4 sats - its wideband spurious emissions desensitise the GPS receiver, so going quiet dramatically speeds up cold-start fixes. The radio resumes the instant a fix is held.</p></div>
+          <p class="field-desc">Silences the Si4032 radio while GPS has &lt;4 sats - its wideband spurious emissions desensitise the GPS receiver, so going quiet dramatically speeds up cold-start fixes.</p></div>
         </div>
         <div class="flex items-start gap-3">
           <label class="toggle mt-1"><input type="checkbox" id="cfg-disableGpsImprovementInFlight" checked onchange="cfgChanged()"><span class="toggle-slider"></span></label>
           <div><span class="field-label cursor-pointer" onclick="toggleCheck('cfg-disableGpsImprovementInFlight')">Disable improvement in flight</span>
-          <p class="field-desc">Once flying, stops the radio-silence window so you never get a telemetry gap. Recommended on. <strong>Consider turning this off</strong> (keep the silence working in flight) only if you fly in environments with very strong GPS interference, where holding the fix matters more than uninterrupted telemetry.</p></div>
+          <p class="field-desc">Once flying, stops the radio-silence window so you never get a telemetry gap. Recommended on. Consider turning this off (keep the silence working in flight) only if you fly in environments with very strong GPS interference, where holding the fix matters more than uninterrupted telemetry.</p></div>
+        </div>
+        <div class="flex items-start gap-3 md:col-span-2">
+          <label class="toggle mt-1"><input type="checkbox" id="cfg-simultaneousGnssSetup" checked onchange="cfgChanged()"><span class="toggle-slider"></span></label>
+          <div><span class="field-label cursor-pointer" onclick="toggleCheck('cfg-simultaneousGnssSetup')">Simultaneous GNSS setup</span>
+          <p class="field-desc">Powers up and configures the GPS at the very start of boot, so it searches for satellites <em>during</em> hardware setup and sensor-boom calibration instead of only afterwards. When the boom is fitted, calibration takes a while and the receiver uses that time to get a head start on its first fix, so the sonde is ready to transmit a valid position much sooner. On by default.</p></div>
+        </div>
+        <div class="md:col-span-2">
+          <label class="field-label">Extra quiet hold after fix</label>
+          <div class="unit-wrap"><input type="number" class="input-base md:w-1/3" id="cfg-improvedGpsHoldAfterFix" value="20000" min="0" onchange="cfgChanged()"><span class="unit-label">ms</span></div>
+          <p class="field-desc">Once radio-quiet mode acquires a fix, stay quiet this much longer before the radio resumes, so the fix can settle and gather more satellites before a transmission (which briefly desensitises the receiver) hits it. Losing the fix restarts the hold; it is still capped by the overall radio-silence window. Default 20000 (20 s); set 0 to resume the instant a fix is acquired.</p>
         </div>
       </div>
     </div>
-    <div id="m10-section" class="md:col-span-2">
-      <div class="border border-indigo-800 bg-indigo-950/40 rounded-xl p-4">
-        <p class="text-xs text-indigo-300 font-bold mb-3 uppercase tracking-wide">NFW Intelligent GPS Algorithms - active only when mode = 3 (RSM4x4)</p>
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div class="flex items-start gap-3"><label class="toggle mt-1"><input type="checkbox" id="cfg-m10ConstellationOptimization" checked onchange="cfgChanged()"><span class="toggle-slider"></span></label>
-            <div><span class="field-label cursor-pointer" onclick="toggleCheck('cfg-m10ConstellationOptimization')">Constellation optimization</span><p class="field-desc">Auto-selects which GNSS constellations to track for the best performance/power balance.</p></div></div>
-          <div class="flex items-start gap-3"><label class="toggle mt-1"><input type="checkbox" id="cfg-m10CyclicTracking" checked onchange="cfgChanged()"><span class="toggle-slider"></span></label>
-            <div><span class="field-label cursor-pointer" onclick="toggleCheck('cfg-m10CyclicTracking')">Cyclic tracking</span><p class="field-desc">Puts the GPS to sleep between fix updates, taking a fix every 10 s - a big power saving in good signal.</p></div></div>
-          <div class="flex items-start gap-3"><label class="toggle mt-1"><input type="checkbox" id="cfg-m10PerformanceImprovements" checked onchange="cfgChanged()"><span class="toggle-slider"></span></label>
-            <div><span class="field-label cursor-pointer" onclick="toggleCheck('cfg-m10PerformanceImprovements')">Performance improvements</span><p class="field-desc">A set of tested GPS tuning tweaks that increase tracking efficiency and precision. Recommended.</p></div></div>
-          <div class="flex items-start gap-3"><label class="toggle mt-1"><input type="checkbox" id="cfg-m10SuperS" checked onchange="cfgChanged()"><span class="toggle-slider"></span></label>
-            <div><span class="field-label cursor-pointer" onclick="toggleCheck('cfg-m10SuperS')">Super-S</span><p class="field-desc">Super-S technology optimizes power consumption and accuracy with weak signals and small antennas.</p></div></div>
-          <div class="flex items-start gap-3 md:col-span-2"><label class="toggle mt-1"><input type="checkbox" id="cfg-m10AggressiveOpt" onchange="cfgChanged()"><span class="toggle-slider"></span></label>
-            <div><span class="field-label cursor-pointer" onclick="toggleCheck('cfg-m10AggressiveOpt')">Aggressive GPS power saving</span><p class="field-desc">Noticeably lowers power consumption at the cost of weaker tracking. Suggested for power-budget-limited flights where no GPS interference is expected.</p></div></div>
-        </div>
+    <div id="m10-section" class="md:col-span-2 mode-box">
+      <div class="mode-head"><span class="text-sky-300">⚡</span> GNSS power management (RSM4x4 / M10)</div>
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div class="flex items-start gap-3"><label class="toggle mt-1"><input type="checkbox" id="cfg-m10CyclicTracking" onchange="cyclicTrackingToggle()"><span class="toggle-slider"></span></label>
+          <div><span class="field-label cursor-pointer" onclick="toggleCheck('cfg-m10CyclicTracking')">Cyclic tracking</span><p class="field-desc">Once the fix is strong, the receiver sleeps between fixes (roughly 40-70% less GNSS power, more with a longer period). <strong class="text-amber-300">Requires BeiDou B1I or GLONASS (not B1C) and SBAS off</strong> - the M10 cannot power-save with B1C or SBAS. Enabling this will offer to switch those for you.</p></div></div>
+        <div><label class="field-label">Cyclic tracking period</label><div class="unit-wrap"><input type="number" class="input-base" id="cfg-m10CyclicPeriodSec" value="10" min="2" max="120" onchange="cfgChanged()"><span class="unit-label">s</span></div>
+          <p class="field-desc">On/off period for cyclic tracking. Longer saves more power but updates position less often.</p></div>
+        <div class="flex items-start gap-3"><label class="toggle mt-1"><input type="checkbox" id="cfg-m10SuperS" checked onchange="cfgChanged()"><span class="toggle-slider"></span></label>
+          <div><span class="field-label cursor-pointer" onclick="toggleCheck('cfg-m10SuperS')">Super-S Technology</span><p class="field-desc">Super-S technology optimizes power consumption and accuracy with weak signals and small antennas.</p></div></div>
+        <div class="flex items-start gap-3"><label class="toggle mt-1"><input type="checkbox" id="cfg-m10ConstellationOptimization" onchange="cfgChanged()"><span class="toggle-slider"></span></label>
+          <div><span class="field-label cursor-pointer" onclick="toggleCheck('cfg-m10ConstellationOptimization')">Constellation optimization</span><p class="field-desc">Drops only Galileo at a strong fix (keeps GPS, BeiDou/GLONASS and SBAS) for a modest ~5% power saving. Off by default.</p></div></div>
+        <div class="flex items-start gap-3 md:col-span-2"><label class="toggle mt-1"><input type="checkbox" id="cfg-m10AggressiveOpt" onchange="cfgChanged()"><span class="toggle-slider"></span></label>
+          <div><span class="field-label cursor-pointer" onclick="toggleCheck('cfg-m10AggressiveOpt')">Aggressive GNSS power saving</span><p class="field-desc">Sheds Galileo and the secondary GNSS sooner and shortens duty cycles for the lowest power, at the cost of weaker tracking. Suggested for power-budget-limited flights where no interference is expected.</p></div></div>
       </div>
     </div>
     <div class="md:col-span-2">
@@ -2488,7 +2680,7 @@ document.addEventListener('DOMContentLoaded', function(){
     <div class="flex items-start gap-3 md:col-span-2">
       <label class="toggle mt-1"><input type="checkbox" id="cfg-humidityModuleHeating" checked onchange="heatingToggle('cfg-humidityModuleHeating')"><span class="toggle-slider"></span></label>
       <div><span class="field-label cursor-pointer" onclick="toggleCheck('cfg-humidityModuleHeating')">Humidity module heating</span>
-      <p class="field-desc">Gently keeps the humidity sensor above air temperature so condensation and frost cannot form on it, and also <strong>holds the sensor's silicon out of the unfavourable temperature range</strong> where its response efficiency and precision drop sharply - so you get noticeably better readings in extreme conditions. <strong class="text-emerald-300">Recommended</strong>: it improves accuracy (cloud, icing, high humidity), draws very little power, and runs fully autonomously and intelligently. Recommended whenever the sensor boom is fitted.</p></div>
+      <p class="field-desc">Automatically (via a <strong>PID algorithm</strong>) <strong>heats the humidity module slightly</strong> to keep it above air temperature so condensation and frost cannot form on it, and also holds the sensor's silicon out of the unfavourable temperature range where its response efficiency and precision drop sharply - <strong>so you get noticeably better readings in extreme conditions.</strong> <strong class="text-emerald-300">Recommended</strong>: it improves accuracy (cloud, icing, high humidity), draws very little power, and runs fully autonomously and intelligently.</p></div>
     </div>
   </div>
 </div>
@@ -2545,8 +2737,10 @@ document.addEventListener('DOMContentLoaded', function(){
     <span class="font-bold text-white">21 · Flight Computing</span>
   </div>
   <div class="p-5 grid grid-cols-1 md:grid-cols-2 gap-5">
-    <div><label class="field-label">Flight start climb threshold</label><div class="unit-wrap"><input type="number" class="input-base" id="cfg-flightStartClimbThreshold" value="150" onchange="cfgChanged()"><span class="unit-label">m</span></div>
-      <p class="field-desc">How far the sonde must climb <strong>above its launch altitude</strong> to be marked as flying. The baseline is captured at the first GPS fix, so detection works at any launch elevation and for any ascent rate (including slow solar / zero-pressure balloons that a fixed-altitude or per-minute test would miss). Liftoff is declared once this climb is held for several consecutive fixes, which rejects GPS noise. Default 150 m.</p></div>
+    <div><label class="field-label">Flight start climb threshold</label><div class="unit-wrap"><input type="number" class="input-base" id="cfg-flightStartClimbThreshold" value="300" onchange="cfgChanged()"><span class="unit-label">m</span></div>
+      <p class="field-desc">How far the sonde must climb <strong>above its launch altitude</strong> to be marked as flying. The baseline is captured a short while after the first GPS fix (see <strong>Flight baseline settle time</strong>), so detection works at any launch elevation and for any ascent rate (including slow solar / zero-pressure balloons that a fixed-altitude or per-minute test would miss). Liftoff is declared once this climb is held for several consecutive fixes, which rejects GPS noise. Default 300 m.</p></div>
+    <div><label class="field-label">Flight baseline settle time</label><div class="unit-wrap"><input type="number" class="input-base" id="cfg-flightBaselineSettleTime" value="15000" onchange="cfgChanged()"><span class="unit-label">ms</span></div>
+      <p class="field-desc">How long to wait after the <strong>first GPS fix</strong> before capturing the launch-altitude baseline. A cold-start GPS altitude is often 100-200 m off and only settles after a few seconds; latching the baseline too early could trip a false liftoff on the ground (flying flag stuck at 1). Default 15000 ms (15 s).</p></div>
     <div><label class="field-label">Burst detection threshold</label><div class="unit-wrap"><input type="number" class="input-base" id="cfg-burstDetectionThreshold" value="800" onchange="cfgChanged()"><span class="unit-label">m</span></div>
       <p class="field-desc"><strong>Balloon burst</strong> is detected when the altitude has dropped at least this far below the highest altitude reached so far - i.e. the sonde was climbing, then fell back by this margin, which only happens after the balloon bursts and the payload starts descending. Used to arm landing detection and (on RSM4x4) the low-altitude fast-TX recovery mode. Default 800 m.</p></div>
   </div>
@@ -2564,11 +2758,6 @@ document.addEventListener('DOMContentLoaded', function(){
       <div><span class="field-label cursor-pointer" onclick="toggleCheck('cfg-autoResetEnable')">Auto-reset MCU after 7 days</span>
       <p class="field-desc">Resets the MCU after the reset period (default 7 days). Recommended for long stationary deployments.</p></div>
     </div>
-    <div class="flex items-start gap-3">
-      <label class="toggle mt-1"><input type="checkbox" id="cfg-aprsToneCalibrationMode" onchange="cfgChanged()"><span class="toggle-slider"></span></label>
-      <div><span class="field-label cursor-pointer text-amber-400" onclick="toggleCheck('cfg-aprsToneCalibrationMode')">⚠ APRS tone calibration mode</span>
-      <p class="field-desc">Transmits 1200/2200 Hz AFSK tones for delay calibration. DO NOT enable for real flights.</p></div>
-    </div>
   </div>
 </div>
 
@@ -2583,12 +2772,10 @@ document.addEventListener('DOMContentLoaded', function(){
     <select class="input-base md:w-2/3" id="cfg-buttonMode" onchange="cfgChanged()">
       <option value="0" selected>0 - Disabled</option>
       <option value="1">1 - Hold to power off</option>
-      <option value="2">2 - Cycling menu</option>
     </select>
     <div class="mt-3 space-y-2 text-xs text-slate-300">
       <div class="flex gap-2 items-baseline"><span class="font-mono text-slate-400 w-16 shrink-0 font-bold">Mode 0</span><span><strong class="text-white">Button disabled.</strong> Recommended when the sonde is switched on <em>remotely</em> by applying supply voltage - e.g. a solar balloon or a fixed/stationary station. In that case solder a small wire across the switch's two pads so the sonde powers itself on the moment voltage is present.</span></div>
       <div class="flex gap-2 items-baseline"><span class="font-mono text-cyan-400 w-16 shrink-0 font-bold">Mode 1</span><span><strong class="text-white">Hold to power off.</strong> Press and hold the button until the LEDs blink <strong class="text-red-400">red three times</strong>, then release. The required hold time depends on CPU load - sometimes near-instant, but up to ~8 s if the sonde is mid-way through transmitting a long radio frame that must block the CPU for timing precision.</span></div>
-      <div class="flex gap-2 items-baseline"><span class="font-mono text-slate-400 w-16 shrink-0 font-bold">Mode 2</span><span><strong class="text-white">Cycling menu.</strong> Short presses step through actions: 1 blink = cancel the GPS-improvement radio-silence wait, 2 blinks = disable the power amplifier, long hold = power off.</span></div>
     </div>
   </div>
 </div>
@@ -2601,12 +2788,27 @@ document.addEventListener('DOMContentLoaded', function(){
   </div>
   <div class="p-5 grid grid-cols-1 md:grid-cols-2 gap-5">
     <div class="md:col-span-2 rounded-xl border border-teal-700/50 bg-teal-950/30 px-4 py-3 text-xs text-teal-200 leading-relaxed">
-      <strong>Strongly recommended - well worth it.</strong> Every interval the Data Recorder sends a short burst of extra Horus V3 packets carrying a rich set of data that normal telemetry doesn't include: GPS HDOP, jamming indicator and reset counter, the full flight envelope (max altitude, max speed, max ascent/descent rates, temperature extremes), heater PWM state, radio power setting and battery voltage - and in XDATA Mode 3, the complete raw OIF411 ozone readings too. It costs only a little extra power and air-time, yet the data it adds is genuinely fascinating and often turns out useful - a great way to see everything NFW and the Horus V3 <em>extraSensors</em> can report.
+      <strong>Strongly recommended - well worth it.</strong> Every interval the Data Recorder transmits a short burst of extra Horus V3 packets ("pages"), each carrying four named fields that normal telemetry does not include: GNSS diagnostics and integrity, the full flight envelope, thermal/heater state, per-constellation satellite counts, and - in XDATA Mode 3 - the complete raw OIF411 ozone readings. It costs only a little extra power and air-time, yet the data is genuinely useful for post-flight analysis.
+      <details class="mt-2">
+        <summary class="cursor-pointer font-semibold text-teal-100">What each page contains</summary>
+        <table class="mt-2 w-full text-left border-collapse">
+          <thead><tr class="text-teal-100"><th class="pr-3 py-1 align-top font-semibold">Page</th><th class="py-1 font-semibold">Fields</th></tr></thead>
+          <tbody class="align-top">
+            <tr class="border-t border-teal-700/40"><td class="pr-3 py-1 font-semibold whitespace-nowrap">A - GNSS diagnostics</td><td class="py-1">gpspwr (power/tier), pdop, resets, ubxerrs (rejected config messages / NAKs)</td></tr>
+            <tr class="border-t border-teal-700/40"><td class="pr-3 py-1 font-semibold whitespace-nowrap">B - GNSS integrity <span class="text-[10px] text-indigo-300">(RSM4x4)</span></td><td class="py-1">jamlvl (0-255 CW indicator), spoofing, integrity</td></tr>
+            <tr class="border-t border-teal-700/40"><td class="pr-3 py-1 font-semibold whitespace-nowrap">C - Satellite counts <span class="text-[10px] text-indigo-300">(RSM4x4)</span></td><td class="py-1">gpscount, galcount, beicount, glocount (satellites used in the fix per constellation)</td></tr>
+            <tr class="border-t border-teal-700/40"><td class="pr-3 py-1 font-semibold whitespace-nowrap">D - Flight statistics</td><td class="py-1">flying, burst, hmax (max altitude), vmax (max speed)</td></tr>
+            <tr class="border-t border-teal-700/40"><td class="pr-3 py-1 font-semibold whitespace-nowrap">E - Thermal / heater</td><td class="py-1">radiotemp, rpmtemp, extpwr, refpwr</td></tr>
+            <tr class="border-t border-teal-700/40"><td class="pr-3 py-1 font-semibold whitespace-nowrap">F - Ozone pump</td><td class="py-1">pumpt, o3c, pumpu, pumpc (XDATA Mode 3)</td></tr>
+            <tr class="border-t border-teal-700/40"><td class="pr-3 py-1 font-semibold whitespace-nowrap">G - OIF411</td><td class="py-1">oifu, oiferr, oifver, o3ppb (XDATA Mode 3)</td></tr>
+          </tbody>
+        </table>
+      </details>
     </div>
     <div class="flex items-start gap-3">
       <label class="toggle mt-1"><input type="checkbox" id="cfg-dataRecorderEnable" checked onchange="cfgChanged()"><span class="toggle-slider"></span></label>
       <div><span class="field-label cursor-pointer" onclick="toggleCheck('cfg-dataRecorderEnable')">Enable data recorder</span>
-      <p class="field-desc">Sends 3 consecutive Horus V3 packets per interval with GPS/boom/RPM411 diagnostics (HDOP, jam, resets, flight stats, heater PWM, etc.).</p></div>
+      <p class="field-desc">Sends a burst of Horus V3 pages per interval. On <strong>RSM4x4 / RSM4x5</strong>: 5 normally (GNSS diagnostics, integrity, satellite counts, flight stats, thermal) or 7 in ozone mode. On <strong>RSM4x2 / RSM4x1</strong> the M10-only GNSS integrity (B) and satellite-counts (C) pages are skipped, so it sends 3 (or 5 in ozone mode). See the note above for the fields on each page.</p></div>
     </div>
     <div><label class="field-label">Interval between bursts</label><div class="unit-wrap"><input type="number" class="input-base" id="cfg-dataRecorderInterval" value="300000" onchange="cfgChanged()"><span class="unit-label">ms</span></div>
       <p class="field-desc">Default 300000 (5 min).</p></div>
@@ -2828,7 +3030,6 @@ sudo udevadm control --reload-rules &amp;&amp; sudo udevadm trigger</pre>
   <div class="text-[11px] text-slate-400 leading-relaxed max-w-2xl mx-auto space-y-2.5 text-left">
     <p><strong class="text-slate-200">Privacy.</strong> Configuration and compilation run on this server and on your device; your config files are not shared with any third party. There is no visitor or IP tracking - only compile jobs are logged on the author's own infrastructure (the build output and the configuration used) to operate and debug the build service.</p>
     <p><strong class="text-slate-200">Disclaimer.</strong> The creator (Franek SP5FRA "nevvman") assumes no liability for any operations, transmissions or flights performed using this firmware or software. Users are solely responsible for compliance with all applicable national regulations governing unmanned balloon flights and amateur / non-amateur radio transmissions.</p>
-    <p><strong class="text-slate-200">How it was built.</strong> This Sounding Software (the web tool) was developed with the help of LLM tooling. The author assures it has been through extensive testing and checking, that it provides stable, problem-free operation, and that it was carefully refined and polished.</p>
   </div>
 </div>
 </div><!-- /dark wrapper -->
@@ -3068,6 +3269,31 @@ const NFW_FIELDS = [
   "ozoneDbgRaw",                      // 141
   "ozoneRxByteTotal",                 // 142 - total bytes received on xdata RX
   "ozoneFrameTotal",                  // 143 - OIF411 frames successfully parsed
+  // 15 - GPS diagnostics (v68 native UBX). Must match the appended NW_ fields
+  // in the firmware interfaceHandler(), same order.
+  "gpsFixType",                       // 144 - 0 none, 2 2D, 3 3D
+  "gpsHAcc",                          // 145 - horizontal accuracy (m)
+  "gpsVAcc",                          // 146 - vertical accuracy (m)
+  "gpsSAcc",                          // 147 - speed accuracy (m/s)
+  "gpsJamInd",                        // 148 - 0..255 CW jamming indicator
+  "gpsSpoofState",                    // 149 - 0 unknown,1 none,2 spoofing,3 multiple
+  "gpsCfgNak",                        // 150 - GPS config messages rejected
+  "gpsUpdateRate",                    // 151 - Hz
+  "gpsDynModel",                      // 152 - u-blox dynamic model id
+  "gpsTrackProfile",                  // 153 - 0 max sensitivity,1 balanced,2 power save
+  "gpsSecondaryGnss",                 // 154 - 0 BeiDou B1C+GLONASS, 1 BeiDou B1I only, 2 GLONASS only
+  "gpsQzss",                          // 155 - QZSS enabled
+  "gpsSbas",                          // 156 - SBAS enabled
+  // 16 - satellites used per constellation + UBX frame errors
+  "satGps",                           // 157
+  "satGal",                           // 158
+  "satBds",                           // 159
+  "satGlo",                           // 160
+  "satSbas",                          // 161
+  "ubxFrameErrors",                   // 162
+  "simultaneousGnssSetup",            // 163 - GPS started early (during setup/calibration)
+  "gpsResetCounter",                  // 164 - GPS module resets (timeout-watchdog recoveries)
+  "gpsPsmState",                      // 165 - M10 power-save state (0 off,3 tracking,4 power-optimized,5 inactive)
 ];
 
 const STAGE_MAP = {
@@ -3128,19 +3354,26 @@ const GCS_BOOL_FIELDS = new Set([
   'sensorBoomEnable','autoTemperatureCalibration','autoHumidityModuleTemperatureCorrection',
   'humidityModuleEnable','zeroHumidityCalibration','dataRecorderEnable',
   'dataRecorderFlightNoiseFiltering','recorderInitialized','humidityModuleHeating',
+  'gpsQzss','gpsSbas','simultaneousGnssSetup',
 ]);
 const YES_NO_FIELDS = new Set(['beganFlying','burstDetected','hasLanded','gpsJamWarning']);
 const ERR_FIELDS = new Set(['sensorBoomMainTempError','sensorBoomHumidityModuleError','calibrationError']);
 
 const ENUM_MAP = {
   pressureMode:                    { '0':'Disabled', '1':'RPM411 barometer', '2':'Atmospheric model' },
-  gpsOperationMode:                { '0':'Off (stationary)', '1':'Always on', '2':'Power save (RSM4x2)', '3':'Intelligent (RSM4x4)' },
+  gpsOperationMode:                { '0':'Off (stationary)', '1':'Always on (continuous)', '2':'NFW Intelligent GNSS' },
   autoTemperatureCalibrationMethod:{ '1':'Known environment temperature', '2':'PCB thermal model' },
   aprsOperationMode:               { '1':'Tracker telemetry', '2':'WX weather station' },
   buttonMode:                      { '0':'Disabled', '1':'Hold to shut down', '2':'Extended menu' },
   rpm411Error:                     { '0':'OK', '1':'CONNECTION ERROR' },
   currentGPSPowerMode:             { '0':'Off', '1':'Continuous (max performance)', '2':'Power save' },
   referenceHeaterStatus:           { '0':'Off', '1':'Low power', '2':'Medium power', '3':'High power' },
+  gpsFixType:                      { '0':'No fix', '1':'Dead reckoning', '2':'2D fix', '3':'3D fix', '4':'GNSS + DR', '5':'Time only' },
+  gpsSpoofState:                   { '0':'Unknown', '1':'None', '2':'SPOOFING', '3':'Multiple' },
+  gpsDynModel:                     { '0':'Portable', '2':'Stationary', '3':'Pedestrian', '4':'Automotive', '5':'Sea', '6':'Airborne <1g', '7':'Airborne <2g', '8':'Airborne <4g' },
+  gpsTrackProfile:                 { '0':'Max sensitivity', '1':'Balanced', '2':'Power saving' },
+  gpsSecondaryGnss:                { '0':'BeiDou B1C + GLONASS', '1':'BeiDou B1I only', '2':'GLONASS only' },
+  gpsPsmState:                     { '0':'Off (continuous)', '1':'Enabled', '2':'Acquisition', '3':'Tracking', '4':'Power optimized', '5':'Inactive' },
 };
 
 function fmtVal(key, raw) {
@@ -3161,6 +3394,16 @@ async function sendCommand(cmd) {
   } catch (e) {
     addLog('err', 'Command send failed: ' + e.message);
     if (cmdWriter) { try { cmdWriter.releaseLock(); } catch(_){} cmdWriter = null; }
+  }
+}
+
+// Critical one-shot commands (shutdown / reboot) can arrive while the sonde is mid-way through
+// a long blocking radio transmission and be missed. Send them 3 times, 1 s apart, so the sonde
+// reliably catches one.
+async function sendCommandReliable(cmd) {
+  for (let i = 0; i < 3; i++) {
+    await sendCommand(cmd);
+    if (i < 2) await new Promise(r => setTimeout(r, 1000));
   }
 }
 
@@ -3497,6 +3740,8 @@ function updateUI(d) {
 
   if (d.batV !== undefined)                  { setText('hdr-bat', parseFloat(d.batV).toFixed(2) + ' V'); setText('qs-bat', parseFloat(d.batV).toFixed(2) + ' V'); setText('batVBig', parseFloat(d.batV).toFixed(2)); }
   if (d.gpsSats !== undefined)               { setText('hdr-sats', d.gpsSats); setText('qs-sats', d.gpsSats + ' sats'); }
+  if (d.gpsCfgNak !== undefined)   // UBX errors = rejected config messages (NAKs) only; frame-checksum errors are UART noise on the slow F100 and not counted
+    setText('gpsUbxErr', parseInt(tel.gpsCfgNak || '0', 10));
   if (d.mainTemperatureValue !== undefined)  setText('qs-temp', d.mainTemperatureValue + ' °C');
   if (d.extHeaterTemperatureValue !== undefined) setText('qs-exttemp', d.extHeaterTemperatureValue + ' °C');
   if (d.humidityValue !== undefined)         setText('qs-hum', d.humidityValue + ' %RH');
@@ -3551,8 +3796,14 @@ function updateUI(d) {
     setText('gps-time-big', t);
   }
 
-  if (d.isRSM4x2 !== undefined || d.isRSM4x4 !== undefined)
-    setText('hw-str', tel.isRSM4x2 === '1' ? 'RSM4x2 / STM32F100' : 'RSM4x4 / STM32L412');
+  if (d.isRSM4x2 !== undefined || d.isRSM4x4 !== undefined) {
+    const dashIs4x4 = (tel.isRSM4x2 !== '1');   // board reported by the sonde itself
+    setText('hw-str', dashIs4x4 ? 'RSM4x4 / STM32L412' : 'RSM4x2 / STM32F100');
+    // The live dashboard follows the sonde's own board, not the Firmware Builder selection,
+    // so RSM4x4-only readouts (jamming, spoofing, per-constellation counts, ...) are hidden
+    // automatically for an RSM4x2 sonde.
+    document.querySelectorAll('#app-gcs .rsm4x4-only').forEach(el => { el.style.display = dashIs4x4 ? '' : 'none'; });
+  }
 
   if (d.stage !== undefined && d.stage !== '') { setStage(d.stage); updateChecklist(); }
 
@@ -3918,17 +4169,25 @@ function updateChecklist() {
   const oifConnWarn = oif3 && tel.ozoneConnErr === '1';  // informational only, not a hard error
   const oifDiag = oif3 ? parseInt(tel.ozoneDiagnostics ?? '65535', 10) : 0;
   const oifInternalErr = oif3 && oifDiag !== 65535 && oifDiag !== 0;
-  const anyErr = hasErr || oifInternalErr;
-  const errMsg = () => {
-    const parts = [];
-    if (hasErr) parts.push('system error (see Log)');
-    if (oifInternalErr) {
-      if (oifDiag & 0x0004) parts.push('OIF411 pump T too cold');
-      if (oifDiag & 0x0400) parts.push('OIF411 battery supply off');
-      if (!(oifDiag & 0x0404)) parts.push('OIF411 diagnostics 0x' + oifDiag.toString(16).toUpperCase().padStart(4,'0'));
-    }
-    return 'Error: ' + parts.join(' · ');
-  };
+  // List every active fault by name, so the ground check reports exactly what is
+  // wrong instead of a generic "an error occurred - check the Log".
+  const gcFaults = [];
+  if (tel.sensorBoomMainTempError === '1')       gcFaults.push('main temperature sensor fault');
+  if (tel.sensorBoomHumidityModuleError === '1') gcFaults.push('humidity module fault');
+  if (tel.temperatureCheckError === '1')         gcFaults.push('temperature self-check failed');
+  if (tel.humidityCheckError === '1')            gcFaults.push('humidity self-check failed');
+  if (tel.calibrationError === '1')              gcFaults.push('sensor calibration error');
+  if (tel.rpm411Error === '1')                   gcFaults.push('RPM411 pressure board error');
+  if (parseInt(tel.gpsCfgNak || '0', 10) > 0) gcFaults.push('GPS config rejected (NAK) - a setting did not apply');
+  if (oifInternalErr) {
+    if (oifDiag & 0x0004) gcFaults.push('OIF411 pump temperature too cold');
+    if (oifDiag & 0x0400) gcFaults.push('OIF411 battery supply off');
+    if (!(oifDiag & 0x0404)) gcFaults.push('OIF411 diagnostics 0x' + oifDiag.toString(16).toUpperCase().padStart(4,'0'));
+  }
+  // Generic firmware error flag - only surfaced if nothing more specific explained it.
+  if (tel.err === '1' && gcFaults.length === 0) gcFaults.push('firmware error flag set (see Log)');
+  const anyErr = gcFaults.length > 0;
+  const errMsg = () => 'Error: ' + (gcFaults.join(' · ') || 'unknown');
 
   // 1 - Connect serial port
   if (connected) gcStep(1,'done',`Connected - ${frameCount} frames`);
@@ -3958,7 +4217,7 @@ function updateChecklist() {
 
   // 6 - Ready to fly
   if (!hasFix || inGpsImprMode || !calDone) gcStep(6,'pend','Waiting for GPS fix...');
-  else if (anyErr)                          gcStep(6,'err','Error detected - not ready (check Log)');
+  else if (anyErr)                          gcStep(6,'err','Not ready - ' + errMsg());
   else if (oifConnWarn)                     gcStep(6,'done','Ready - disconnect GCS cable and connect OIF411 before launch');
   else if (stage==='59')                    gcStep(6,'done','READY FOR FLIGHT - cleared to launch!');
   else                                      gcStep(6,'actv','Finalising - stage should reach 59...');
@@ -4006,7 +4265,7 @@ function updateChecklist() {
     gcNextAction('err', 'OIF411 internal error: ' + msgs.join(' / '));
     return;
   }
-  if (hasErr) { gcNextAction('err', 'Error detected - open the Log tab to identify the fault (sensor boom, RPM411 connection, calibration error, or low battery).'); return; }
+  if (anyErr) { gcNextAction('err', errMsg() + '. Open the Log tab for details.'); return; }
   if (oif3 && oifDiag === 65535) { gcNextAction('blue', 'Waiting for first OIF411 frame - instrument is connected but not yet sending. Allow 10-30 s after power-on.'); return; }
   gcNextAction('ok', 'All systems nominal. LED is solid green, stage 59. Sonde is ready for launch.');
 }
@@ -4069,10 +4328,12 @@ function setPlatform(p) {
   updatePressureModeOptions();
   updateM10Visibility();
   updateSensorCalVisibility();
-  // Show/hide every option flagged "RSM4x4 only" (whole sections like Horus V2, RTTY,
-  // Morse, Low-Altitude Fast-TX, and individual fields) to match the selected board.
+  // Show/hide every Firmware Builder option flagged "RSM4x4 only" (whole sections like
+  // Horus V2, RTTY, Morse, Low-Altitude Fast-TX, and individual fields) to match the
+  // SELECTED board. The live Ground Control dashboard (#app-gcs) is handled separately -
+  // it follows the board reported in the telemetry frame, not this builder selection.
   const is4x4 = (p === 'RSM4x4');
-  document.querySelectorAll('.rsm4x4-only').forEach(el => { el.style.display = is4x4 ? '' : 'none'; });
+  document.querySelectorAll('#app-fw .rsm4x4-only').forEach(el => { el.style.display = is4x4 ? '' : 'none'; });
 }
 
 // Estimated pressure (mode 2) is RSM4x4-only: it does not fit the RSM4x2 flash. Hide the
@@ -4087,25 +4348,76 @@ function updatePressureModeOptions() {
 // mode 2 (standard power-save) is RSM4x2-only. Show only the modes the selected
 // board supports, and snap the selection to a valid mode if the current one
 // becomes unavailable.
-function updateGpsModeOptions() {
-  const sel = document.getElementById('cfg-gpsOperationMode');
-  if (!sel) return;
-  const opt2 = document.getElementById('gpsmode-opt-2');
-  const opt3 = document.getElementById('gpsmode-opt-3');
-  const is4x4 = currentPlatform === 'RSM4x4';
-  if (opt2) { opt2.hidden = is4x4;  opt2.disabled = is4x4;  }   // mode 2: RSM4x2 only
-  if (opt3) { opt3.hidden = !is4x4; opt3.disabled = !is4x4; }   // mode 3: RSM4x4 only
-  if (is4x4 && sel.value === '2') sel.value = '3';
-  if (!is4x4 && sel.value === '3') sel.value = '2';
+// Field map for each pre-defined GNSS configuration. Options that do not exist
+// on the selected board are simply ignored when applied or detected.
+function gnssPresetValues(name) {
+  const common = { gpsOperationMode: '2', ubloxGpsAirborneMode: true, gpsDynamicModel: '6',
+                   improvedGpsPerformance: true, disableGpsImprovementInFlight: true,
+                   m10SuperS: true, gpsQzssEnable: false };
+  // NOTE: m10CyclicTracking is set per-preset, not in common, because it is only PSM-legal
+  // with B1I/GLONASS + SBAS off. "accurate" runs B1C + SBAS, so it must keep cyclic OFF;
+  // "efficient" runs GLONASS-only + SBAS off, so it can (and does) use cyclic tracking.
+  if (name === 'accurate')       // fight for every satellite, all augmentation on, no shedding
+    return Object.assign({}, common, { gpsUpdateRateHz: '2', gpsTrackingProfile: '0',
+        gpsSecondaryGnss: '0', gpsSbasEnable: true, gpsAssistNowAutonomous: true,
+        gpsSpoofingDetection: true, gpsHardwareJammingMonitor: true,
+        m10ConstellationOptimization: false, m10AggressiveOpt: false,
+        m10CyclicTracking: false, m10CyclicPeriodSec: '10' });
+  if (name === 'efficient')      // lowest power: slow update, high masks, aggressive shedding
+    return Object.assign({}, common, { gpsUpdateRateHz: '1', gpsTrackingProfile: '2',
+        gpsSecondaryGnss: '2', gpsSbasEnable: false, gpsAssistNowAutonomous: false,
+        // Jamming + spoofing monitors stay ON: they only poll status the receiver already
+        // computes (MON-RF / NAV-STATUS), so the power cost is negligible and the safety
+        // awareness is worth keeping even in the lowest-power profile.
+        gpsSpoofingDetection: true, gpsHardwareJammingMonitor: true,
+        m10ConstellationOptimization: true, m10AggressiveOpt: true,
+        m10CyclicTracking: true, m10CyclicPeriodSec: '15' });
+  return null;
 }
 
-// The NFW Intelligent GPS Algorithms only apply on RSM4x4 with GPS mode 3, so
-// hide the whole block otherwise to avoid implying those options do anything.
+// Which pre-defined profile (if any) the current form matches; '' = custom.
+function detectGnssPreset() {
+  for (const name of ['accurate', 'efficient']) {
+    const p = gnssPresetValues(name); let match = true;
+    for (const id in p) {
+      const el = document.getElementById('cfg-' + id);
+      if (!el) continue;   // option not present on this board - ignore
+      if (el.type === 'checkbox') { if (el.checked !== !!p[id]) { match = false; break; } }
+      else if (String(el.value) !== String(p[id])) { match = false; break; }
+    }
+    if (match) return name;
+  }
+  return '';
+}
+
+function applyGnssPreset(name) {
+  const p = gnssPresetValues(name);
+  if (!p) return;
+  for (const id in p) {
+    const el = document.getElementById('cfg-' + id);
+    if (!el) continue;
+    if (el.type === 'checkbox') el.checked = !!p[id]; else el.value = p[id];
+  }
+  disableCyclicIfConflict();   // safety net: never leave cyclic tracking on with B1C/SBAS
+  cfgChanged();   // re-syncs the dropdown via detectGnssPreset
+  if (typeof gpsModeChanged === 'function') gpsModeChanged();
+}
+
+function updateGpsModeOptions() {
+  // Mode 2 (NFW Intelligent GNSS Algorithms) now applies to both boards, and the
+  // old RSM4x4-only mode 3 has been folded into it, so there is nothing to hide.
+  const sel = document.getElementById('cfg-gpsOperationMode');
+  if (!sel) return;
+  if (sel.value === '3') sel.value = '2';   // migrate any old saved config
+}
+
+// The M10-only algorithm block applies on RSM4x4 in operation mode 2; hide it
+// otherwise (RSM4x2 has no equivalent knobs) so it does not imply it does anything.
 function updateM10Visibility() {
   const m10 = document.getElementById('m10-section');
   if (!m10) return;
   const mode = document.getElementById('cfg-gpsOperationMode')?.value;
-  m10.style.display = (currentPlatform === 'RSM4x4' && mode === '3') ? '' : 'none';
+  m10.style.display = (currentPlatform === 'RSM4x4' && mode === '2') ? '' : 'none';
 }
 
 function toggleCheck(id) {
@@ -4121,6 +4433,9 @@ function toggleSection(id) {
 
 function cfgChanged() {
   configDirty = true;
+  // Keep the pre-defined-settings dropdown showing whichever profile (if any) the
+  // current form matches, so it reflects reality after any edit or preset apply.
+  { const gp = document.getElementById('gnss-preset'); if (gp && typeof detectGnssPreset === 'function') gp.value = detectGnssPreset(); }
   const mode = parseInt(document.getElementById('cfg-xdataPortMode')?.value ?? '1', 10);
   const oifSec = document.getElementById('oif411-fw-section');
   if (oifSec) oifSec.style.display = (mode === 3) ? '' : 'none';
@@ -4143,7 +4458,13 @@ function showAdvisory(opts) {
   document.getElementById('advisory-title').textContent = opts.title || 'Please reconsider';
   document.getElementById('advisory-body').innerHTML    = opts.html  || '';
   document.getElementById('advisory-confirm').textContent = opts.confirmText || 'Continue anyway';
-  document.getElementById('advisory-cancel').textContent  = opts.cancelText  || 'Cancel';
+  const cancelBtn = document.getElementById('advisory-cancel');
+  if (opts.hideCancel) {                       // single-button informational popup
+    cancelBtn.classList.add('hidden');
+  } else {
+    cancelBtn.classList.remove('hidden');
+    cancelBtn.textContent = opts.cancelText || 'Cancel';
+  }
   document.getElementById('advisory-modal').classList.remove('hidden');
 }
 function advisoryConfirm() {
@@ -4156,6 +4477,10 @@ function advisoryCancel() {
   const cb = advisoryCancelCb; advisoryConfirmCb = advisoryCancelCb = null;
   if (cb) cb();
 }
+
+// Ground Control serial-adapter wiring help (the "?" / "How to wire" buttons near Connect).
+function showSerialHelp() { document.getElementById('serial-help-modal').classList.remove('hidden'); }
+function hideSerialHelp() { document.getElementById('serial-help-modal').classList.add('hidden'); }
 
 // The heating card follows the sensor boom: with no boom fitted both heaters are
 // pointless (nothing to warm, only wasted power), so they are switched off and locked,
@@ -4268,6 +4593,73 @@ function horusV2Toggle() {
       onCancel: () => { el.checked = false; cfgChanged(); }
     });
   }
+}
+
+// ---- M10 cyclic tracking (PSMCT) interlock ---------------------------------------------
+// The u-blox M10 power-save modes do NOT support the BeiDou B1C signal and cannot process
+// SBAS (integration manual). So cyclic tracking only runs with secondary GNSS = B1I (1) or
+// GLONASS (2) AND SBAS off. These handlers keep both sides consistent: enabling cyclic
+// tracking offers to switch B1C/SBAS off; turning B1C or SBAS back on switches cyclic
+// tracking off. The firmware enforces the same rule at runtime as a fail-safe.
+function cyclicTrackingConflict() {
+  const sec  = document.getElementById('cfg-gpsSecondaryGnss');
+  const sbas = document.getElementById('cfg-gpsSbasEnable');
+  const b1c  = sec  && sec.value === '0';      // 0 = BeiDou B1C + GLONASS
+  const sb   = !!(sbas && sbas.checked);
+  return { b1c, sb, any: b1c || sb };
+}
+
+function cyclicTrackingToggle() {
+  const cyc = document.getElementById('cfg-m10CyclicTracking');
+  cfgChanged();
+  if (!cyc.checked) return;
+  const c = cyclicTrackingConflict();
+  if (!c.any) return;
+  const parts = [];
+  if (c.b1c) parts.push('switch the secondary GNSS to <strong>GLONASS only</strong> (BeiDou B1C is not allowed in power-save)');
+  if (c.sb)  parts.push('turn <strong>SBAS off</strong> (the M10 cannot process SBAS while power-saving)');
+  showAdvisory({
+    icon: '⚡', title: 'Cyclic tracking needs a compatible GNSS set',
+    confirmText: 'Enable it and adjust GNSS',
+    cancelText: 'Leave cyclic tracking off',
+    html: 'Cyclic power-save tracking on the M10 will not run with BeiDou <strong>B1C</strong> or with <strong>SBAS</strong> enabled. '
+        + 'To turn it on I will ' + parts.join(' and ') + '. '
+        + 'You keep full multi-constellation accuracy by leaving cyclic tracking off instead.',
+    onConfirm: () => {
+      const sec  = document.getElementById('cfg-gpsSecondaryGnss');
+      const sbas = document.getElementById('cfg-gpsSbasEnable');
+      if (c.b1c && sec)  sec.value = '2';       // GLONASS only (drops B1C, keeps GLONASS)
+      if (c.sb  && sbas) sbas.checked = false;
+      cfgChanged();
+    },
+    onCancel: () => { cyc.checked = false; cfgChanged(); }
+  });
+}
+
+// Turning B1C or SBAS back on while cyclic tracking is set disables cyclic tracking (it can
+// no longer run). Returns true if it had to switch cyclic tracking off.
+function disableCyclicIfConflict() {
+  const cyc = document.getElementById('cfg-m10CyclicTracking');
+  if (cyc && cyc.checked && cyclicTrackingConflict().any) { cyc.checked = false; return true; }
+  return false;
+}
+function secondaryGnssChanged() {
+  const turnedOff = disableCyclicIfConflict();
+  cfgChanged();
+  if (turnedOff) showAdvisory({
+    icon: '⚡', title: 'Cyclic tracking turned off', confirmText: 'OK', hideCancel: true,
+    html: 'BeiDou B1C cannot run with the M10 power-save modes, so <strong>cyclic tracking has been switched off</strong>. '
+        + 'Choose BeiDou B1I or GLONASS (and SBAS off) if you want cyclic tracking back.'
+  });
+}
+function sbasToggle() {
+  const turnedOff = disableCyclicIfConflict();
+  cfgChanged();
+  if (turnedOff) showAdvisory({
+    icon: '⚡', title: 'Cyclic tracking turned off', confirmText: 'OK', hideCancel: true,
+    html: 'The M10 cannot process SBAS while power-saving, so enabling SBAS <strong>switched cyclic tracking off</strong>. '
+        + 'Turn SBAS off again (with B1I or GLONASS selected) to use cyclic tracking.'
+  });
 }
 
 // Selecting more than 25 mW for a Horus mode (usually wasteful - 4FSK is very efficient).
@@ -4652,8 +5044,10 @@ const FW_BOOL_FIELDS = new Set([
   'ultraPowerSaveAfterLanding',
   'privateLandingModeEnable',   // RSM4x4 private landing (Section 20b)
   'm10ConstellationOptimization','m10AggressiveOpt','m10CyclicTracking',
-  'm10PerformanceImprovements','m10SuperS',
-  'ubloxGpsAirborneMode','improvedGpsPerformance','disableGpsImprovementInFlight',
+  'm10SuperS',
+  'ubloxGpsAirborneMode','improvedGpsPerformance','disableGpsImprovementInFlight','simultaneousGnssSetup',
+  'gpsSbasEnable','gpsAssistNowAutonomous','gpsSpoofingDetection','gpsHardwareJammingMonitor',
+  'gpsQzssEnable',
   'sensorBoomEnable','sensorBoomPowerSaving',
   'autoTemperatureCalibration','autoHumidityModuleTemperatureCorrection',
   'humidityModuleEnable','reconditioningEnabled','zeroHumidityCalibration',
@@ -4695,7 +5089,8 @@ function applyConfigToForm(cfg) {
   updateGpsModeOptions(); // values are now set: hide/snap GPS modes to the board
   updatePressureModeOptions(); // hide/snap estimated-pressure (mode 2) to the board
   updateSensorCalVisibility(); // show/snap the factory-calibration panel to the board
-  cfgChanged(); // sync conditional sections (e.g. OIF411 visibility)
+  disableCyclicIfConflict(); // a loaded B1C/SBAS + cyclic combo can't run - reflect the firmware fail-safe (silent)
+  cfgChanged(); // sync conditional sections (e.g. OIF411 visibility) + preset detection
   configDirty = false; // applyConfigToForm is called on load - mark clean after sync
 }
 

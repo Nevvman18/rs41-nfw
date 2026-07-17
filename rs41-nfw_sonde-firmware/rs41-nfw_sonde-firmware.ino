@@ -25,8 +25,9 @@ https://github.com/Nevvman18/rs41-nfw
 
  RS41-NFW is inspired by the RS41ng project but does not reuse code originating
  from it; the hardware sequences are implemented from the manufacturer datasheets.
- Bundled third-party code keeps its own license: gps.h/gps.cpp is TinyGPS++
- (Mikal Hart, LGPL-2.1); horus_l2.* contains Golay code (R. Morelos-Zaragoza).
+ gps.h/gps.cpp is a native u-blox UBX driver written for RS41-NFW (it replaced
+ the former TinyGPS++ NMEA parser). Bundled third-party code keeps its own
+ license: horus_l2.* contains Golay code (R. Morelos-Zaragoza).
 -------------------------------------------------------------------------------
 */
 
@@ -42,7 +43,7 @@ I wish You high, successful flights with a lot of data gathered with this firmwa
 Franek,
 Author of RS41-NFW
 */
-#define NFW_VERSION "RS41-NFW v69, GPL-3.0 Franek Lada (nevvman, SP5FRA)"  //This is the firmware version You are running
+#define NFW_VERSION "RS41-NFW v70, GPL-3.0 Franek Lada (nevvman, SP5FRA)"  //This is the firmware version You are running
 
 //===== Libraries and lib-dependant definitions (nothing to modify)
 /* No libraries are required to be installed, all dependencies are shipped within the project folder. */
@@ -52,7 +53,7 @@ Author of RS41-NFW
 #include "gps.h"
 #include "HorusBinaryV3.h"
 
-TinyGPSPlus gps;
+UbxGnss gps;
 
 #include <HardwareTimer.h>
 #include <new>   // placement new - build the big Horus V3 ASN.1 struct directly into g_txScratch
@@ -65,7 +66,8 @@ TinyGPSPlus gps;
 // on the stack it overflowed into the heap and corrupted the humidity-heater PWM timer handle,
 // hard-faulting the sonde after the first transmission - without needing RAM the F100 lacks.
 union NfwTxScratch {
-  char           nfwFrame[1024];   // $NFW telemetry frame (interfaceHandler)
+  char           nfwFrame[1280];   // $NFW telemetry frame (interfaceHandler). Headroom over 1 KB for the
+                                   // v68 GPS-diagnostics fields; NW_S writes without a bounds check.
   char           aprsOthers[256];  // APRS HAB comment (aprsTx, mode 1)
   char           aprsWx[256];      // APRS WX report  (aprsTx, mode 2)
   char           dbgHex[256];      // Horus debug hex dump (written only after the packet is encoded)
@@ -238,13 +240,16 @@ uint16_t ozoneFrameTotal = 0;         // count of successfully parsed OIF411 fra
 float lastGpsAlt;
 unsigned long lastGpsAltMillisTime = 1;
 float vVCalc;
+bool gpsAltFresh = false;             // true for the one cycle a new fixed altitude was parsed
 bool gpsTimeoutCounterActive = false;
 unsigned long gpsTimerBegin = 0;
 int currentGPSPowerMode = 0;  // RSM4x2/4x1 GPS power state (sent as Horus "gpspwr"): 0 not set, 1 max-performance/continuous, 2 power-save
-unsigned long lastPowerSaveChange = 0;
+unsigned long lastPowerSaveChange = 0;   // millis() of the last GPS power-mode/tier change (debounce, see gpsPowerSaveDebounce)
+bool gpsPowerModeInitialized = false;    // false until the first power-mode/tier decision has been applied
 unsigned int rttyFrameCounter = 0;
 unsigned long lowAltitudeFastTxModeBeginTime = 0;
 unsigned int gpsResetCounter = 0;
+uint16_t gpsCfgNakCount = 0;   // GPS config messages that failed to ACK (used by the data recorder + diagnostics)
 unsigned long lastDataRecorderTransmission = 0;
 unsigned long landingTimeMillis = 0;
 bool cancelGpsImprovement = false;
@@ -265,10 +270,11 @@ int8_t minInternalTemp = 0;
 bool beganFlying = false;
 bool burstDetected = false;
 // Flight-start detection state (cumulative climb above launch baseline).
-float   flightBaseAlt = 0.0f;        // launch-baseline altitude, captured at first valid fix
-bool    flightBaselineSet = false;
-float   flightPrevAlt = 0.0f;        // last fix altitude, to count only new fixes
-uint8_t flightSustainedRise = 0;     // consecutive fixes >= climb threshold (noise rejection)
+float         flightBaseAlt = 0.0f;         // launch-baseline altitude, captured once the fix has settled
+bool          flightBaselineSet = false;
+float         flightPrevAlt = 0.0f;         // last fix altitude, to count only new fixes
+uint8_t       flightSustainedRise = 0;      // consecutive fixes >= climb threshold (noise rejection)
+unsigned long flightFixAcquiredMillis = 0;  // millis() of the first GPS fix, to time baseline settling
 bool recorderInitialized = false;  //not init by default
 bool hasLanded = false;
 bool lowAltitudeFastTxModeEnd = false;
@@ -405,17 +411,8 @@ uint8_t ubxCfgValSet_enableSuperS[] = { // Super-S power saving mode
   0xB5, 0x62, 0x06, 0x8A, 0x09, 0x00, 0x00, 0x01, 0x00, 0x00, 0xD6, 0x00, 0x11, 0x20, 0x00, 0xA1, 0xD2
 };*/
 
-uint8_t ubxCfgValSetPsmct[] = {
-  0xB5, 0x62, 0x06, 0x8A, 0x09, 0x00, 0x00, 0x01, 0x00, 0x00, 0x01, 0x00, 0xD0, 0x20, 0x02, 0x8D, 0xE8
-};
-
-uint8_t ubxCfgValSetPsmctPeriod10[] = {
-  0xB5, 0x62, 0x06, 0x8A, 0x0C, 0x00, 0x00, 0x01, 0x00, 0x00, 0x02, 0x00, 0xD0, 0x40, 0x0A, 0x00, 0x00, 0x00, 0x00, 0xB9, 0x81
-};
-
-uint8_t ubxCfgValSetContinuous[] = {
-  0xB5, 0x62, 0x06, 0x8A, 0x09, 0x00, 0x00, 0x01, 0x00, 0x00, 0x01, 0x00, 0xD0, 0x20, 0x00, 0x8B, 0xE6
-};
+// CFG-PM power modes are now built on the fly (see m10SetContinuous / m10SetPsmct), which is
+// why the old pre-baked PSMCT/continuous VALSET frames were removed.
 
 uint8_t ubxEnableGal[] = {
   0xB5, 0x62, 0x06, 0x8A, 0x09, 0x00, 
@@ -998,12 +995,15 @@ int buildHorusV3Packet(char* uncoded_buffer){
         .latitude = (int)(gpsLat*100000),
         .longitude = (int)(gpsLong*100000),
         .altitudeMeters = asn_alt,
+        // Standard-packet extra sensors: only the ozone fields (p3, o3ppb), and
+        // only in ozone mode. gpspwr and the other GPS diagnostics now live in the
+        // data recorder, not here. extraSensors is omitted entirely otherwise
+        // (its exist flag is set from xdataPortMode below).
         .extraSensors = {
-          .nCount = (xdataPortMode == 3 && horusV3ExtraSensorsEnable) ? 3 : 1,
+          .nCount = 2,
           .arr = {
-            { .name = "gpspwr", .values = { .kind = horusInt_PRESENT, .u = { .horusInt = { .nCount = 1, .arr = {gpsStatus} } } }, .exist = { .name = true, .values = true } },
-            { .name = "p3",     .values = { .kind = horusReal_PRESENT, .u = { .horusReal = { .nCount = 1, .arr = { xdataOzonePartialPressure } } } }, .exist = { .name = xdataPortMode == 3, .values = xdataPortMode == 3 } },
-            { .name = "o3ppb",  .values = { .kind = horusInt_PRESENT, .u = { .horusInt = { .nCount = 1, .arr = { (int)xdataOzonePpb } } } },        .exist = { .name = xdataPortMode == 3, .values = xdataPortMode == 3 } },
+            { .name = "p3",     .values = { .kind = horusReal_PRESENT, .u = { .horusReal = { .nCount = 1, .arr = { xdataOzonePartialPressure } } } }, .exist = { .name = true, .values = true } },
+            { .name = "o3ppb",  .values = { .kind = horusInt_PRESENT, .u = { .horusInt = { .nCount = 1, .arr = { (int)xdataOzonePpb } } } },        .exist = { .name = true, .values = true } },
           },
         },
         .velocityHorizontalKilometersPerHour = asn_speed,
@@ -1035,7 +1035,7 @@ int buildHorusV3Packet(char* uncoded_buffer){
         },
         // We need to explicitly specify which optional fields we want to include in the packet
         .exist = {
-            .extraSensors = true,
+            .extraSensors = (xdataPortMode == 3),   // ozone fields only; omitted in normal mode
             .velocityHorizontalKilometersPerHour = true,
             .gnssSatellitesVisible = true,
             .ascentRateCentimetersPerSecond = true,
@@ -1174,24 +1174,46 @@ int buildHorusV3PacketDataRecorder(char* uncoded_buffer, uint8_t page){
       .longitude = (int)(gpsLong * 100000),
       .altitudeMeters = dr_alt,
 
-      // 4 individually named sensors per packet (ASN.1 hard limit: max 4 per packet)
-      // page 0 = A: GPS diagnostics  page 1 = B: flight stats  page 2 = C: thermal/heater
+      // 4 individually named sensors per packet (ASN.1 hard limit: max 4 per packet).
+      // Pages: 0=A GNSS diagnostics, 1=B GNSS integrity, 2=C satellite counts,
+      // 3=D flight stats, 4=E thermal/heater, 5=F ozone pump, 6=G OIF411.
       .extraSensors = [&]() -> horusAdditionalSensors {
-        if (page == 0) {
+        if (page == 0) {                          // A: GNSS diagnostics
+          // Only count rejected config messages (NAKs). Frame checksum errors are not
+          // counted: on the slower RSM4x2 they are mostly harmless UART-overrun noise and
+          // climbed fast enough to swamp the meaningful config-NAK signal.
+          const int ubxErrs = (int)gpsCfgNakCount;
           return { .nCount = 4, .arr = {
-            { .name = "hdop",   .values = { .kind = horusInt_PRESENT, .u = { .horusInt = { .nCount = 1, .arr = { (int)gpsHdop          } } } }, .exist = { .name = true, .values = true } },
-            { .name = "jam",    .values = { .kind = horusInt_PRESENT, .u = { .horusInt = { .nCount = 1, .arr = { (int)gpsJamWarning    } } } }, .exist = { .name = true, .values = true } },
-            { .name = "resets", .values = { .kind = horusInt_PRESENT, .u = { .horusInt = { .nCount = 1, .arr = { (int)gpsResetCounter  } } } }, .exist = { .name = true, .values = true } },
             { .name = "gpspwr", .values = { .kind = horusInt_PRESENT, .u = { .horusInt = { .nCount = 1, .arr = { (int)gpsStatus        } } } }, .exist = { .name = true, .values = true } },
+            { .name = "pdop",   .values = { .kind = horusInt_PRESENT, .u = { .horusInt = { .nCount = 1, .arr = { (int)gpsHdop          } } } }, .exist = { .name = true, .values = true } },
+            { .name = "resets", .values = { .kind = horusInt_PRESENT, .u = { .horusInt = { .nCount = 1, .arr = { (int)gpsResetCounter  } } } }, .exist = { .name = true, .values = true } },
+            { .name = "ubxerrs",.values = { .kind = horusInt_PRESENT, .u = { .horusInt = { .nCount = 1, .arr = { ubxErrs              } } } }, .exist = { .name = true, .values = true } },
           }};
-        } else if (page == 1) {
+        } else if (page == 1) {                   // B: GNSS integrity (RSM4x4/M10 only; skipped on RSM4x2)
+          // The 0..255 CW jam indicator, the spoofing state (NAV-STATUS) and the combined
+          // integrity warning.
+          return { .nCount = 3, .arr = {
+            { .name = "jamlvl",   .values = { .kind = horusInt_PRESENT, .u = { .horusInt = { .nCount = 1, .arr = { (int)gps.jamIndicator } } } }, .exist = { .name = true, .values = true } },
+            { .name = "spoofing", .values = { .kind = horusInt_PRESENT, .u = { .horusInt = { .nCount = 1, .arr = { (int)gps.spoofState   } } } }, .exist = { .name = true, .values = true } },
+            { .name = "integrity",.values = { .kind = horusInt_PRESENT, .u = { .horusInt = { .nCount = 1, .arr = { (int)gpsJamWarning    } } } }, .exist = { .name = true, .values = true } },
+          }};
+        } else if (page == 3) {                   // D: flight statistics
           return { .nCount = 4, .arr = {
             { .name = "flying", .values = { .kind = horusInt_PRESENT, .u = { .horusInt = { .nCount = 1, .arr = { (int)beganFlying      } } } }, .exist = { .name = true, .values = true } },
             { .name = "burst",  .values = { .kind = horusInt_PRESENT, .u = { .horusInt = { .nCount = 1, .arr = { (int)burstDetected    } } } }, .exist = { .name = true, .values = true } },
             { .name = "hmax",   .values = { .kind = horusInt_PRESENT, .u = { .horusInt = { .nCount = 1, .arr = { (int)maxAlt           } } } }, .exist = { .name = true, .values = true } },
             { .name = "vmax",   .values = { .kind = horusInt_PRESENT, .u = { .horusInt = { .nCount = 1, .arr = { (int)maxSpeed         } } } }, .exist = { .name = true, .values = true } },
           }};
-        } else if (page == 3) {
+        } else if (page == 2) {                   // C: satellites used per constellation
+          // The four ranging constellations the M10 tracks: GPS, Galileo, BeiDou, GLONASS
+          // (an inactive one just reads 0). SBAS is an augmentation, not counted here.
+          return { .nCount = 4, .arr = {
+            { .name = "gpscount", .values = { .kind = horusInt_PRESENT, .u = { .horusInt = { .nCount = 1, .arr = { (int)gps.satGps } } } }, .exist = { .name = true, .values = true } },
+            { .name = "galcount", .values = { .kind = horusInt_PRESENT, .u = { .horusInt = { .nCount = 1, .arr = { (int)gps.satGal } } } }, .exist = { .name = true, .values = true } },
+            { .name = "beicount", .values = { .kind = horusInt_PRESENT, .u = { .horusInt = { .nCount = 1, .arr = { (int)gps.satBds } } } }, .exist = { .name = true, .values = true } },
+            { .name = "glocount", .values = { .kind = horusInt_PRESENT, .u = { .horusInt = { .nCount = 1, .arr = { (int)gps.satGlo } } } }, .exist = { .name = true, .values = true } },
+          }};
+        } else if (page == 5) {                   // F: ozone pump
           // Physical measurements go out as floats (horusReal) so a decoder shows the
           // real value (17.1 C), not a scaled integer (171). Only flags/versions stay int.
           return { .nCount = 4, .arr = {
@@ -1200,14 +1222,14 @@ int buildHorusV3PacketDataRecorder(char* uncoded_buffer, uint8_t page){
             { .name = "pumpu",  .values = { .kind = horusReal_PRESENT, .u = { .horusReal = { .nCount = 1, .arr = { xdataOzoneBatteryVoltage  } } } }, .exist = { .name = true, .values = true } },
             { .name = "pumpc",  .values = { .kind = horusReal_PRESENT, .u = { .horusReal = { .nCount = 1, .arr = { xdataOzonePumpCurrent     } } } }, .exist = { .name = true, .values = true } },
           }};
-        } else if (page == 4) {
+        } else if (page == 6) {                   // G: OIF411
           return { .nCount = 4, .arr = {
             { .name = "oifu",    .values = { .kind = horusReal_PRESENT, .u = { .horusReal = { .nCount = 1, .arr = { xdataOzoneExtVoltage                 } } } }, .exist = { .name = true, .values = true } },
             { .name = "oiferr",  .values = { .kind = horusInt_PRESENT,  .u = { .horusInt  = { .nCount = 1, .arr = { (xdataOzoneDiagnostics != 0) ? 1 : 0 } } } }, .exist = { .name = true, .values = true } },
             { .name = "oifver",  .values = { .kind = horusInt_PRESENT,  .u = { .horusInt  = { .nCount = 1, .arr = { (int)xdataOzoneFwVersion             } } } }, .exist = { .name = true, .values = true } },
             { .name = "o3ppb",   .values = { .kind = horusInt_PRESENT, .u = { .horusInt = { .nCount = 1, .arr = { (int)xdataOzonePpb                   } } } }, .exist = { .name = true, .values = true } },
           }};
-        } else {
+        } else {                                  // E (page 4): thermal / heater
           return { .nCount = 4, .arr = {
             { .name = "radiotemp", .values = { .kind = horusInt_PRESENT, .u = { .horusInt = { .nCount = 1, .arr = { (int)readRadioTemp()           } } } }, .exist = { .name = true, .values = true } },
             { .name = "rpmtemp",  .values = { .kind = horusInt_PRESENT, .u = { .horusInt = { .nCount = 1, .arr = { (int)rpm411InternalTemperature  } } } }, .exist = { .name = true, .values = true } },
@@ -1649,7 +1671,11 @@ float readRadioTemp() {  // Si4032 internal temperature ADC per the datasheet (a
   return temperature;  // Temperature in degrees Celsius
 }
 
-bool ackWait(uint16_t timeoutMs = 100)
+// Wait for a UBX ACK/NAK. When ackCls != 0 the ACK must reference that exact
+// message (its class/id sit at bytes 6-7 of the ACK-ACK/ACK-NAK payload), so a
+// stray ACK for a different message is not mistaken for success.
+//   returns  1 = ACK-ACK (accepted), 0 = ACK-NAK (rejected), -1 = timeout / none
+int8_t ackWaitFor(uint8_t ackCls, uint8_t ackId, uint16_t timeoutMs)
 {
   uint8_t buf[10];
   uint8_t idx = 0;
@@ -1659,38 +1685,378 @@ bool ackWait(uint16_t timeoutMs = 100)
     while (gpsSerial.available()) {
       uint8_t b = gpsSerial.read();
 
-      // Sync char 1
-      if (idx == 0 && b != 0xB5) continue;
-
-      // Sync char 2
-      if (idx == 1 && b != 0x62) {
-        idx = 0;
-        continue;
-      }
+      if (idx == 0 && b != 0xB5) continue;          // sync char 1
+      if (idx == 1 && b != 0x62) { idx = 0; continue; }  // sync char 2
 
       buf[idx++] = b;
 
-      // ACK/NAK packets are always 10 bytes
-      if (idx == 10) {
-        // UBX-ACK class?
-        if (buf[2] == 0x05) {
-          if (buf[3] == 0x01) return true;   // ACK-ACK
-          if (buf[3] == 0x00) return false;  // ACK-NAK
+      if (idx == 10) {                              // ACK/NAK packets are 10 bytes
+        if (buf[2] == 0x05 && (buf[3] == 0x00 || buf[3] == 0x01)) {
+          bool matches = (ackCls == 0) || (buf[6] == ackCls && buf[7] == ackId);
+          if (matches) return (buf[3] == 0x01) ? 1 : 0;   // ACK-ACK : ACK-NAK
         }
-        idx = 0; // restart scan
+        idx = 0;                                    // not our ACK - keep scanning
       }
     }
   }
-  return false; // timeout treated as failure
+  return -1;                                        // timed out
 }
 
-void sendUblox(int Size, uint8_t* Buffer) {
-  gpsSerial.write(Buffer, Size);  // Arduino style byte send
+// Backward-compatible helper (matches any ACK).
+bool ackWait(uint16_t timeoutMs = 100) { return ackWaitFor(0, 0, timeoutMs) == 1; }
 
-  if(rsm4x4) {
-    ackWait();
+// key = the CFG-VALSET config key (M10), or 0 when not applicable. Since every
+// M10 config message is a CFG-VALSET (cls 0x06 / id 0x8A), the key is what tells
+// you which specific setting the receiver rejected.
+void gpsCfgWarn(uint8_t cls, uint8_t id, uint32_t key) {
+  gpsCfgNakCount++;
+  if (xdataPortMode == 1) {
+    xdataSerial.print(F("[warn]: GPS config not ACKed - cls=0x"));
+    xdataSerial.print(cls, HEX); xdataSerial.print(F(" id=0x")); xdataSerial.print(id, HEX);
+    if (key) { xdataSerial.print(F(" key=0x")); xdataSerial.print(key, HEX); }
+    xdataSerial.println();
   }
 }
+
+// Extract the CFG-VALSET config key from a UBX payload, or 0 if it is not one.
+uint32_t ubxValsetKey(uint8_t cls, uint8_t id, const uint8_t* payload, uint16_t len) {
+  if (cls == 0x06 && id == 0x8A && len >= 8)
+    return (uint32_t)payload[4] | ((uint32_t)payload[5] << 8) |
+           ((uint32_t)payload[6] << 16) | ((uint32_t)payload[7] << 24);
+  return 0;
+}
+
+// Send a pre-built UBX frame (header + payload + checksum already in Buffer) and
+// validate the receiver's ACK, retrying a couple of times. All these frames are
+// CFG (class 0x06) messages, which the GPS always acknowledges.
+void sendUblox(int Size, uint8_t* Buffer) {
+  uint8_t cls = Buffer[2], id = Buffer[3];
+  uint32_t key = (Size >= 8) ? ubxValsetKey(cls, id, Buffer + 6, Size - 8) : 0;
+  for (uint8_t attempt = 0; attempt < 3; attempt++) {
+    gpsSerial.write(Buffer, Size);
+    int8_t r = ackWaitFor(cls, id, 120);   // ACKs normally arrive <50 ms; keep worst-case blocking low
+    if (r == 1) return;                 // accepted
+    if (attempt == 2) { gpsCfgWarn(cls, id, key); return; }
+    delay(20);
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Native UBX config helpers (v68). Build a UBX frame with a runtime-computed
+// Fletcher checksum, so new config messages never need a hand-typed checksum.
+// On the M10 (RSM4x4) a CFG message is followed by an ACK wait; polls are not.
+// ---------------------------------------------------------------------------
+void writeUbxFrame(uint8_t cls, uint8_t id, const uint8_t* payload, uint16_t len) {
+  uint8_t ckA = 0, ckB = 0;
+  #define _UBX_CK(b) do { ckA += (uint8_t)(b); ckB += ckA; } while (0)
+  _UBX_CK(cls); _UBX_CK(id); _UBX_CK(len & 0xFF); _UBX_CK(len >> 8);
+  for (uint16_t i = 0; i < len; i++) _UBX_CK(payload[i]);
+  #undef _UBX_CK
+
+  gpsSerial.write((uint8_t)0xB5); gpsSerial.write((uint8_t)0x62);
+  gpsSerial.write(cls); gpsSerial.write(id);
+  gpsSerial.write((uint8_t)(len & 0xFF)); gpsSerial.write((uint8_t)(len >> 8));
+  for (uint16_t i = 0; i < len; i++) gpsSerial.write(payload[i]);
+  gpsSerial.write(ckA); gpsSerial.write(ckB);
+}
+
+// Build + send a UBX frame. When expectAck, validate the ACK and retry a couple
+// of times, logging a warning if the receiver never acknowledges it (which is
+// exactly what happens if a config key/id is wrong - so a bad key is caught at
+// runtime instead of silently doing nothing). Polls pass expectAck = false; the
+// receiver's reply to a poll is a data message read by the parser, not an ACK.
+void sendUbx(uint8_t cls, uint8_t id, const uint8_t* payload, uint16_t len, bool expectAck) {
+  for (uint8_t attempt = 0; attempt < 3; attempt++) {
+    writeUbxFrame(cls, id, payload, len);
+    if (!expectAck) return;
+    int8_t r = ackWaitFor(cls, id, 120);   // ACKs normally arrive <50 ms; keep worst-case blocking low
+    if (r == 1) return;                 // accepted
+    if (attempt == 2) { gpsCfgWarn(cls, id, ubxValsetKey(cls, id, payload, len)); return; }
+    delay(20);
+  }
+}
+
+// Poll a UBX message (zero-length request); the receiver replies with the
+// current message, which the parser then decodes in gpsHandler().
+void sendUbxPoll(uint8_t cls, uint8_t id) {
+  sendUbx(cls, id, nullptr, 0, false);
+}
+
+#ifdef RSM4x4
+// M10 UBX-CFG-VALSET (key/value into the RAM layer) helpers.
+void m10ValSet(uint32_t key, const uint8_t* val, uint8_t valLen) {
+  uint8_t p[16];
+  p[0] = 0x00; p[1] = 0x01; p[2] = 0x00; p[3] = 0x00;   // version, layer=RAM, reserved
+  p[4] = key & 0xFF; p[5] = (key >> 8) & 0xFF; p[6] = (key >> 16) & 0xFF; p[7] = (key >> 24) & 0xFF;
+  for (uint8_t i = 0; i < valLen && i < 8; i++) p[8 + i] = val[i];
+  sendUbx(0x06, 0x8A, p, 8 + valLen, true);
+}
+void m10ValSetU1(uint32_t key, uint8_t v)  { m10ValSet(key, &v, 1); }
+void m10ValSetI1(uint32_t key, int8_t v)   { uint8_t b = (uint8_t)v; m10ValSet(key, &b, 1); }
+void m10ValSetU2(uint32_t key, uint16_t v) { uint8_t b[2] = { (uint8_t)(v & 0xFF), (uint8_t)(v >> 8) }; m10ValSet(key, b, 2); }
+void m10ValSetU4(uint32_t key, uint32_t v) { uint8_t b[4] = { (uint8_t)v, (uint8_t)(v >> 8), (uint8_t)(v >> 16), (uint8_t)(v >> 24) }; m10ValSet(key, b, 4); }
+
+// Secondary-GNSS mode (gpsSecondaryGnss) decoders. 0 = BeiDou B1C + GLONASS, 1 = BeiDou
+// B1I only, 2 = GLONASS only.
+static inline bool gpsUseBeidou()  { return gpsSecondaryGnss != 2; }  // BeiDou on in modes 0,1
+static inline bool gpsUseGlonass() { return gpsSecondaryGnss != 1; }  // GLONASS on in modes 0,2
+static inline bool gpsBeidouB1c()  { return gpsSecondaryGnss == 0; }  // B1C signal only when paired with GLONASS
+
+// Signature of the constellation/signal config last applied (-1 = unknown, forces a
+// resend). m10ResetConstellationCache() invalidates it after a GPS power-up / reset.
+static int s_conSig = -1;
+void m10ResetConstellationCache() { s_conSig = -1; }
+
+// Apply the constellation + BeiDou-signal set in ONE atomic CFG-VALSET. This matters:
+//  - the M10 validates the whole GNSS configuration together, so a valid combination
+//    (e.g. GPS + Galileo + BeiDou B1C + GLONASS + SBAS) is accepted as a set, whereas
+//    enabling the same keys one at a time passes through an invalid intermediate state
+//    (BeiDou on its default B1I signal WHILE GLONASS is on - which the single-band
+//    receiver refuses) and made the GLONASS enable NAK;
+//  - it resets the GNSS subsystem only ONCE, not once per key.
+// BeiDou's signal (B1C 0x1031000f, shares the 1575.42 MHz L1 centre so it can pair with
+// GLONASS; vs B1I 0x1031000d at 1561 MHz, more interference-resilient but no GLONASS) is
+// set in the same message so BeiDou never comes up on the wrong signal. Cached so it is
+// only re-sent when the config actually changes (a resend would reset the receiver).
+void m10SetConstellations(bool gps, bool glo, bool gal, bool bds, bool qzss, bool sbas, bool bdsB1c) {
+  int sig = gps | (glo << 1) | (gal << 2) | (bds << 3) | (qzss << 4) | (sbas << 5) | (bdsB1c << 6);
+  if (sig == s_conSig) return;                       // already applied - do not reset the receiver again
+
+  uint8_t p[64];
+  uint8_t n = 0;
+  p[n++] = 0x00; p[n++] = 0x01; p[n++] = 0x00; p[n++] = 0x00;   // version, layer = RAM, reserved
+  auto addKey = [&](uint32_t key, uint8_t val) {
+    p[n++] = key & 0xFF; p[n++] = (key >> 8) & 0xFF; p[n++] = (key >> 16) & 0xFF; p[n++] = (key >> 24) & 0xFF;
+    p[n++] = val;
+  };
+  addKey(0x1031001FUL, gps  ? 1 : 0);                // CFG-SIGNAL-GPS_ENA
+  addKey(0x10310021UL, gal  ? 1 : 0);                // CFG-SIGNAL-GAL_ENA
+  addKey(0x10310022UL, bds  ? 1 : 0);                // CFG-SIGNAL-BDS_ENA
+  addKey(0x1031000fUL, (bds &&  bdsB1c) ? 1 : 0);    // CFG-SIGNAL-BDS_B1C_ENA (B1C)
+  addKey(0x1031000dUL, (bds && !bdsB1c) ? 1 : 0);    // CFG-SIGNAL-BDS_B1_ENA  (B1I)
+  addKey(0x10310025UL, glo  ? 1 : 0);                // CFG-SIGNAL-GLO_ENA
+  addKey(0x10310024UL, qzss ? 1 : 0);                // CFG-SIGNAL-QZSS_ENA
+  addKey(0x10310020UL, sbas ? 1 : 0);                // CFG-SIGNAL-SBAS_ENA
+
+  sendUbx(0x06, 0x8A, p, n, true);                   // CFG-VALSET, ACKed (retried on NAK)
+  delay(500);                                        // GNSS-subsystem reset settle (per M10 manual)
+  s_conSig = sig;
+}
+
+// M10 receiver power mode (CFG-PM). The M10 has two power-save modes - ON/OFF (PSMOO) and
+// cyclic tracking (PSMCT) - selected by CFG-PM-OPERATEMODE (0x20D00001: 0 = FULL/continuous,
+// 1 = PSMOO, 2 = PSMCT). We use PSMCT for the intelligent tiers' cyclic power save.
+//
+// HARD CONSTRAINT (u-blox M10 integration manual, "Power save mode"): PSM does NOT support the
+// BeiDou B1C signal, and the receiver cannot process SBAS while in PSM (u-blox recommends
+// disabling SBAS). If either B1C or SBAS is enabled, the receiver NAKs
+// CFG-PM-OPERATEMODE = PSMCT/PSMOO (the "20d00001 not acked" we used to see). The default
+// gpsSecondaryGnss = 0 ("BeiDou B1C + GLONASS") enables B1C; only modes 1 (B1I only) and
+// 2 (GLONASS only) are PSM-legal. See m10CyclicTrackingUsable(): we NEVER send PSMCT unless
+// the live signal set is PSM-legal, so a mismatched config falls back to continuous instead
+// of a rejected command. The Firmware Builder interlocks these so a normal build can't reach
+// the bad state; this runtime check keeps a hand-edited CONFIG.h safe too.
+int8_t s_pmMode = -1;                            // cache: -1 unknown, 0 FULL, 2 PSMCT
+void m10ResetPmCache() { s_pmMode = -1; }
+
+// True only when cyclic tracking is both requested AND compatible with the configured signals
+// (no BeiDou B1C, no SBAS). Any incompatible config reads as "off" here - fail safe.
+static inline bool m10CyclicTrackingUsable() {
+  return m10CyclicTracking && !gpsBeidouB1c() && !gpsSbasEnable;
+}
+
+void m10SetContinuous() {
+  if (s_pmMode == 0) return;                     // already continuous - don't re-send
+  m10ValSetU1(0x20D00001UL, 0);                  // CFG-PM-OPERATEMODE = FULL
+  s_pmMode = 0;
+}
+
+// Enter cyclic tracking. onTimeSec = CFG-PM-ONTIME, the time held in full tracking each cycle.
+// Caller MUST have checked m10CyclicTrackingUsable() first (B1C/SBAS off), or the M10 NAKs it.
+void m10SetPsmct(uint16_t onTimeSec) {
+  if (s_pmMode == 2) return;                     // already in cyclic tracking
+  if (onTimeSec < 1) onTimeSec = 1;
+  m10ValSetU2(0x30D00005UL, onTimeSec);          // CFG-PM-ONTIME (s)
+  m10ValSetU1(0x20D00001UL, 2);                  // CFG-PM-OPERATEMODE = PSMCT
+  s_pmMode = 2;
+}
+#endif
+
+// u-blox 6 legacy CFG-MSG: set the output rate of one message on the current port.
+void m6CfgMsgRate(uint8_t cls, uint8_t id, uint8_t rate) {
+  uint8_t p[3] = { cls, id, rate };
+  sendUbx(0x06, 0x01, p, 3, true);   // CFG-MSG is ACKed
+}
+
+// Map gpsTrackingProfile -> (minimum elevation deg, minimum C/N0 dBHz).
+// Higher sensitivity keeps weaker/lower satellites (better fix availability
+// and geometry, a little more power). Verify exact effect on your hardware.
+void gpsTrackingProfileValues(int8_t &minElevDeg, uint8_t &minCno) {
+  switch (gpsTrackingProfile) {
+    case 0:  minElevDeg = 0;  minCno = 6;  break;   // max sensitivity - fight for every sat
+    case 2:  minElevDeg = 8;  minCno = 30; break;   // ultra power saving
+    case 1:
+    default: minElevDeg = 4;  minCno = 20; break;   // balanced (default)
+  }
+}
+
+// Configure the receiver for the native UBX data path: dynamic model, disable
+// NMEA, enable the UBX nav + jamming messages we parse, set the update rate and
+// apply the tracking profile. Called from initGPS().
+//
+// NOTE: the register keys / message IDs below follow the u-blox interface
+// manuals (M10 config-key DB and u-blox 6 receiver-description). If a unit
+// behaves oddly, verify these against the manual for that exact module.
+void gpsConfigureUbx() {
+  const uint16_t measMs = 1000 / (gpsUpdateRateHz == 0 ? 1 : gpsUpdateRateHz);
+  int8_t  minElevDeg; uint8_t minCno;
+  gpsTrackingProfileValues(minElevDeg, minCno);
+
+  if (rsm4x4) {
+#ifdef RSM4x4
+    // Dynamic model (configurable; default 6 = Airborne <1g)
+    if (ubloxGpsAirborneMode) m10ValSetU1(0x20110021UL, gpsDynamicModel);  // CFG-NAVSPG-DYNMODEL
+
+    // Output protocols: UBX on, NMEA off (UART1)
+    m10ValSetU1(0x10740001UL, 1);   // CFG-UART1OUTPROT-UBX  = 1
+    m10ValSetU1(0x10740002UL, 0);   // CFG-UART1OUTPROT-NMEA = 0
+
+    // Enable the NAV-PVT solution stream. MON-RF (the 0..255 CW jam indicator) and
+    // NAV-STATUS (spoofing) are POLLED each cycle in gpsHandler().
+    m10ValSetU1(0x20910007UL, 1);     // CFG-MSGOUT-UBX_NAV_PVT_UART1 = 1
+
+    // Solution / measurement rate
+    m10ValSetU2(0x30210001UL, measMs);  // CFG-RATE-MEAS (ms)
+    m10ValSetU2(0x30210002UL, 1);       // CFG-RATE-NAV  (cycles) = 1
+
+    // Tracking profile: elevation + C/N0 masks. Both keys are the ones the
+    // legacy (flight-tested) config already used, so they are known-valid on
+    // this module: 0x..A4 = INFIL_MINELEV, 0x..A3 = INFIL_MINCNO.
+    m10ValSetI1(0x201100A4UL, minElevDeg);  // CFG-NAVSPG-INFIL_MINELEV (deg)
+    m10ValSetU1(0x201100A3UL, minCno);      // CFG-NAVSPG-INFIL_MINCNO  (dBHz)
+
+    // SBAS is enabled as part of the atomic constellation set (m10SetConstellations),
+    // called from initGPS and the intelligent GPS management.
+
+    // AssistNow Autonomous: on-board orbit prediction -> faster re-acquisition
+    if (gpsAssistNowAutonomous)
+      m10ValSetU1(0x10230001UL, 1);   // CFG-ANA-USE_ANA = 1 (verified against M10 SPG 5.30 config DB)
+
+    // NOTE: the old ubxCfgValSet_maxSvs64 message was dropped - its key was
+    // 0x20110021 (that is DYNMODEL, not a max-SV limit) and its hardcoded
+    // checksum was wrong, so the M10 always NAKed it and it never did anything.
+    // The M10 has no artificial SV cap by default, so nothing is needed here.
+#endif
+  }
+  else if (rsm4x2) {
+    // Dynamic model / masks (default airborne 6 applied by initGPS via CFG-NAV5)
+
+    // Disable NMEA output (set every standard NMEA message rate to 0)
+    m6CfgMsgRate(0xF0, 0x00, 0);   // GGA
+    m6CfgMsgRate(0xF0, 0x01, 0);   // GLL
+    m6CfgMsgRate(0xF0, 0x02, 0);   // GSA
+    m6CfgMsgRate(0xF0, 0x03, 0);   // GSV
+    m6CfgMsgRate(0xF0, 0x04, 0);   // RMC
+    m6CfgMsgRate(0xF0, 0x05, 0);   // VTG
+
+    // Enable the UBX nav messages we parse
+    m6CfgMsgRate(0x01, 0x02, 1);   // NAV-POSLLH  (position + altitude)
+    m6CfgMsgRate(0x01, 0x12, 1);   // NAV-VELNED  (velocity, incl. velD)
+    m6CfgMsgRate(0x01, 0x06, 1);   // NAV-SOL     (fix, numSV, pDOP)
+    m6CfgMsgRate(0x01, 0x21, 1);   // NAV-TIMEUTC (UTC time)
+    // NAV-STATUS (spoofing) and MON-HW (jamming) are polled in gpsHandler().
+
+    // Solution / measurement rate: CFG-RATE (measMs, navRate=1, timeRef=GPS)
+    uint8_t rate[6] = { (uint8_t)(measMs & 0xFF), (uint8_t)(measMs >> 8), 0x01, 0x00, 0x01, 0x00 };
+    sendUbx(0x06, 0x08, rate, 6, true);
+
+    // Dynamic model + minimum elevation via CFG-NAV5 (mask selects the fields).
+    uint8_t nav5[36] = {0};
+    uint16_t nav5mask = 0x0002;          // minElev
+    nav5[12] = (uint8_t)minElevDeg;      // minElev (deg)
+    if (ubloxGpsAirborneMode) {
+      nav5mask |= 0x0001;                // dynModel
+      nav5[2]   = gpsDynamicModel;
+    }
+    nav5[0] = nav5mask & 0xFF; nav5[1] = nav5mask >> 8;
+    sendUbx(0x06, 0x24, nav5, 36, true);
+
+    // SBAS augmentation (EGNOS/WAAS/MSAS)
+    if (gpsSbasEnable) {
+      uint8_t sbas[8] = { 0x01, 0x03, 0x03, 0x00, 0, 0, 0, 0 };  // mode=on, usage=range+diff, 3 SBAS
+      sendUbx(0x06, 0x16, sbas, 8, true);   // CFG-SBAS
+    }
+    // (AssistNow Autonomous on u-blox 6 needs CFG-NAVX5; applied on the M10 path only.)
+  }
+}
+
+// True once enough time has elapsed since the last GPS power-mode/tier change.
+// Debounces the adaptive switching so a satellite count wobbling around a
+// boundary can't fire a burst of UBX reconfigurations (wastes power/time).
+bool gpsPowerChangeDue() {
+  if (!gpsPowerModeInitialized) return true;                 // first decision applies at once
+  return (millis() - lastPowerSaveChange) >= gpsPowerSaveDebounce;
+}
+void gpsPowerModeApplied() {
+  lastPowerSaveChange = millis();
+  gpsPowerModeInitialized = true;
+}
+
+#ifdef RSM4x4
+// Desired M10 intelligent tier from the satellite count. Tiers: 1 = weak (<=10,
+// continuous), 2 = moderate (11-15), 3 = strong (>=16, cyclic power-save).
+//
+// The response is deliberately asymmetric. A weakening fix downgrades at once, on
+// the nominal boundaries with no hysteresis, so the receiver returns to a harder-
+// tracking tier the moment it needs to (e.g. at 10 sats it drops straight back to
+// tier 1 / continuous). A strengthening fix climbs lazily - only once the count is
+// clear of the boundary by the hysteresis margin - so a count wobbling just above a
+// threshold cannot keep flipping up into power-save.
+uint8_t m10DesiredTier() {
+  uint8_t cur = currentM10IntelligentMode;
+  const uint8_t H = 1;                                       // upgrade hysteresis (1 sat past the line)
+  uint8_t nominal = (gpsSats <= 10) ? 1 : (gpsSats <= 15 ? 2 : 3);
+  if (cur < 1 || cur > 3) return nominal;                    // no valid tier yet
+  if (nominal < cur) return nominal;                         // fix weakened -> downgrade now (strict)
+  if (cur == 1 && gpsSats >= 11 + H) return (gpsSats >= 16 + H) ? 3 : 2;  // rising, past hysteresis
+  if (cur == 2 && gpsSats >= 16 + H) return 3;
+  return cur;                                                // hold
+}
+
+// Apply the constellation + power configuration for an M10 tier. Tiers: 1 weak,
+// 2 moderate, 3 strong. Constellation optimization sheds GNSS for power once the
+// fix is strong enough; aggressive mode sheds sooner and more. Higher tiers also
+// move to cyclic PSM. GPS + SBAS always stay on; the secondary GNSS (BeiDou and/or
+// GLONASS) follows gpsSecondaryGnss.
+void applyM10Tier(uint8_t tier) {
+  bool secOn = true, galOn = true;   // secondary GNSS (BeiDou/GLONASS) and Galileo
+  if (m10ConstellationOptimization) {
+    if (m10AggressiveOpt) {
+      // Aggressive: drop Galileo AND the secondary GNSS from a moderate fix up
+      // (tier >= 2), leaving GPS + SBAS at strong fixes. Kept deliberately eager.
+      secOn = (tier < 2);
+      galOn = (tier < 2);
+    } else {
+      // Balanced: only drop Galileo at a strong fix; keep the secondary GNSS
+      // (BeiDou/GLONASS), GPS and SBAS. Gentle, modest saving.
+      galOn = (tier < 3);
+    }
+  }
+  bool bdsOn = gpsUseBeidou()  && secOn;
+  bool gloOn = gpsUseGlonass() && secOn;
+  m10SetConstellations(true, gloOn, galOn, bdsOn, gpsQzssEnable, gpsSbasEnable, gpsBeidouB1c());
+
+  // Power mode. Cyclic tracking (PSMCT) needs a PSM-legal signal set (no B1C, no SBAS - see
+  // m10CyclicTrackingUsable), so an incompatible config just stays continuous. Weak fixes
+  // (tier 1) always stay continuous for fastest acquisition; aggressive optimization enters
+  // PSMCT one tier earlier (from tier 2), balanced only at the strong-fix tier (3).
+  bool wantPsmct = m10CyclicTrackingUsable() &&
+                   (tier >= 3 || (tier == 2 && m10AggressiveOpt));
+  if (wantPsmct) m10SetPsmct(m10CyclicPeriodSec);
+  else           m10SetContinuous();
+  currentM10IntelligentMode = tier;
+}
+#endif
 
 // [RS41-NFW-SA] Source-Available Module - NOT under GPL-3.0. See LICENSING.md and LICENSE.source-available.
 void GPSManagement() {
@@ -1703,11 +2069,8 @@ void GPSManagement() {
     if (currentGPSPowerMode != 1) {
       if(rsm4x4) {
 #ifdef RSM4x4
-        sendUblox(sizeof(ubxCfgValSetContinuous), ubxCfgValSetContinuous);
-        sendUblox(sizeof(ubxEnableGps), ubxEnableGps);
-        sendUblox(sizeof(ubxEnableGlo), ubxEnableGlo);
-        sendUblox(sizeof(ubxEnableGal), ubxEnableGal);
-        sendUblox(sizeof(ubxEnableBds), ubxEnableBds);
+        m10SetContinuous();
+        m10SetConstellations(true, gpsUseGlonass(), true, gpsUseBeidou(), gpsQzssEnable, gpsSbasEnable, gpsBeidouB1c());
 #endif
       }
       else if(rsm4x2) {
@@ -1716,101 +2079,47 @@ void GPSManagement() {
       currentGPSPowerMode = 1;
     }
   }
-  else if (gpsOperationMode == 2) {
+  else if (gpsOperationMode == 2) {   // NFW Intelligent GNSS Algorithms (both boards)
     startGPS();
 
-    if(rsm4x2) {
-      if(gpsSats < 7 && currentGPSPowerMode != 2) {
-        sendUblox(sizeof(ubxCfgNav5_powerSave), ubxCfgNav5_powerSave);
-        currentGPSPowerMode = 1;
-      }
-      else if(gpsSats >= 7 && currentGPSPowerMode != 1) {
-        sendUblox(sizeof(ubxCfgNav5_maxPerformance), ubxCfgNav5_maxPerformance);
-        currentGPSPowerMode = 2;
-      }
-    }
-    else if(rsm4x4) {
+    if (rsm4x4) {
 #ifdef RSM4x4
-      gpsOperationMode = 3;
-#endif
-    }
-  }
-  else if (gpsOperationMode == 3) {
-    startGPS();
-
-    if(rsm4x4) {
-#ifdef RSM4x4
-      if(gpsSats <= 10 && currentM10IntelligentMode != 1) {
-        if(m10ConstellationOptimization && !m10AggressiveOpt) {
-          sendUblox(sizeof(ubxEnableGps), ubxEnableGps);
-          sendUblox(sizeof(ubxEnableGlo), ubxEnableGlo);
-          sendUblox(sizeof(ubxEnableGal), ubxEnableGal);
-          sendUblox(sizeof(ubxEnableBds), ubxEnableBds);
+      // M10: full intelligent management - adaptive constellation + power tiers,
+      // debounced + hysteresis (see m10DesiredTier / applyM10Tier).
+      uint8_t desired = m10DesiredTier();
+      if (desired != currentM10IntelligentMode) {
+        // A downgrade (weakening fix) is applied immediately; only upgrades into a
+        // lighter-tracking tier wait out the debounce, so we never sit in power-save
+        // while the fix degrades.
+        bool downgrade = desired < currentM10IntelligentMode;
+        if (downgrade || gpsPowerChangeDue()) {
+          applyM10Tier(desired);
+          gpsPowerModeApplied();
         }
-        else if(m10ConstellationOptimization && m10AggressiveOpt) {
-          sendUblox(sizeof(ubxEnableGps), ubxEnableGps);
-          sendUblox(sizeof(ubxDisableGlo), ubxDisableGlo);
-          sendUblox(sizeof(ubxEnableGal), ubxEnableGal);
-          sendUblox(sizeof(ubxEnableBds), ubxEnableBds);
-        }
-        sendUblox(sizeof(ubxCfgValSetContinuous), ubxCfgValSetContinuous);
-        currentM10IntelligentMode = 1;
-      }
-      else if(gpsSats <= 15 && gpsSats > 10 && currentM10IntelligentMode != 2) {
-        if(m10ConstellationOptimization && !m10AggressiveOpt) {
-          sendUblox(sizeof(ubxEnableGps), ubxEnableGps);
-          sendUblox(sizeof(ubxEnableGlo), ubxEnableGlo);
-          sendUblox(sizeof(ubxEnableGal), ubxEnableGal);
-          sendUblox(sizeof(ubxEnableBds), ubxEnableBds);
-        }
-        else if (m10ConstellationOptimization && m10AggressiveOpt) {
-          sendUblox(sizeof(ubxEnableGps), ubxEnableGps);
-          sendUblox(sizeof(ubxDisableGlo), ubxDisableGlo);
-          sendUblox(sizeof(ubxDisableGal), ubxDisableGal);
-          sendUblox(sizeof(ubxEnableBds), ubxEnableBds);
-        }
-
-        if(m10CyclicTracking && !m10AggressiveOpt) {
-          sendUblox(sizeof(ubxCfgValSetContinuous), ubxCfgValSetContinuous);
-        }
-        else if(m10CyclicTracking && m10AggressiveOpt) {
-          sendUblox(sizeof(ubxCfgValSetPsmct), ubxCfgValSetPsmct);
-          sendUblox(sizeof(ubxCfgValSetPsmctPeriod10), ubxCfgValSetPsmctPeriod10);
-        }
-        currentM10IntelligentMode = 2;
-      }
-      else if(gpsSats >= 15 && currentM10IntelligentMode != 3) {
-        if(m10ConstellationOptimization && !m10AggressiveOpt) {
-          sendUblox(sizeof(ubxEnableGps), ubxEnableGps);
-          sendUblox(sizeof(ubxDisableGlo), ubxDisableGlo);
-          sendUblox(sizeof(ubxEnableGal), ubxEnableGal);
-          sendUblox(sizeof(ubxEnableBds), ubxEnableBds);
-        }
-        else if (m10ConstellationOptimization && m10AggressiveOpt) {
-          sendUblox(sizeof(ubxEnableGps), ubxEnableGps);
-          sendUblox(sizeof(ubxDisableGlo), ubxDisableGlo);
-          sendUblox(sizeof(ubxDisableGal), ubxDisableGal);
-          sendUblox(sizeof(ubxEnableBds), ubxEnableBds);
-        } 
-
-        if(m10CyclicTracking && !m10AggressiveOpt) {
-          sendUblox(sizeof(ubxCfgValSetPsmct), ubxCfgValSetPsmct);
-          sendUblox(sizeof(ubxCfgValSetPsmctPeriod10), ubxCfgValSetPsmctPeriod10);
-        }
-        else if(m10CyclicTracking && m10AggressiveOpt) {
-          sendUblox(sizeof(ubxCfgValSetPsmct), ubxCfgValSetPsmct);
-          sendUblox(sizeof(ubxCfgValSetPsmctPeriod10), ubxCfgValSetPsmctPeriod10);
-        }
-        currentM10IntelligentMode = 3;
       }
 #endif
     }
     else if (rsm4x2) {
-      gpsOperationMode = 2;
+      // G6010: the only power lever this chip has is the power-save nav mode. Run
+      // max performance while satellites are scarce (fight for the fix), and power-
+      // save once there is a comfortable margin above 9 sats. Debounced + 2-sat
+      // hysteresis so it can't flip every cycle. currentGPSPowerMode: 1 = max, 2 = save.
+      const uint8_t H = 2, THR = 9;
+      uint8_t desired = currentGPSPowerMode;
+      if (currentGPSPowerMode == 0)        desired = (gpsSats < THR) ? 1 : 2;  // first decision
+      else if (gpsSats <= THR - H)         desired = 1;                        // scarce -> max perf
+      else if (gpsSats >= THR + H)         desired = 2;                        // plenty -> power save
+
+      if (desired != currentGPSPowerMode && gpsPowerChangeDue()) {
+        if (desired == 1) sendUblox(sizeof(ubxCfgNav5_maxPerformance), ubxCfgNav5_maxPerformance);
+        else              sendUblox(sizeof(ubxCfgNav5_powerSave),      ubxCfgNav5_powerSave);
+        currentGPSPowerMode = desired;
+        gpsPowerModeApplied();
+      }
     }
   }
   else {
-    gpsOperationMode = 1;
+    gpsOperationMode = 1;   // unknown mode -> safe max performance
   }
 }
 
@@ -1968,28 +2277,73 @@ void gpsHandler() {
     gpsStatus = currentGPSPowerMode;
   }
 
-  uint16_t gpsNmeaMsgWaitTime = 1200;
-
-  if(m10PerformanceImprovements && rsm4x4) {
-    gpsNmeaMsgWaitTime = 1000;
-  }
-  else {
-    gpsNmeaMsgWaitTime = 1200;
-  }
+  // Upper bound on how long we wait for a fresh UBX solution before giving up
+  // this cycle. Normally we return far sooner - the instant a solution arrives.
+  // Kept tight so a marginal-signal cycle cannot stall long enough to slip a TX slot.
+  const uint16_t gpsReadBudgetMs = 800;
 
   if (gpsOperationMode != 0) {  //if gps disabled then don't unnecesarly try to read it
-    unsigned long start = millis();
-    do {
-      while (gpsSerial.available()) {
-        char c = gpsSerial.read();
-        gps.encode(c);
-        
-        if(xdataPortMode == 2) {   // GPS bridge mode: echo raw NMEA to the xdata port
-          xdataSerial.print(c);
-        }
+    // Integrity + diagnostics polls (no CFG-MSGOUT key needed - the receiver answers a
+    // zero-length poll, decoded by the parser on the next drain). These do not need a
+    // fast rate, so throttle them to ~2 s: it keeps the per-cycle RX burst small (so it
+    // does not compete with NAV-PVT or push a TX slot) while still refreshing steadily.
+    static unsigned long _lastIntegrity = 0;
+    bool pollIntegrity = (millis() - _lastIntegrity > 2000UL);
+    if (pollIntegrity) _lastIntegrity = millis();
+
+    if (rsm4x4) {
+      // M10: UBX-MON-RF gives the 0..255 CW jam indicator; UBX-NAV-STATUS gives the
+      // spoofing state. Both are polled here and answered.
+      if (pollIntegrity) {
+        if (gpsHardwareJammingMonitor)
+          sendUbxPoll(UbxGnss::CLS_MON, UbxGnss::MON_RF);
+        if (gpsSpoofingDetection)
+          sendUbxPoll(UbxGnss::CLS_NAV, UbxGnss::NAV_STATUS);
       }
-        
-    } while (millis() - start < gpsNmeaMsgWaitTime);
+    } else {
+      // u-blox 6 (G6010): only NAV-TIMEUTC (the legacy time message does not always
+      // stream reliably here). This is a single-GPS receiver: no per-constellation
+      // NAV-SAT and no spoofing. MON-HW is not polled - its jamming indicator is not
+      // populated meaningfully on this module (it read a stale 255), so we report no
+      // jamming rather than a garbage value.
+      sendUbxPoll(UbxGnss::CLS_NAV, UbxGnss::NAV_TIMEUTC);   // time - keep every cycle
+    }
+    // Event-driven read: drain the UART and stop the moment a fresh position
+    // solution is decoded (UBX streams at gpsUpdateRateHz). If none streams in
+    // within half the budget, poll the receiver to force an immediate reply.
+    unsigned long start = millis();
+    bool gotFix = false, polled = false;
+
+    while (millis() - start < gpsReadBudgetMs) {
+      while (gpsSerial.available()) {
+        if (gps.encode((uint8_t)gpsSerial.read())) gotFix = true;  // fresh position solution
+      }
+      if (gotFix) break;                          // freshest data in hand - return now
+
+      if (!polled && (millis() - start) > (gpsReadBudgetMs / 2)) {
+        if (rsm4x4) sendUbxPoll(UbxGnss::CLS_NAV, UbxGnss::NAV_PVT);
+        else        sendUbxPoll(UbxGnss::CLS_NAV, UbxGnss::NAV_POSLLH);
+        polled = true;
+      }
+    }
+
+    // Per-constellation satellite counts (NAV-SAT, M10 only - u-blox 6 has no such
+    // message). It is by far the largest UBX reply (8 + 12*numSvs bytes, ~370 with a
+    // full sky). We poll it only *after* the position read is done and then drain it
+    // in one continuous pass, so its long reply streams into a quiet, actively-emptied
+    // UART buffer with no NAV-PVT competing. Polling it earlier let its tail overrun
+    // the UART RX buffer mid-stream, failing the checksum (inflating ubxerrs) and
+    // freezing the counts. Throttled so the extra ~100 ms read is only occasional.
+    static unsigned long _lastNavSat = 0;
+    if (rsm4x4 && millis() - _lastNavSat > 8000UL) {
+      _lastNavSat = millis();
+      gps.navSatUpdated = false;
+      sendUbxPoll(UbxGnss::CLS_NAV, UbxGnss::NAV_SAT);
+      unsigned long t = millis();
+      while (millis() - t < 450 && !gps.navSatUpdated) {   // ~730 B multi-GNSS frame + poll latency
+        while (gpsSerial.available()) gps.encode((uint8_t)gpsSerial.read());
+      }
+    }
 
     gpsTime = gps.time.value() / 100;
     gpsHours = gps.time.hour();
@@ -1997,11 +2351,13 @@ void gpsHandler() {
     gpsSeconds = gps.time.second();
     gpsLat = gps.location.lat();
     gpsLong = gps.location.lng();
+    gpsAltFresh = gps.navUpdated;    // a fresh position solution was committed this cycle
+    gps.navUpdated = false;
     gpsAlt = gps.altitude.meters();
     gpsSpeed = gps.speed.mps();
     gpsSpeedKph = gps.speed.kmph();
     gpsSats = gps.satellites.value();
-    gpsHdop = gps.hdop.hdop();
+    gpsHdop = gps.hdop.hdop();        // NAV-PVT/NAV-SOL pDOP (see CONFIG note)
 
     verticalVelocityCalculationHandler();
 
@@ -2015,8 +2371,15 @@ void gpsHandler() {
         xdataSerial.print(F(" alt=")); xdataSerial.print((int)gpsAlt);
         xdataSerial.print(F("m sats=")); xdataSerial.print(gpsSats);
         xdataSerial.print(F(" hdop=")); xdataSerial.print(gpsHdop, 1);
-        xdataSerial.print(F(" vv=")); xdataSerial.print(vVCalc, 1);
-        xdataSerial.println(F("m/s"));
+        xdataSerial.print(F(" vv=")); xdataSerial.print(vVCalc, 1); xdataSerial.print(F("m/s"));
+#ifdef RSM4x4
+        // Watch cyclic tracking here: tier reaches 3 (or 2 aggressive) to request PSMCT, and
+        // psm shows what the M10 is actually doing - 0 off (continuous), 3 tracking,
+        // 4 power optimized tracking (cyclic power-save is working), 5 inactive (asleep).
+        xdataSerial.print(F(" tier=")); xdataSerial.print(currentM10IntelligentMode);
+        xdataSerial.print(F(" psm="));  xdataSerial.print(gps.psmState);
+#endif
+        xdataSerial.println();
       }
     }
 
@@ -2042,11 +2405,16 @@ void gpsHandler() {
       }
     }
 
-    if (beganFlying && (gpsHdop > 15 || abs(vVCalc) > 300)) {
+    // GPS integrity warning: the receiver's spoofing flag (UBX-NAV-STATUS), with the
+    // in-flight DOP / vertical-speed heuristic as a fallback.
+    bool ubxSpoof     = (gps.spoofState  >= 2);    // 2 = spoofing indicated, 3 = multiple
+    bool heuristicJam = beganFlying && (gpsHdop > 15 || fabs(vVCalc) > 300);
+    if (ubxSpoof || heuristicJam) {
       gpsJamWarning = true;
 
       if (xdataPortMode == 1) {
-        xdataSerial.println("[warn]: GPS Jam warning is active!");
+        if (ubxSpoof) xdataSerial.println("[warn]: GPS SPOOFING detected!");
+        else          xdataSerial.println("[warn]: GPS integrity warning is active!");
       }
     } else {
       gpsJamWarning = false;
@@ -2054,10 +2422,16 @@ void gpsHandler() {
   }
 }
 
+// Tracks the GPS reset-pin state so startGPS()/shutdownGPS() only act and log on an
+// actual on<->off transition. startGPS() is called every GPSManagement() cycle, so
+// without this it re-drove the pin and spammed "GPS is ON" on every single loop.
+bool gpsPoweredOn = false;
+
 // [RS41-NFW-SA] Source-Available Module - NOT under GPL-3.0. See LICENSING.md and LICENSE.source-available.
 void shutdownGPS() {
   digitalWrite(GPS_RESET_PIN, LOW);
-
+  if (!gpsPoweredOn) return;                 // already off - nothing to do or log
+  gpsPoweredOn = false;
   if (xdataPortMode == 1) {
     xdataSerial.println("[info]: GPS shutdown");
   }
@@ -2066,7 +2440,8 @@ void shutdownGPS() {
 // [RS41-NFW-SA] Source-Available Module - NOT under GPL-3.0. See LICENSING.md and LICENSE.source-available.
 void startGPS() {
   digitalWrite(GPS_RESET_PIN, HIGH);
-
+  if (gpsPoweredOn) return;                  // already on - do not re-log every cycle
+  gpsPoweredOn = true;
   if (xdataPortMode == 1) {
     xdataSerial.println("[info]: GPS is ON");
   }
@@ -2077,6 +2452,7 @@ void restartGPS() {
   digitalWrite(GPS_RESET_PIN, LOW);
   delay(3000);
   digitalWrite(GPS_RESET_PIN, HIGH);
+  gpsPoweredOn = true;                        // ends powered on
 
   gpsResetCounter++;
 
@@ -2091,68 +2467,78 @@ void initGPS() {
     xdataSerial.println(F("[info]: GPS settings are being initialized..."));
   }
 
+  // Baseline dynamic model + navigation masks. On the M10 the model is applied
+  // (configurably) by gpsConfigureUbx() below; on the u-blox 6 we send the full
+  // CFG-NAV5 baseline here first, then overlay the tracking profile.
   if (ubloxGpsAirborneMode) {
     if (xdataPortMode == 1) {
-      xdataSerial.println(F("[info] Setting the Airborne 1G (6) GPS dynamic model..."));
+      xdataSerial.println(F("[info]: setting GPS dynamic model..."));
     }
-
-    if (rsm4x4) {
-#ifdef RSM4x4
-      sendUblox(sizeof(ubxCfgValSet_dynmodel6), ubxCfgValSet_dynmodel6);
-      delay(1000);
-      sendUblox(sizeof(ubxCfgValSet_dynmodel6), ubxCfgValSet_dynmodel6);
-#endif
-    } else if (rsm4x2) {
-      // Assuming these are defined globally for RSM4x2
+    if (rsm4x2) {
       sendUblox(sizeof(ubxCfgNav5_dynmodel6), ubxCfgNav5_dynmodel6);
-      delay(1000);
-      sendUblox(sizeof(ubxCfgNav5_dynmodel6), ubxCfgNav5_dynmodel6);
+      delay(500);
     }
   }
 
-  if (xdataPortMode == 1) {
-    xdataSerial.println(F("[info]: GPS settings done"));
-  }
+  // Native UBX data path: disable NMEA, enable the nav + jamming messages the
+  // parser decodes, set the update rate (gpsUpdateRateHz) and the tracking
+  // profile (elevation / C/N0). Replaces the former NMEA message setup.
+  gpsConfigureUbx();
 
 #ifdef RSM4x4
-  if (rsm4x4 && m10PerformanceImprovements) {
-    sendUblox(sizeof(ubxCfgValSet_msgRate4Hz), ubxCfgValSet_msgRate4Hz);
-    delay(100);
-    sendUblox(sizeof(ubxCfgValSet_navRate2500), ubxCfgValSet_navRate2500);
-    delay(100);
-    sendUblox(sizeof(ubxCfgValSet_enableGns), ubxCfgValSet_enableGns);
-    delay(100);
-    sendUblox(sizeof(ubxCfgValSet_disableGga), ubxCfgValSet_disableGga);
-    delay(100);
-    sendUblox(sizeof(ubxCfgValSet_maxSvs64), ubxCfgValSet_maxSvs64);
-    delay(100); 
-    sendUblox(sizeof(ubxCfgElev3), ubxCfgElev3);
-    delay(100);
-    sendUblox(sizeof(ubxCfgSig10), ubxCfgSig10);
-  }
-
-  // Wrap constellation enables as they use the M10 ValSet arrays
-  sendUblox(sizeof(ubxEnableGps), ubxEnableGps);
-  delay(100);
-  sendUblox(sizeof(ubxEnableGlo), ubxEnableGlo);
-  delay(100);
-  sendUblox(sizeof(ubxEnableGal), ubxEnableGal);
-  delay(100);
-  sendUblox(sizeof(ubxEnableBds), ubxEnableBds);
+  // Enable the constellation set at start-up: GPS + Galileo + one secondary
+  // (BeiDou and/or GLONASS, per gpsSecondaryGnss) + SBAS, optionally QZSS. The
+  // intelligent GPS management then tunes which stay on per tier. The receiver was just
+  // powered up / reset to its defaults, so invalidate the change-cache to force a full
+  // (re)apply here.
+  m10ResetConstellationCache();
+  m10ResetPmCache();   // receiver reset to default (FULL) power mode too
+  m10SetConstellations(true, gpsUseGlonass(), true, gpsUseBeidou(), gpsQzssEnable, gpsSbasEnable, gpsBeidouB1c());
 
   if(rsm4x4 && m10SuperS) {
     delay(100);
     sendUblox(sizeof(ubxCfgValSet_enableSuperS), ubxCfgValSet_enableSuperS);
   }
+
+  // Ask the receiver which major constellations it actually supports and has enabled
+  // (UBX-MON-GNSS) and log it, so the applied config can be verified at a glance.
+  if (xdataPortMode == 1) {
+    gps.monGnssSeen = false;
+    sendUbxPoll(UbxGnss::CLS_MON, UbxGnss::MON_GNSS);
+    unsigned long t = millis();
+    while (millis() - t < 300 && !gps.monGnssSeen) {
+      while (gpsSerial.available()) gps.encode((uint8_t)gpsSerial.read());
+    }
+    if (gps.monGnssSeen) {
+      xdataSerial.print(F("[info]: GNSS supported:"));
+      if (gps.gnssSupported & 0x01) xdataSerial.print(F(" GPS"));
+      if (gps.gnssSupported & 0x08) xdataSerial.print(F(" GAL"));
+      if (gps.gnssSupported & 0x04) xdataSerial.print(F(" BDS"));
+      if (gps.gnssSupported & 0x02) xdataSerial.print(F(" GLO"));
+      xdataSerial.print(F(" | enabled:"));
+      if (gps.gnssEnabled & 0x01) xdataSerial.print(F(" GPS"));
+      if (gps.gnssEnabled & 0x08) xdataSerial.print(F(" GAL"));
+      if (gps.gnssEnabled & 0x04) xdataSerial.print(F(" BDS"));
+      if (gps.gnssEnabled & 0x02) xdataSerial.print(F(" GLO"));
+      xdataSerial.println();
+    } else {
+      xdataSerial.println(F("[info]: GNSS status poll (MON-GNSS) not answered"));
+    }
+  }
 #endif
+
+  if (xdataPortMode == 1) {
+    xdataSerial.println(F("[info]: GPS settings done"));
+  }
 }
 
 // Function to select heater and change its state (on/off)
 // [RS41-NFW-SA] Source-Available Module - NOT under GPL-3.0. See LICENSING.md and LICENSE.source-available.
 void selectReferencesHeater(int heatingMode) {
+  bool changed = (referenceHeaterStatus != heatingMode);
   referenceHeaterStatus = heatingMode;
 
-  if (xdataPortMode == 1) {
+  if (changed && xdataPortMode == 1) {   // log only on an actual level change, not every call
     xdataSerial.print("[info]: ref. heating ");
     xdataSerial.print(heatingMode);
     xdataSerial.println("/3");
@@ -2688,21 +3074,21 @@ void sensorBoomHandler() {
 }
 
 void verticalVelocityCalculationHandler() {
-  if (gpsSats > 3) {  //calculate only if fix, else set to 0 to indicate fault
-    // Time difference in seconds
-    float timeDifference = (millis() - lastGpsAltMillisTime) / 1000.0;
+  // Vertical velocity now comes straight from the GPS solution (UBX velD),
+  // which is a true receiver-computed climb/descent rate - no more differencing
+  // successive altitudes (which aliased to 0 when gpsHandler ran faster than the
+  // fix rate). Positive = climbing. Reported 0 only when there is no usable fix.
+  if (gpsSats <= 3 || !gps.gnssFixOK) {
+    vVCalc = 0;
+    return;
+  }
 
-    // Ensure timeDifference is not zero to avoid division by zero
-    if (timeDifference > 0) {
-      // Vertical velocity Vv = (altNow - altBefore) / (timeNow - timeBefore)
-      vVCalc = (gpsAlt - lastGpsAlt) / timeDifference;
-    }
+  vVCalc = gps.verticalVelocity;
 
-    // Update last known values
+  // Keep the altitude reference updated so any consumer of lastGpsAlt stays sane.
+  if (gpsAltFresh) {
     lastGpsAltMillisTime = millis();
     lastGpsAlt = gpsAlt;
-  } else {
-    vVCalc = 0;
   }
 }
 
@@ -3214,6 +3600,24 @@ void bothLedOff() {
   digitalWrite(GREEN_LED_PIN, HIGH);
 }
 
+#ifdef RSM4x4
+// Private landing latch: once the sonde has flown, climbed above the threshold
+// and dropped back below it, latch every mode onto its private frequency to keep
+// the landing spot off public maps. Factored out of flightComputing() so it can
+// also run inside the blocking low-altitude fast-TX loop - otherwise a fast-TX
+// window that started before landing would keep broadcasting the descent on the
+// public frequencies (the latch was never re-evaluated during that window).
+void updatePrivateLanding() {
+  if (privateLandingModeEnable && !privateLandingActive && beganFlying) {
+    if (gpsAlt > privateLandingAltitudeThreshold) privateLandingArmed = true;
+    if (privateLandingArmed && gpsAlt < privateLandingAltitudeThreshold) {
+      privateLandingActive = true;
+      if (xdataPortMode == 1) xdataSerial.println(F("[flt]: private landing frequencies active"));
+    }
+  }
+}
+#endif
+
 void flightComputing() {
   if (dataRecorderFlightNoiseFiltering && beganFlying) {
     if (static_cast<int>(gpsAlt) > maxAlt) {
@@ -3251,13 +3655,18 @@ void flightComputing() {
   // Flight start: climbed flightStartClimbThreshold m above the launch baseline
   // for 5 consecutive fixes. Works at any ascent rate; the streak rejects GPS spikes.
   if (gpsSats >= 4) {
-    if (!flightBaselineSet) {
+    // Wait flightBaselineSettleTime after the first fix before latching the baseline:
+    // a cold-start GPS altitude can be 100-200 m off and only converges over a few
+    // seconds, and latching it too early caused false liftoffs on the ground.
+    if (flightFixAcquiredMillis == 0) flightFixAcquiredMillis = millis();
+
+    if (!flightBaselineSet && (millis() - flightFixAcquiredMillis) >= flightBaselineSettleTime) {
       flightBaseAlt     = gpsAlt;
       flightPrevAlt     = gpsAlt;
       flightBaselineSet = true;
     }
 
-    if (!beganFlying && gpsAlt != flightPrevAlt) {   // only act on a fresh fix value
+    if (flightBaselineSet && !beganFlying && gpsAlt != flightPrevAlt) {   // only act on a fresh fix value
       if ((gpsAlt - flightBaseAlt) >= (float)flightStartClimbThreshold) {
         if (flightSustainedRise < 255) flightSustainedRise++;
       } else {
@@ -3291,17 +3700,7 @@ void flightComputing() {
   }
 
 #ifdef RSM4x4
-  // Private landing: once the sonde has flown, been above the threshold and dropped
-  // back below it, latch every mode onto its private frequency to keep the landing
-  // spot off public maps. The arm step (must go above the threshold first) means it
-  // never triggers during a low-altitude ascent, and does not rely on maxAlt.
-  if (privateLandingModeEnable && !privateLandingActive && beganFlying) {
-    if (gpsAlt > privateLandingAltitudeThreshold) privateLandingArmed = true;
-    if (privateLandingArmed && gpsAlt < privateLandingAltitudeThreshold) {
-      privateLandingActive = true;
-      if (xdataPortMode == 1) xdataSerial.println(F("[flt]: private landing frequencies active"));
-    }
-  }
+  updatePrivateLanding();
 #endif
 
 #ifdef RSM4x4
@@ -3339,6 +3738,7 @@ void lowAltitudeFastTxMode() {
   setRadioPower(7);
   while (millis() - lowAltitudeFastTxModeBeginTime < lowAltitudeFastTxDuration && !lowAltitudeFastTxModeEnd) {
     gpsHandler();
+    updatePrivateLanding();   // keep the private-landing latch live during this blocking window
     ozoneHandler();
     sensorBoomHandler();
     pressureHandler();
@@ -3803,8 +4203,15 @@ void dataRecorderTx() {
   // data. The whole set goes out together every dataRecorderInterval. On very short TX
   // intervals the burst can occasionally overrun a scheduled slot (that mode's window is then
   // skipped once) - that is acceptable, the recorder data is worth it.
-  const uint8_t totalDrPages = (xdataPortMode == 3) ? 5 : 3;
+  // 5 pages normally (A gps, B integrity, C stats, D thermal, E sat counts);
+  // ozone mode adds F (pump) and G (OIF411).
+  const uint8_t totalDrPages = (xdataPortMode == 3) ? 7 : 5;
   for (uint8_t page = 0; page < totalDrPages; page++) {
+    // RSM4x2 (u-blox 6) has no jamming/spoofing and no per-constellation NAV-SAT, so its
+    // GNSS integrity page (B) and satellite-counts page (C) carry nothing meaningful -
+    // skip them entirely on that board.
+    if (rsm4x2 && (page == 1 || page == 2)) continue;
+
     int pkt_len = buildHorusV3PacketDataRecorder(rawbuffer, page);
     if (pkt_len == 0) {
       if (xdataPortMode == 1) {
@@ -3818,7 +4225,7 @@ void dataRecorderTx() {
     int coded_len = horus_l2_encode_tx_packet((unsigned char*)codedbuffer, (unsigned char*)rawbuffer, pkt_len);
 
     if (xdataPortMode == 1) {
-      const char* labels[] = {"A(gps)", "B(stats)", "C(heat)", "D(ozone)", "E(oif)"};
+      const char* labels[] = {"A(gps)", "B(integ)", "C(sats)", "D(stats)", "E(heat)", "F(ozone)", "G(oif)"};
       xdataSerial.print("[info]: dataRecorder ");
       xdataSerial.print(labels[page]);
       xdataSerial.print(" uncoded=");
@@ -3849,7 +4256,8 @@ void dataRecorderTx() {
 }
 #endif  // dataRecorder (dataRecorderTx) - both boards
 
-#ifdef RSM4x4
+#ifdef RSM4x4   // Ultra power save after landing is RSM4x4-only: the RSM4x2 (F100) build has
+                // no room for it once everything else is enabled.
 void ultraPowerSaveHandler() {
   if (ultraPowerSaveAfterLanding) {
     if (hasLanded && millis() - landingTimeMillis > 1200000) {  //20 minutes after landing
@@ -3859,7 +4267,6 @@ void ultraPowerSaveHandler() {
       selectSensorBoom(0, 0);
       setRadioPower(6);  //NOTE: power save mode changes the power to 50mW, which may not be what a powersave is meant to be. However, sonde laying on the ground has a very poor radio propagation and range, therefore a couple second long transmission won't impact it much
       for (;;) {
-        #ifdef RSM4x4
         if (horusEnable) {
           int pkt_len = build_horus_binary_packet_v2(rawbuffer);
           int coded_len = horus_l2_encode_tx_packet((unsigned char*)codedbuffer, (unsigned char*)rawbuffer, pkt_len);
@@ -3872,7 +4279,6 @@ void ultraPowerSaveHandler() {
           fsk4_write(codedbuffer, coded_len);
           radioDisableTx();
         }
-        #endif
 
         if (horusV3Enable) {
           int pkt_len = buildHorusV3Packet(rawbuffer);
@@ -3924,7 +4330,7 @@ void ultraPowerSaveHandler() {
             radioDisableTx();
           }
         }
-        unsigned long modeChangeDelayCallbackTimer = millis() + 300000;
+        unsigned long modeChangeDelayCallbackTimer = millis() + 180000;   // transmit the last position every 3 minutes
 
         while (millis() < modeChangeDelayCallbackTimer) {
           buttonHandler();
@@ -4394,6 +4800,14 @@ void humidityCheck() {
 
 // [RS41-NFW-SA] Source-Available Module - NOT under GPL-3.0. See LICENSING.md and LICENSE.source-available.
 void flightHeatingHandler() {
+  // Thermal control only needs to run about once a second - the heater/PCB thermal time
+  // constants are seconds long. Running it every scheduler loop (~100x/s) did a blocking
+  // thermistor read and printed three log lines each time, which flooded the link and
+  // slowed the loop enough to starve GPS reads and destabilise the clock.
+  static unsigned long _lastHeat = 0;
+  if (millis() - _lastHeat < 1000UL) return;
+  _lastHeat = millis();
+
   if (referenceHeating) {
     float cutOutTemp = readThermistorTemp();  //maintaining reference area temperature of ~20*C
 
@@ -4639,10 +5053,27 @@ void gpsQuietMode() {
 
     unsigned long startQuietMillis = millis();
     unsigned long lastUpdate = startQuietMillis;
+    unsigned long fixHeldSince = 0;   // millis() when the current continuous fix began (0 = no fix yet)
 
-    // Stay quiet until the silence window elapses, a fix is acquired (gpsSats >= 4),
-    // or it is cancelled - so TX resumes immediately on fix instead of wasting the window.
-    while ((millis() - startQuietMillis < radioSilenceDuration) && gpsSats < 4 && !cancelGpsImprovement) {
+    // Stay quiet until it is cancelled or the overall silence window elapses. Normally we
+    // leave once a fix is acquired (gpsSats >= 4), but improvedGpsHoldAfterFix keeps us
+    // quiet for that much longer after the fix so it can settle and gather more satellites
+    // before the radio resumes. Losing the fix restarts that hold.
+    while ((millis() - startQuietMillis < radioSilenceDuration) && !cancelGpsImprovement) {
+
+        if (gpsSats >= 4) {
+            if (fixHeldSince == 0) {
+                fixHeldSince = millis();
+                if (improvedGpsHoldAfterFix > 0 && xdataPortMode == 1) {
+                    xdataSerial.print(F("[info]: fix acquired, holding quiet "));
+                    xdataSerial.print(improvedGpsHoldAfterFix / 1000);
+                    xdataSerial.println(F("s more"));
+                }
+            }
+            if (millis() - fixHeldSince >= improvedGpsHoldAfterFix) break;   // fix held long enough
+        } else {
+            fixHeldSince = 0;   // no fix (or lost it) - restart the post-fix hold
+        }
 
         unsigned long now = millis();
         unsigned long elapsed = now - lastUpdate;
@@ -4692,21 +5123,15 @@ static unsigned long sch_nextSlot(unsigned long nowMs, uint16_t periodSec, uint1
   return next;
 }
 
-// Used to reschedule a mode right AFTER it has transmitted. Plain sch_nextSlot()
-// returns the next grid boundary, but if the transmission ran late (contended with
-// another mode, or the GPS clock was just nudged) it can finish only a second or two
-// before that boundary - so the on-grid slot would fire almost immediately, making the
-// mode transmit twice in quick succession, i.e. more often than its configured interval
-// (the APRS "every 30 s but sometimes sooner" symptom). When the next slot would land
-// less than half a period away, skip it and take the following one. This keeps the
-// configured period as a guaranteed minimum spacing while staying grid aligned.
-static unsigned long sch_nextSlotSpaced(unsigned long nowMs, uint16_t periodSec, uint16_t offsetSec) {
-  unsigned long next = sch_nextSlot(nowMs, periodSec, offsetSec);
-  if (next == 0xFFFFFFFFUL) return next;
-  const unsigned long pMs = (unsigned long)periodSec * 1000UL;
-  if ((next - nowMs) < (pMs / 2UL)) next += pMs;
-  return next;
-}
+// NOTE on minimum spacing: after a mode transmits we reschedule it to the plain next
+// grid slot (sch_nextSlot). We used to push that slot a whole period forward whenever
+// it fell less than half a period after the *current time*, to avoid a double-fire.
+// But "current time" is measured after the transmission, so a long TX - or a second
+// mode sharing the same slot pushing the clock forward - made a perfectly valid next
+// slot look "too close" and got skipped, dropping roughly every other transmission.
+// The real double-fire case (a GPS clock jump landing a slot right after a TX) is
+// already caught by the millis()-based minimum-interval guard in checkMode below,
+// which is immune to clock adjustments, so no schedule-time skipping is needed.
 
 // Milliseconds from now until the nearest enabled scheduled transmission. Returns
 // 0xFFFFFFFF when nothing is scheduled. Used by long blocking work (the data recorder)
@@ -4733,17 +5158,32 @@ unsigned long sch_msToNextTx() {
 }
 
 static void sch_syncGps() {
-  if (gpsSats < 4 || !gps.time.isValid() || gps.time.age() > 1100) {
+  // The clock depends on valid GPS *time*, not on the position sat count: a transmission
+  // briefly desensitises the receiver so the first read after it can momentarily show 0
+  // sats while the UTC time is still perfectly valid. Keying sync-lost off sat count made
+  // that transient drop the clock. So we only drop sync if the time itself goes invalid or
+  // stale. Age tolerance is 6 s because one transmission blocks for up to ~4-5 s with no
+  // read; the clock free-runs accurately on millis() meanwhile.
+  if (!gps.time.isValid() || gps.time.age() > 6000) {
     if (sch_gpsSynced && xdataPortMode == 1)
       xdataSerial.println(F("[sch]: GPS sync lost"));
     sch_gpsSynced = false;
     return;
   }
 
-  unsigned long gpsTodMs =
-      (unsigned long)gps.time.hour()   * 3600000UL +
-      (unsigned long)gps.time.minute() * 60000UL   +
-      (unsigned long)gps.time.second() * 1000UL;
+  // Sub-second-precise GPS time of day, in ms. The whole-second UTC is refined by the
+  // NAV-PVT/NAV-TIMEUTC nanosecond fraction, then extrapolated from the fix epoch to NOW
+  // by adding the fix age (the fix may be up to a second or two old between reads). This
+  // is what makes a genuine sub-second clock lock possible - the old code only had
+  // whole-second time, so slots could never land closer than +/-1 s.
+  long gpsTodMs =
+      (long)gps.time.hour()   * 3600000L +
+      (long)gps.time.minute() * 60000L   +
+      (long)gps.time.second() * 1000L    +
+      gps.timeNano / 1000000L +                  // ns -> ms (signed sub-second fraction)
+      (long)gps.time.age();                      // extrapolate from fix epoch to now
+  while (gpsTodMs < 0)          gpsTodMs += 86400000L;
+  while (gpsTodMs >= 86400000L) gpsTodMs -= 86400000L;
 
   if (!sch_everSeeded) {
     // First fix ever: seed the scheduler clock straight to the GPS time-of-day. Seeding
@@ -4783,7 +5223,9 @@ static void sch_syncGps() {
       xdataSerial.print(F("[sch]: GPS large adj ")); xdataSerial.print(diffMs);
       xdataSerial.println(F("ms -> rescheduled"));
     }
-  } else if (labs(diffMs) >= 100) {
+  } else if (labs(diffMs) >= 30) {
+    // Small drift correction. With sub-second GPS time this keeps the clock tightly
+    // locked; the 30 ms deadband just avoids churning on measurement jitter.
     sch_sysMs = (unsigned long)((long)sch_sysMs + diffMs);
     sch_lastMillis = millis();
   }
@@ -4844,7 +5286,7 @@ void schedulerLoop() {
       xdataSerial.print(F("V T="));
       xdataSerial.print(mainTemperatureValue, 1);
       xdataSerial.print(F("C H="));
-      xdataSerial.print(humidityValue, 0);
+      xdataSerial.print(humidityValue);   // uint16_t: no digits arg (print(int,0) would emit a raw byte)
       if (err) {
         xdataSerial.print(F("% ERR"));
         if (sensorBoomFault)  xdataSerial.print(F(" sensorBoom"));
@@ -4862,7 +5304,15 @@ void schedulerLoop() {
   sch_tickTime();
   sch_syncGps();
 
-  if (improvedGpsPerformance && !cancelGpsImprovement && gpsSats < 4) {
+  // Only enter the (blocking) radio-quiet acquisition mode if the sat count stays low for
+  // a few seconds - not on the momentary 0-sat glitch right after a transmission, which
+  // recovers within a read or two and must not disrupt the schedule.
+  static unsigned long _lowSatsSince = 0;
+  if (gpsSats < 4) { if (_lowSatsSince == 0) _lowSatsSince = millis(); }
+  else _lowSatsSince = 0;
+  bool sustainedLowSats = (_lowSatsSince != 0 && (millis() - _lowSatsSince) > 3000UL);
+
+  if (improvedGpsPerformance && !cancelGpsImprovement && sustainedLowSats) {
     gpsQuietMode();
     sch_tickTime();
   }
@@ -5005,9 +5455,17 @@ void schedulerLoop() {
       dataRecorderTx();   // dataRecorder on both boards (RSM4x4 + RSM4x2); self-gated by its own interval
     }
 
-    if (!txImminent || gpsAge > 2000UL) {
+    // The full gpsHandler() is heavy: it runs GPSManagement() (which can send ACK-waited
+    // tier/constellation config), polls, an ~800 ms read and a NAV-SAT drain - together
+    // easily a few seconds. It must NEVER run right before a slot, or the transmission
+    // lands seconds late. So run it only when no TX is imminent. When one is imminent but
+    // the fix is getting stale, do only a quick non-blocking UART drain (no config, no
+    // ACK waits, no long read) so position/time stay fresh without blocking the slot.
+    if (!txImminent) {
       gpsHandler();
       sch_lastGps = millis();
+    } else if (gpsOperationMode != 0 && gpsAge > 2000UL) {
+      while (gpsSerial.available()) gps.encode((uint8_t)gpsSerial.read());
     }
 
     if (!txImminent || ozAge > 15000UL) {
@@ -5060,9 +5518,24 @@ void schedulerLoop() {
         while (sch_sysMs < nearestMs) {
           sch_tickTime();
           if (millis() > bailAt) break;
-          if ((millis() - sch_lastSensorBoom) > 10000UL) {
+          // Keep draining the GPS UART through the wait so the streamed NAV-PVT keeps
+          // gps.time fresh (a byte drain, not the full blocking gpsHandler()).
+          if (gpsOperationMode != 0) { while (gpsSerial.available()) gps.encode((uint8_t)gpsSerial.read()); }
+          // Do the packet prep DURING the wait, finishing before the slot, so the slot
+          // itself just fires the radio. Refresh the sensor boom + pressure while the slot
+          // is still >=1 s away (the boom read blocks a few hundred ms); using the same 2 s
+          // freshness the dispatch checks means the dispatch then skips it, so the TX is no
+          // longer delayed ~1 s by a boom read landing right on the slot. Keep Ground Control
+          // alive by sending the $NFW frame (short) up to ~300 ms before the slot - without
+          // this the interface froze for the whole wait. sch_tickTime() after each blocking
+          // call keeps the slot maths honest.
+          if (nearestMs > sch_sysMs + 1000UL && (millis() - sch_lastSensorBoom) > 2000UL) {
             sensorBoomHandler(); sch_lastSensorBoom = millis();
             pressureHandler();   sch_lastPressure   = millis();
+            sch_tickTime();
+          }
+          if (nearestMs > sch_sysMs + 300UL && (millis() - sch_lastInterface) > 400UL) {
+            interfaceHandler(); sch_lastInterface = millis(); sch_tickTime();
           }
           buttonHandler();
           delayMicroseconds(200);
@@ -5090,15 +5563,15 @@ void schedulerLoop() {
       auto checkMode = [&](bool en, unsigned long &nxt, uint16_t per, uint16_t off, int idx) {
         if (!en || nxt == 0 || nxt == 0xFFFFFFFFUL) return;
         if (nowMs < nxt) return;
-        // Hard minimum-interval guard: never transmit a mode again less than half its
-        // period after it last actually transmitted. This is measured in millis() so it
-        // survives a GPS clock re-alignment - the one case that can reschedule a mode onto
-        // a slot just after a transmission and make it fire twice within a few seconds
-        // (APRS transmitting at xx:00 and then again ~10 s later). When that happens, defer
-        // this mode to its next proper grid slot instead of transmitting now.
+        // Minimum-interval guard, measured in millis() so it survives a GPS clock
+        // re-alignment: never let a mode fire again less than half its period after it
+        // last actually transmitted (which would double-transmit, e.g. APRS at xx:00 and
+        // again ~10 s later). Crucially we HOLD the slot here rather than skip it: leaving
+        // nxt untouched lets the mode fire the instant the minimum spacing is met, one
+        // loop later, so spacing is enforced without ever dropping a transmission. The
+        // old code rescheduled to the next grid slot here, which is what made a mode
+        // transmit only every second interval whenever this guard tripped.
         if (sch_lastTxHw[idx] != 0 && (millis() - sch_lastTxHw[idx]) < ((unsigned long)per * 500UL)) {
-          nxt = sch_nextSlot(nowMs, per, off);
-          anyDone = true;
           return;
         }
         long overdue  = (long)(nowMs - nxt);
@@ -5143,18 +5616,29 @@ void schedulerLoop() {
         }
 
         switch (pickIdx) {
-          case 0: pipTx();     sch_tickTime(); sch_nextPipMs     = sch_nextSlotSpaced(sch_sysMs, pipTimeSyncSeconds,     pipTimeSyncOffsetSeconds);     break;
-          case 1: horusV3Tx(); sch_tickTime(); sch_nextHorusV3Ms = sch_nextSlotSpaced(sch_sysMs, horusV3TimeSyncSeconds, horusV3TimeSyncOffsetSeconds); break;
+          case 0: pipTx();     sch_tickTime(); sch_nextPipMs     = sch_nextSlot(sch_sysMs, pipTimeSyncSeconds,     pipTimeSyncOffsetSeconds);     break;
+          case 1: horusV3Tx(); sch_tickTime(); sch_nextHorusV3Ms = sch_nextSlot(sch_sysMs, horusV3TimeSyncSeconds, horusV3TimeSyncOffsetSeconds); break;
           #ifdef RSM4x4
-          case 2: horusTx();   sch_tickTime(); sch_nextHorusMs   = sch_nextSlotSpaced(sch_sysMs, horusTimeSyncSeconds,   horusTimeSyncOffsetSeconds);   break;
+          case 2: horusTx();   sch_tickTime(); sch_nextHorusMs   = sch_nextSlot(sch_sysMs, horusTimeSyncSeconds,   horusTimeSyncOffsetSeconds);   break;
           #endif
-          case 3: aprsTx();    sch_tickTime(); sch_nextAprsMs    = sch_nextSlotSpaced(sch_sysMs, aprsTimeSyncSeconds,    aprsTimeSyncOffsetSeconds);    break;
+          case 3: aprsTx();    sch_tickTime(); sch_nextAprsMs    = sch_nextSlot(sch_sysMs, aprsTimeSyncSeconds,    aprsTimeSyncOffsetSeconds);    break;
           #ifdef RSM4x4
-          case 4: rttyTx();    sch_tickTime(); sch_nextRttyMs    = sch_nextSlotSpaced(sch_sysMs, rttyTimeSyncSeconds,    rttyTimeSyncOffsetSeconds);    break;
+          case 4: rttyTx();    sch_tickTime(); sch_nextRttyMs    = sch_nextSlot(sch_sysMs, rttyTimeSyncSeconds,    rttyTimeSyncOffsetSeconds);    break;
           #endif
-          case 5: morseTx();   sch_tickTime(); sch_nextMorseMs   = sch_nextSlotSpaced(sch_sysMs, morseTimeSyncSeconds,   morseTimeSyncOffsetSeconds);   break;
+          case 5: morseTx();   sch_tickTime(); sch_nextMorseMs   = sch_nextSlot(sch_sysMs, morseTimeSyncSeconds,   morseTimeSyncOffsetSeconds);   break;
         }
         sch_lastTxHw[pickIdx] = millis();   // for the minimum-interval guard in checkMode
+
+        // A transmission blocks for seconds, during which the GPS UART fills with a
+        // backlog of NAV-PVT frames. Reading those FIFO would feed the clock timestamps
+        // that are already seconds old, making it lurch (the large-adj oscillation and
+        // late transmissions). Discard the backlog and reset the parser so the next read
+        // gets a current fix, keeping the clock locked.
+        if (gpsOperationMode != 0) {
+          while (gpsSerial.available()) gpsSerial.read();
+          gps.resetParse();
+        }
+
         if (xdataPortMode == 1) {
           const char* modeNames[] = {"PIP","HorusV3","HorusV2","APRS","RTTY","Morse"};
           xdataSerial.print(F("[sch]: done ")); xdataSerial.println(modeNames[pickIdx]);
@@ -5415,6 +5899,33 @@ void interfaceHandler() {
   NW_D(); NW_S(ozoneDbgRaw);             // 144 - last raw xdata= frame content (hex ASCII)
   NW_D(); NW_I(ozoneRxByteTotal);        // 145 - total bytes received on xdata RX
   NW_D(); NW_I(ozoneFrameTotal);         // 146 - OIF411 frames successfully parsed
+  // 15 - GPS diagnostics (v68 native UBX). Appended at the end so existing field
+  // positions stay put. Keep this list in sync with NFW_FIELDS in the Ground
+  // Control page (same order).
+  NW_D(); NW_I(gps.fixType);                    // 0 none, 2 2D, 3 3D
+  NW_D(); NW_F((float)gps.hAccMm / 1000.0, 1);  // horizontal accuracy (m)
+  NW_D(); NW_F((float)gps.vAccMm / 1000.0, 1);  // vertical accuracy (m)
+  NW_D(); NW_F((float)gps.sAccMmS / 1000.0, 2); // speed accuracy (m/s)
+  NW_D(); NW_I(gps.jamIndicator);               // 0..255 CW jamming indicator
+  NW_D(); NW_I(gps.spoofState);                 // 0 unknown,1 none,2 spoofing,3 multiple
+  NW_D(); NW_I(gpsCfgNakCount);                 // GPS config messages rejected
+  NW_D(); NW_I(gpsUpdateRateHz);
+  NW_D(); NW_I(gpsDynamicModel);
+  NW_D(); NW_I(gpsTrackingProfile);
+  NW_D(); NW_I(gpsSecondaryGnss);   // 0 BeiDou B1C + GLONASS, 1 BeiDou B1I only, 2 GLONASS only
+  NW_D(); NW_I(gpsQzssEnable);
+  NW_D(); NW_I(gpsSbasEnable);
+  // 16 - satellites used per constellation (NAV-SAT) + UBX frame errors. Both
+  // BeiDou and GLONASS are sent; the unused one is 0. Keep in sync with NFW_FIELDS.
+  NW_D(); NW_I(gps.satGps);
+  NW_D(); NW_I(gps.satGal);
+  NW_D(); NW_I(gps.satBds);
+  NW_D(); NW_I(gps.satGlo);
+  NW_D(); NW_I(gps.satSbas);
+  NW_D(); NW_I(gps.frameErrors);
+  NW_D(); NW_I(simultaneousGnssSetup);   // GPS brought up early (during setup/calibration)
+  NW_D(); NW_I(gpsResetCounter);         // GPS module resets (timeout-watchdog recoveries)
+  NW_D(); NW_I(gps.psmState);            // M10 power-save state: 0 off,3 tracking,4 power-optimized,5 inactive
 
   buf[pos++] = '*';
   buf[pos++] = "0123456789ABCDEF"[chk >> 4];
@@ -5837,8 +6348,6 @@ void setup() {
     xdataSerial.begin(115200);
   } else if (xdataPortMode == 3) {
     xdataSerial.begin(9600);
-  } else if (xdataPortMode == 2) {   // GPS bridge mode
-    xdataSerial.begin(115200);
   }
 
   setStage("01");
@@ -5888,13 +6397,13 @@ void setup() {
     xdataSerial.println("[info]: stage 02 - GPS/radio init");
   }
 
-  if (improvedGpsPerformance && gpsOperationMode != 0) {
-    shutdownGPS();
-  } else {
-    startGPS();
-    delay(1000);
-    initGPS();
-  }
+  // The GPS is powered up a little further down, AFTER the reference/humidity heaters are
+  // switched off - those draw ~180 mA and their switching noise degrades a GPS cold-start
+  // fix, so the receiver must acquire with them off. Hold it on reset for now.
+  // simultaneousGnssSetup decides whether that power-up happens here (so it acquires during
+  // setup and calibration) or only after calibration.
+  bool gpsStartEarly = (gpsOperationMode != 0) && simultaneousGnssSetup;
+  shutdownGPS();
 
   digitalWrite(CS_RADIO_SPI, LOW);
   initSi4032();
@@ -5915,17 +6424,28 @@ void setup() {
 
   fsk4_bitDuration = (uint32_t)1000000 / horusBdr;  //horus 100baud delay calculation
 
+  // Heaters OFF before the GPS powers up (see the note above). Done here, after the Si4032
+  // is initialised, because on RSM4x2 the reference heater is switched through the Si4032.
+  selectReferencesHeater(0);   //turn off reference heating
+  extHeaterHandler(false, 0, 0);
+
+  // Now bring the GPS up (heaters are off). simultaneousGnssSetup: on -> acquire during the
+  // rest of setup and calibration; off -> it stays on reset and is started after calibration.
+  if (gpsStartEarly) {
+    startGPS();
+    delay(1000);
+    initGPS();
+  }
+
   setStage("03");
   if (xdataPortMode == 1) {
-    xdataSerial.println("[info]: stage 03 - boom/heater init");
+    xdataSerial.println("[info]: stage 03 - boom/RPM411 init");
   }
 
   if (xdataPortMode == 1) {
-    xdataSerial.println("[info]: Boom/heater/RPM411 init...");
+    xdataSerial.println("[info]: Boom/RPM411 init...");
   }
 
-  selectReferencesHeater(0);  //turn off reference heating
-  extHeaterHandler(false, 0, 0);
   selectSensorBoom(0, 0);  //turn off all sensor boom measurement circuits
 
   if(pressureMode == 1) {
@@ -5995,7 +6515,9 @@ void setup() {
 
   humidityDeltaCalibrationDebug();
 
-  if (improvedGpsPerformance && gpsOperationMode != 0) {
+  // Bring the GPS up now if it was deliberately held on reset through calibration
+  // (i.e. simultaneousGnssSetup was off, so it was not already started early above).
+  if (!gpsStartEarly && gpsOperationMode != 0) {
     startGPS();
     delay(1000);
     initGPS();
