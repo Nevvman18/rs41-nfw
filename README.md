@@ -124,10 +124,10 @@ The interface has **two tabs**.
 ### Tab 1 - Firmware Builder
 Builds a ready-to-flash `.bin` without any local toolchain (no Arduino IDE, no STM32 core, no libraries).
 
-* **Firmware source** - fetch the latest firmware straight from this GitHub repository. The page remembers which source and version is currently loaded.
+* **Firmware source** - fetch the latest firmware straight from this GitHub repository.
 * **Board selection** - pick `RSM4x4 / RSM4x5` (STM32L412) or `RSM4x2 / RSM4x1` (STM32F100). A side-by-side comparison table lists every hardware and feature difference (GPS module, radio modes, algorithms), so you know what your board supports before you build - I really recommend only to use the new RS41 revisions if possible.
 * **Guided configuration** - every firmware option from `CONFIG.h` is exposed as a form with tons of manuals and guides. Irrelevant options hide themselves based on the board and your other choices.
-* **Online compile** - one click compiles your configuration on the server with live build log output. When it finishes, you flash it in the browser or download the compiled `.bin`, and can **Save settings** (a small text file of the exact configuration) to reload later.
+* **Online compile** - one click compiles your configuration fast on the server. When it finishes, you **flash it in the browser** or download the compiled `.bin`, and you can also **Save settings** to reload later.
 * **Settings file (local only)** - save the whole configuration to a small text file and load it back later, all in the browser. The file is generated and parsed on your machine and never uploaded, so a configuration you share stays yours. Handy for keeping a per-sonde profile or reusing a known-good setup.
 * **Flashing** - after a successful build the page shows exactly what to do next: **flash from your browser** (Chromium WebUSB) with your ST-Link, flash the `.bin` with [OpenOCD](#firmware-flashing) (cross-platform terminal commands auto-matched to your MCU), or with [STM32CubeProgrammer](#firmware-flashing) (Windows/Linux GUI)
 
@@ -165,8 +165,9 @@ See: [hw/README.md](./hw/README.md)
 
 
 ## Firmware changelog
-* `v72` - factory-locked RSM4x2 sondes now flash correctly from the browser, and Horus v3 stops sending disabled sensors.
+* `v73` - factory-locked RSM4x2 sondes now flash correctly from the browser, and Horus v3 stops sending disabled sensors.
   * **Locked RSM4x2 flashing fixed.** A never-unlocked RSM4x2 reported "no sonde detected on the ST-Link" even with correct wiring. [Issue 55](https://github.com/Nevvman18/rs41-nfw/issues/55) fixed.
+* `v72` - Horus frames encoding improvement.
   * **Horus v3 omits disabled sensors.** With `pressureMode 0` the pressure field was still sent as a present 0.0 hPa, which a receiver cannot tell apart from a real reading. It is now left out of the frame entirely. The data recorder packets had the same issue for pressure, main temperature, heater temperature and humidity.
   * **Firmware Builder.** Small corrections.
 * `v71` - small Firmware Builder improvements and documentation improvements. APRS WX inconsistency corrected.

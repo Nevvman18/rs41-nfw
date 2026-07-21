@@ -18,6 +18,13 @@ app = Flask(__name__, static_folder='static', static_url_path='')
 # Cap upload size so nobody can fill the disk with a giant POST (firmware zips are small).
 app.config['MAX_CONTENT_LENGTH'] = 50 * 1024 * 1024   # 50 MB
 
+# Do not let the browser hold on to the page or the flasher modules. flasher.js is an ES
+# module that imports vendor/webstlink/*.js, and every one of those is cached independently,
+# so after a server update a browser can happily keep running the previous release - the
+# server looks updated, the page does not, and the mismatch is invisible from both ends.
+# The files are small and served locally, so there is nothing to gain from caching them.
+app.config['SEND_FILE_MAX_AGE_DEFAULT'] = 0
+
 
 @app.errorhandler(413)
 def _too_large(e):
@@ -110,6 +117,14 @@ def _security_headers(resp):
     resp.headers['X-Content-Type-Options'] = 'nosniff'
     resp.headers['X-Frame-Options'] = 'DENY'
     resp.headers['Referrer-Policy'] = 'no-referrer'
+    # Never cache the page or the scripts. Said explicitly (not just via
+    # SEND_FILE_MAX_AGE_DEFAULT) because this has to reach any CDN in front of the site
+    # as well: a cached .js there survives a full container rebuild and serves the old
+    # release to everyone. Compiled .bin downloads are unaffected, they are one-shot URLs.
+    ctype = (resp.headers.get('Content-Type') or '').split(';')[0].strip()
+    if ctype in ('text/html', 'text/javascript', 'application/javascript'):
+        resp.headers['Cache-Control'] = 'no-store, no-cache, must-revalidate, max-age=0'
+        resp.headers['Pragma'] = 'no-cache'
     return resp
 
 

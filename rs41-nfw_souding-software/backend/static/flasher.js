@@ -21,11 +21,13 @@
  * never-unlocked RSM4x2 report "no sonde detected":
  *   - webstlink identifies the part partly from the flash size register, which lives in the
  *     flash information block. An RDP-locked STM32F100 will not show that block to the
- *     debugger, so the read returns 0x0000/0xFFFF and identification fails even though the
- *     MCU is answering perfectly well. webstlink.js now falls back to the smallest variant of
- *     the detected dev_id and flags flash_size_unknown, so we can still reach the unlock. The
- *     L412 on an RSM4x4 keeps that register readable under RDP1, which is why only the older
- *     boards ever hit this.
+ *     debugger, and the failed read yields stale bus data rather than zeros (observed:
+ *     25632 "KB" = 0x6420, the low half of the IDCODE read just before it), so identification
+ *     fails even though the MCU is answering perfectly well. webstlink.js now treats any
+ *     unrecognised flash size for a known dev_id as "protected until proven otherwise", falls
+ *     back to the smallest variant and flags flash_size_unknown, so we can still reach the
+ *     unlock. The L412 on an RSM4x4 keeps that register readable under RDP1, which is why only
+ *     the older boards ever hit this.
  *   - a factory sonde boots into the Vaisala firmware, which can drop into a low-power mode
  *     where SWD stops answering. If the first detect fails we retry with the sonde held in
  *     reset (connect_under_reset) so that firmware never gets to run.
@@ -38,6 +40,15 @@ import WebStlink from './vendor/webstlink/webstlink.js';
 import * as libstlink from './vendor/webstlink/lib/package.js';
 
 const FLASH_BASE = 0x08000000;
+
+// Identity of this flasher, shown in the console and at the top of every flash log. Bump
+// NFW_FLASHER_BUILD alongside the firmware release. This is not decoration: ES modules are
+// cached independently of the page, so a browser can keep running a previous release while the
+// server is already updated. Printing the version means a stale module is obvious at a glance
+// instead of being diagnosed from odd behaviour.
+const NFW_FLASHER_NAME  = 'RS41-NFW Builder Flasher';
+const NFW_FLASHER_BUILD = 'v73';
+const NFW_FLASHER_ID    = NFW_FLASHER_NAME + ' ' + NFW_FLASHER_BUILD;
 
 // MCU types we accept per board (matched against webstlink's detected type string).
 const BOARD_MCU = {
@@ -102,7 +113,15 @@ async function flashFirmware({ platform, binUrl, logEl, onState }) {
   const data = new Uint8Array(await resp.arrayBuffer());
   if (!data.length) throw new Error('The compiled firmware is empty.');
 
-  if (logEl) logEl.replaceChildren();
+  if (logEl) {
+    logEl.replaceChildren();
+    // Head every flash log with the flasher version, so a saved or pasted log always says
+    // which build produced it.
+    const banner = document.createElement('div');
+    banner.textContent = NFW_FLASHER_ID;
+    banner.className = 'info';
+    logEl.appendChild(banner);
+  }
   // Verbosity 2 so the log carries CPUID / IDCODE / flash size. On a locked sonde those lines
   // are the difference between "it is protected" and "the wiring is wrong", and the user is
   // the only one who can see them.
@@ -212,7 +231,13 @@ async function flashFirmware({ platform, binUrl, logEl, onState }) {
     + 'Power-cycle the sonde (and reconnect the ST-Link if needed), then click Flash again - it is now an open MCU.');
 }
 
+// console.warn rather than .info: DevTools hides info-level logs under any non-default level
+// filter, and a suppressed banner is worse than none (it reads as "the module did not load").
+console.warn(NFW_FLASHER_ID + ' ready');
+
 // Expose to the (classic-script) Firmware Builder UI.
 window.nfwFlash = flashFirmware;
 window.nfwFlashBoardSupported = boardSupportedInBrowser;
+window.nfwFlasherBuild = NFW_FLASHER_BUILD;
+window.nfwFlasherId = NFW_FLASHER_ID;
 window.dispatchEvent(new Event('nfw-flasher-ready'));

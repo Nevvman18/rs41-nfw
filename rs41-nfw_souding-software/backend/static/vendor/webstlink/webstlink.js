@@ -257,28 +257,34 @@ export default class WebStlink {
         }
 
         // RS41-NFW addition. The flash size register lives in the flash information block,
-        // which a read-out-protected MCU will not show to the debugger: on an RDP-locked
-        // STM32F100 (a factory RS41 RSM4x2) the read comes back 0x0000 or 0xFFFF. That is a
-        // protected chip, not an unsupported one, so identify it provisionally instead of
-        // giving up - the caller can then clear RDP and re-detect properly. Only these two
-        // "nothing there" values fall back; any other size really is an unsupported part.
-        if (this._flash_size === 0x0000 || this._flash_size === 0xffff) {
-            // Assume the smallest variant of this dev_id: its flash and SRAM sizes are a
-            // subset of every other variant, so nothing we do can run off the end of memory.
-            const smallest = this._mcus_by_devid.devices.reduce(
-                (a, b) => ((b.flash_size < a.flash_size) ? b : a)
-            );
-            this._mcus = [smallest];
-            this._flash_size = smallest.flash_size;
-            this.flash_size_unknown = true;
-            this._dbg.warning(
-                `FLASH size register at 0x${H32(this._mcus_by_devid.flash_size_reg)} is unreadable `
-                + "- the MCU is almost certainly read-out protected. Assuming "
-                + `${smallest.type} until protection is cleared.`);
-            return;
-        }
-
-        throw new libstlink.exceptions.Exception(`Connected CPU with DEV_ID: 0x${H24(this._mcus_by_devid.dev_id)} and FLASH size: ${this._flash_size}KB is not supported`);
+        // which a read-out-protected MCU will not show to the debugger. On an RDP-locked
+        // STM32F100 (a factory RS41 RSM4x2) the read does NOT come back as a tidy 0x0000 or
+        // 0xFFFF: the ST-Link reply carries no data and get_debugreg32 hands back whatever was
+        // last in the buffer, so you get stale bus data. In practice that is the low half of
+        // the preceding IDCODE read - 0x6420 (25632 "KB") for the 0x420 parts. There is no
+        // value we can usefully blacklist, so treat ANY unrecognised size as "protected until
+        // proven otherwise" and let the caller clear RDP and re-detect.
+        //
+        // This is safe because dev_id has already been matched against the device table above:
+        // a genuinely unsupported chip fails in find_mcus_by_devid() and never reaches here.
+        // All that is actually unknown at this point is which flash variant of a known family
+        // we are talking to.
+        const smallest = this._mcus_by_devid.devices.reduce(
+            (a, b) => ((b.flash_size < a.flash_size) ? b : a)
+        );
+        // Assume the smallest variant: its flash and SRAM are a subset of every other variant,
+        // so nothing we do before the unlock can run off the end of memory. flash_size_unknown
+        // keeps the caller from actually programming against this guess - after the unlock the
+        // register reads correctly and the real variant is picked up on the next detect.
+        this._dbg.warning(
+            `FLASH size register at 0x${H32(this._mcus_by_devid.flash_size_reg)} read back as `
+            + `${this._flash_size}KB, which is not a real size for DEV_ID `
+            + `0x${H24(this._mcus_by_devid.dev_id)} - the information block is unreadable, so the `
+            + `MCU is almost certainly read-out protected. Assuming ${smallest.type} until the `
+            + "protection is cleared.");
+        this._mcus = [smallest];
+        this._flash_size = smallest.flash_size;
+        this.flash_size_unknown = true;
     }
 
     fix_cpu_type(cpu_type) {
