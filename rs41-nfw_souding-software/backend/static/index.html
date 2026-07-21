@@ -2108,7 +2108,7 @@ PAY ATTENTION TO THE CUT-OUT</pre>
       <p class="field-desc">Comma-separated; the sonde cycles through every entry, one per TX window. Use the APRS frequency that is standard for your region. The data recorder and low-altitude fast-TX use the first entry only.</p></div>
     <div><label class="field-label">Callsign</label><input type="text" class="input-base font-mono" id="cfg-aprsCall" value="N0CALL" maxlength="10" oninput="this.value=this.value.toUpperCase()" onchange="cfgChanged()"><p class="field-desc">The station callsign the packet is sent from. Shown as the tracked object on the map. Automatically forced to <strong>UPPERCASE</strong> (APRS callsigns must be uppercase).</p></div>
     <div><label class="field-label">SSID</label><input type="number" class="input-base" id="cfg-aprsSsid" value="11" min="0" max="15" onchange="cfgChanged()"><p class="field-desc">Number appended to the callsign (CALL-11). By convention 11 means a balloon / high-altitude tracker.</p></div>
-    <div class="md:col-span-2"><label class="field-label">Comment</label><input type="text" class="input-base font-mono" id="cfg-aprsComment" value=" NFWv71" maxlength="64" onchange="cfgChanged()"><p class="field-desc">Free text added to the end of every packet (visible next to the station on the map).</p></div>
+    <div class="md:col-span-2"><label class="field-label">Comment</label><input type="text" class="input-base font-mono" id="cfg-aprsComment" value=" NFWv72" maxlength="64" onchange="cfgChanged()"><p class="field-desc">Free text added to the end of every packet (visible next to the station on the map).</p></div>
     <div><label class="field-label">Map icon</label>
       <select class="input-base" id="aprs-symbol-preset" onchange="aprsSymbolPreset()">
         <option value="O">🎈 Balloon</option>
@@ -5527,6 +5527,21 @@ function stlinkNoMcuPopup(detail) {
   });
 }
 
+function stlinkStillLockedPopup(detail) {
+  showAdvisory({
+    icon: '🔒', title: 'The sonde is still locked',
+    confirmText: 'Show flashing guide',
+    cancelText: 'Close',
+    html: 'The sonde answered over SWD, but its read-out or write protection could not be cleared, so the firmware was <strong>not</strong> written. Nothing is broken: the sonde is in exactly the state it was before. Power-cycle it (remove and reinsert the batteries), leave the ST-Link connected, and try again. If it keeps failing, clear the protection once with STM32CubeProgrammer and then this button will work.'
+        + (detail ? '<br><span style="opacity:.75;font-size:.85em">' + detail + '</span>' : ''),
+    onConfirm: () => {
+      const d = document.querySelector('.flash-card .flash-details');
+      if (d) { d.setAttribute('open', ''); d.scrollIntoView({ behavior: 'smooth', block: 'center' }); }
+    },
+    onCancel: () => {}
+  });
+}
+
 // One-click flash of the just-built firmware over WebUSB (via flasher.js -> webstlink).
 async function webusbFlashNow() {
   const btn = document.getElementById('btn-webusb-flash');
@@ -5554,6 +5569,10 @@ async function webusbFlashNow() {
     setStatus(emsg, 'err');
     if (e && e.openSetup) {
       stlinkNotFoundPopup();
+    } else if (/still protected|unknown size|RDP level 2/i.test(emsg)) {
+      // The MCU was found and talked to, but protection could not be cleared. That is a
+      // different problem from "no sonde on the SWD lines", so do not send them to wiring.
+      stlinkStillLockedPopup(emsg);
     } else if (/identify the MCU|Could not identify|does not match the selected board|DataView|outside the bounds|out of bounds/i.test(emsg)) {
       // "Offset is outside the bounds of the DataView" = webstlink got a truncated/empty SWD
       // reply, which is what happens when the ST-Link has no sonde connected/powered.

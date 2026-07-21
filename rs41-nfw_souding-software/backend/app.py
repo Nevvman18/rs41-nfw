@@ -26,7 +26,7 @@ def _too_large(e):
     return jsonify(ok=False, error='Zip is larger than the 50 MB upload limit. '
                                    'Zip only the firmware folder, without .git or build output.'), 413
 
-MAX_QUEUE = 20   # refuse new builds past this, so the queue can't be flooded
+MAX_QUEUE = 10   # refuse new builds past this, so the queue can't be flooded
 
 # Set ALLOW_ZIP_UPLOAD=0 in docker-compose before publishing to leave only GitHub fetch.
 ALLOW_ZIP_UPLOAD = os.environ.get('ALLOW_ZIP_UPLOAD', '1').strip().lower() in ('1', 'true', 'yes', 'on')
@@ -41,7 +41,7 @@ ANALYTICS_HEAD = os.environ.get('ANALYTICS_HEAD', '').strip()
 # This is a basic layer on top of the Cloudflare protection in front of the site.
 CAPTCHA_CHARS = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'   # no ambiguous 0/O/1/I/L
 CAPTCHA_TTL   = 300            # seconds a challenge stays solvable
-AUTH_TTL      = 60 * 60        # seconds an unlocked session stays valid (one solve = a 1-hour window)
+AUTH_TTL      = 6 * 60 * 60    # seconds an unlocked session stays valid (one solve = a 6-hour window)
 _captchas     = {}            # token -> {'a': answer, 'e': expiry}
 _auth_tokens  = {}            # token -> expiry
 _captcha_lock = threading.Lock()
@@ -1083,7 +1083,7 @@ def api_compile():
     compile_queue.put(job)
 
     # The verification is a session, not a single use: one captcha solve unlocks a
-    # 1-hour window (AUTH_TTL) during which the user can compile repeatedly, then it
+    # 6-hour window (AUTH_TTL) during which the user can compile repeatedly, then it
     # expires on its own. So we do NOT revoke the token here.
 
     return jsonify(ok=True, job_id=job_id, queue_position=position)

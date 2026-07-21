@@ -306,9 +306,16 @@ class Stm32FP extends Stm32 {
 
     async read_protection() {
         const F1_OBR = 0x4002201c, F1_WRPR = 0x40022020;
-        const obr = await this._stlink.get_debugreg32(F1_OBR);
+        const obr = (await this._stlink.get_debugreg32(F1_OBR)) >>> 0;
         const wrpr = (await this._stlink.get_debugreg32(F1_WRPR)) >>> 0;
-        return { rdp_locked: !!(obr & 0x02), wrp_active: (wrpr !== 0xffffffff), level2: false };
+        // OBR bit 1 = RDPRT (read-out protection active). WRPR is one bit per group of pages,
+        // 1 = unprotected, so anything other than all-ones means some sector is write-locked.
+        return {
+            obr, wrpr,
+            rdp_locked: !!(obr & 0x02),
+            wrp_active: (wrpr !== 0xffffffff),
+            level2: false,          // F1 has no permanent lock level
+        };
     }
 
     async _f1_wait_busy(timeout_s = 2.0) {
@@ -350,6 +357,7 @@ class Stm32FP extends Stm32 {
         const F1_OPTKEYR = 0x40022008, F1_CR = 0x40022010, F1_OB_RDP = 0x1ffff800;
         const OPTPG = 0x10, OPTER = 0x20, STRT = 0x40, OPTWRE = 0x200, RDP_UNPROTECT = 0x00a5;
         const before = await this.read_protection();
+        this._dbg.info(`F1 option bytes: OBR=0x${H32(before.obr)} WRPR=0x${H32(before.wrpr)}`);
         this._dbg.info(`F1 option bytes: read-out protection ${before.rdp_locked ? 'ON' : 'off'}, write-protection ${before.wrp_active ? 'ON' : 'off'}`);
 
         const flash = new Flash(this, this._stlink, this._dbg, 0);
@@ -361,8 +369,14 @@ class Stm32FP extends Stm32 {
             await this._stlink.set_debugreg32(F1_OPTKEYR, 0x45670123);
             await this._stlink.set_debugreg32(F1_OPTKEYR, 0xcdef89ab);
         }
-        // erase all option bytes (clears write protection; RDP becomes 0xFF = protected)
-        this._dbg.info('Erasing option bytes (clears write protection)...');
+        if (!((await this._stlink.get_debugreg32(F1_CR)) & OPTWRE)) {
+            throw new Exception('Could not unlock the option bytes (OPTWRE stayed clear) - '
+                + 'the FPEC rejected the key sequence.');
+        }
+        // Erase all option bytes. This clears WRP0..WRP3 in one shot, so every sector ends up
+        // write-enabled, and with RDP active it also triggers the mass erase of main flash.
+        // RDP itself reads back as 0xFF (= protected) afterwards and is reprogrammed below.
+        this._dbg.info('Erasing option bytes (clears write protection on all sectors)...');
         await this._stlink.set_debugreg32(F1_CR, OPTER | OPTWRE);
         await this._stlink.set_debugreg32(F1_CR, OPTER | OPTWRE | STRT);
         await this._f1_wait_busy();

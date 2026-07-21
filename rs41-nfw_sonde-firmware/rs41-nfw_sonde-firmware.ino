@@ -43,7 +43,7 @@ I wish You high, successful flights with a lot of data gathered with this firmwa
 Franek,
 Author of RS41-NFW
 */
-#define NFW_VERSION "RS41-NFW v71, GPL-3.0 Franek Lada (nevvman, SP5FRA)"  //This is the firmware version You are running
+#define NFW_VERSION "RS41-NFW v72, GPL-3.0 Franek Lada (nevvman, SP5FRA)"  //This is the firmware version You are running
 
 //===== Libraries and lib-dependant definitions (nothing to modify)
 /* No libraries are required to be installed, all dependencies are shipped within the project folder. */
@@ -1059,6 +1059,13 @@ int buildHorusV3Packet(char* uncoded_buffer){
       }
     }
 
+    // Drop the pressure field entirely when pressure is off, rather than sending a present
+    // field reading 0.0 hPa (which a receiver cannot tell from a real sea-level-ish reading).
+    // Only mode 0 is "off": mode 2 is the ISA model, which is genuine data from GPS altitude.
+    if (pressureMode == 0) {
+      asnMessage.exist.pressurehPa_x10 = false;
+    }
+
     // The encoder needs a data structure for the serialization
     // Again - how much memory is allocated here?
     BitStream encodedMessage;
@@ -1270,6 +1277,21 @@ int buildHorusV3PacketDataRecorder(char* uncoded_buffer, uint8_t page){
           .milliVolts = true
       }
   };
+
+    // Same field trimming as the standard packet (buildHorusV3Packet): a disabled sensor is
+    // omitted, not sent as a present zero. This matters more here than in the standard packet,
+    // since these frames already carry 4 named sensors against the 128-byte limit.
+    // extraSensors is NOT touched: the named pages are the whole point of the recorder, and it
+    // is gated by dataRecorderEnable, independently of horusV3ExtraSensorsEnable.
+    if (sensorBoomEnable == false) {
+      asnMessage.temperatureCelsius_x10.exist.external = false;   // boom air temperature
+      asnMessage.temperatureCelsius_x10.exist.custom1  = false;   // humidity heater sensor, also on the boom
+      asnMessage.exist.humidityPercentage = false;
+    }
+
+    if (pressureMode == 0) {
+      asnMessage.exist.pressurehPa_x10 = false;
+    }
 
     // The encoder needs a data structure for the serialization
     // Again - how much memory is allocated here?

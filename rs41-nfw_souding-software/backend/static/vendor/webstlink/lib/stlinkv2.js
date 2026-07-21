@@ -236,6 +236,23 @@ export default class Stlink {
         this._debug("Sent reset");
     }
 
+    // RS41-NFW addition: drive the target's NRST line directly. Needed to attach to a sonde
+    // that is still running the Vaisala firmware (which can put the MCU into a low-power mode
+    // where SWD does not answer), and to recover the link after an option-byte reload.
+    async drive_nrst(action = "pulse") {
+        const modes = {
+            "low":   STLINK_DEBUG_APIV2_DRIVE_NRST_LOW,
+            "high":  STLINK_DEBUG_APIV2_DRIVE_NRST_HIGH,
+            "pulse": STLINK_DEBUG_APIV2_DRIVE_NRST_PULSE,
+        };
+        if (!(action in modes)) {
+            throw new Exception(`Unknown NRST action "${action}"`);
+        }
+        await this._connector.xfer(
+            [STLINK_DEBUG_COMMAND, STLINK_DEBUG_APIV2_DRIVE_NRST, modes[action]], {"rx_len": 2});
+        this._debug(`Drove NRST ${action}`);
+    }
+
     set_debugreg32(addr, data) {
         if (addr % 4) {
             throw new Exception("get_mem_short address is not in multiples of 4");

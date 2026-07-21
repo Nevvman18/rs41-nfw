@@ -188,7 +188,7 @@ constexpr float aprsFreqTable[] = {432.5};
 // lowAltitudeFastTxMode uses the first entry only.
 
 char aprsCall[]   = "N0CALL";       // Your amateur radio callsign - USE UPPERCASE LETTERS ONLY (lowercase may not be decoded correctly; the firmware does not convert case)
-String aprsComment = " NFWv71";     // Comment appended to every APRS packet
+String aprsComment = " NFWv72";     // Comment appended to every APRS packet
 
 constexpr char aprsSsid          = 11;       // Callsign SSID
 constexpr char aprsDigi[]        = "WIDE2";  // Digipeater callsign
@@ -656,7 +656,7 @@ constexpr uint8_t       humidityCalibrationMeasurementTemperature = 125;  // Min
    SECTION 18 - PRESSURE
 
    pressureMode:
-     0 - Pressure disabled (reported as 0)
+     0 - Pressure disabled (the field is left out of Horus v3 frames entirely)
      1 - Vaisala RPM411 BARO-CAP sensor (RS41-SGP required; highly recommended)
          Plug the RPM411 into the rear connector. No calibration needed.
      2 - Pressure estimation from altitude (ISA barometric model). Works on both boards.

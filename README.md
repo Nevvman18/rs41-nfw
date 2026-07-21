@@ -165,6 +165,10 @@ See: [hw/README.md](./hw/README.md)
 
 
 ## Firmware changelog
+* `v72` - factory-locked RSM4x2 sondes now flash correctly from the browser, and Horus v3 stops sending disabled sensors.
+  * **Locked RSM4x2 flashing fixed.** A never-unlocked RSM4x2 reported "no sonde detected on the ST-Link" even with correct wiring. [Issue 55](https://github.com/Nevvman18/rs41-nfw/issues/55) fixed.
+  * **Horus v3 omits disabled sensors.** With `pressureMode 0` the pressure field was still sent as a present 0.0 hPa, which a receiver cannot tell apart from a real reading. It is now left out of the frame entirely. The data recorder packets had the same issue for pressure, main temperature, heater temperature and humidity.
+  * **Firmware Builder.** Small corrections.
 * `v71` - small Firmware Builder improvements and documentation improvements. APRS WX inconsistency corrected.
 * `v70` - a large GNSS overhaul: the receiver is now driven entirely in the native **binary UBX protocol** (NMEA removed), for lower latency, much richer data, and no external-libraries dependency.
   * **Native UBX driver.** Both boards talk UBX only: `UBX-NAV-PVT` on the M10 (RSM4x4/4x5), the legacy `NAV-POSLLH`/`VELNED`/`SOL`/`TIMEUTC` set on the u-blox 6 (RSM4x2/4x1). The reader is event-driven and returns the instant a fresh fix arrives (no more fixed ~1 s NMEA wait). New data: true GPS-computed **vertical speed** (velD), **fix type**, horizontal/vertical/speed **accuracy estimates**, and satellite counts beyond the old NMEA cap of 12. Every config message is **ACK-validated** and retried; a rejected one is logged with its key.

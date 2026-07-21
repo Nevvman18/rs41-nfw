@@ -12,7 +12,8 @@ import * as libstlink from './lib/package.js';
 import Mutex from './mutex.js';
 import {
     hex_word as H32,
-    hex_string
+    hex_string,
+    async_sleep
 } from './lib/util.js';
 
 
@@ -247,12 +248,37 @@ export default class WebStlink {
 
     async find_mcus_by_flash_size() {
         this._flash_size = await this._stlink.get_debugreg16(this._mcus_by_devid.flash_size_reg);
+        this.flash_size_unknown = false;
         this._mcus = this._mcus_by_devid.devices.filter(
             mcu => (mcu.flash_size == this._flash_size)
         );
-        if (this._mcus.length == 0) {
-            throw new libstlink.exceptions.Exception(`Connected CPU with DEV_ID: 0x${H24(this._mcus_by_devid.dev_id)} and FLASH size: ${this._flash_size}KB is not supported`);
+        if (this._mcus.length > 0) {
+            return;
         }
+
+        // RS41-NFW addition. The flash size register lives in the flash information block,
+        // which a read-out-protected MCU will not show to the debugger: on an RDP-locked
+        // STM32F100 (a factory RS41 RSM4x2) the read comes back 0x0000 or 0xFFFF. That is a
+        // protected chip, not an unsupported one, so identify it provisionally instead of
+        // giving up - the caller can then clear RDP and re-detect properly. Only these two
+        // "nothing there" values fall back; any other size really is an unsupported part.
+        if (this._flash_size === 0x0000 || this._flash_size === 0xffff) {
+            // Assume the smallest variant of this dev_id: its flash and SRAM sizes are a
+            // subset of every other variant, so nothing we do can run off the end of memory.
+            const smallest = this._mcus_by_devid.devices.reduce(
+                (a, b) => ((b.flash_size < a.flash_size) ? b : a)
+            );
+            this._mcus = [smallest];
+            this._flash_size = smallest.flash_size;
+            this.flash_size_unknown = true;
+            this._dbg.warning(
+                `FLASH size register at 0x${H32(this._mcus_by_devid.flash_size_reg)} is unreadable `
+                + "- the MCU is almost certainly read-out protected. Assuming "
+                + `${smallest.type} until protection is cleared.`);
+            return;
+        }
+
+        throw new libstlink.exceptions.Exception(`Connected CPU with DEV_ID: 0x${H24(this._mcus_by_devid.dev_id)} and FLASH size: ${this._flash_size}KB is not supported`);
     }
 
     fix_cpu_type(cpu_type) {
@@ -356,6 +382,36 @@ export default class WebStlink {
         }
     }
 
+    // RS41-NFW addition: re-synchronise the SWD link with the target held in reset, then let
+    // it out of reset halted at the reset vector. A factory sonde boots straight into the
+    // Vaisala firmware, which can enter a low-power mode (SWD stops answering) before we get
+    // to it; holding NRST low while we attach wins that race. Call this after attach() and
+    // before detect_cpu() if a plain detect failed.
+    async connect_under_reset() {
+        await this._mutex.lock();
+        try {
+            const Stm32 = libstlink.drivers.Stm32;
+            await this._stlink.drive_nrst("low");
+            await async_sleep(0.05);
+            // Re-enter SWD while the core is held in reset: the debug port stays alive even
+            // though the core is not running.
+            await this._stlink.enter_debug_swd();
+            await this._stlink.read_coreid();
+            // Ask to halt the instant reset is released, so the factory firmware never runs.
+            await this._stlink.set_debugreg32(Stm32.DHCSR_REG, Stm32.DHCSR_HALT);
+            await this._stlink.set_debugreg32(Stm32.DEMCR_REG, Stm32.DEMCR_HALT_AFTER_RESET);
+            await this._stlink.drive_nrst("high");
+            await async_sleep(0.05);
+            await this._stlink.read_coreid();
+            this._dbg.info("COREID: " + H32(this._stlink.coreid) + " (attached with the sonde held in reset)");
+            if (this._stlink.coreid == 0) {
+                throw new libstlink.exceptions.Exception("Not connected to CPU");
+            }
+        } finally {
+            this._mutex.unlock();
+        }
+    }
+
     async detect_cpu(expected_cpus, pick_cpu = null) {
         this._dbg.info(`SUPPLY: ${this._stlink.target_voltage.toFixed(2)}V`);
         this._dbg.verbose("COREID: " + H32(this._stlink.coreid));
@@ -384,6 +440,7 @@ export default class WebStlink {
                 dev_id: this._mcus_by_devid.dev_id,
                 type: this._mcu.type,
                 flash_size: this._flash_size,
+                flash_size_unknown: this.flash_size_unknown,
                 sram_size: this._sram_size,
                 flash_start: this._driver.FLASH_START,
                 sram_start: this._driver.SRAM_START,
