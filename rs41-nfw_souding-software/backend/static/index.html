@@ -92,7 +92,25 @@ select.input-base option { background: #1e293b; }
 }
 .toggle input:checked + .toggle-slider { background:#3b82f6; box-shadow: 0 0 0 3px rgba(59,130,246,0.2); }
 .toggle input:checked + .toggle-slider::before { transform:translateX(18px); background:#fff; }
-.badge { display:inline-flex; align-items:center; gap:4px; padding:2px 8px; border-radius:99px; font-size:.7rem; font-weight:600; }
+.badge { display:inline-flex; align-items:center; gap:4px; padding:3px 10px; border-radius:99px; font-size:.74rem; font-weight:700; letter-spacing:.01em; }
+/* Status pills. The old bg-*-900 + text-*-300 pairs were authored for the dark
+   builder and turned dark-on-dark once light mode became the default, so the
+   "GitHub: vXX" and "Required / Verified" pills were unreadable. These are solid
+   saturated chips with white text - same look, strong contrast, in both themes. */
+.badge-ok   { background:#15803d; color:#fff; border:1px solid #22c55e; box-shadow:0 1px 3px rgba(21,128,61,.35); }
+.badge-warn { background:#b45309; color:#fff; border:1px solid #f59e0b; box-shadow:0 1px 3px rgba(180,83,9,.35); }
+/* idle chip sits on the page background, not on a card, so it needs the stronger
+   border to stay visible in light mode where surface and page are near-identical */
+.badge-idle { background:var(--surface); color:var(--text-muted); border:1px solid var(--border-strong); }
+/* "Verification still needed" notice at the foot of the verification card and
+   above the Compile button. */
+.verify-warning { display:flex; gap:10px; align-items:flex-start; padding:11px 14px; border-radius:10px;
+  background:rgba(217,119,6,.10); border:1px solid rgba(217,119,6,.45); color:#a54d08;
+  font-size:.87rem; line-height:1.55; }
+html[data-theme="dark"] .verify-warning { background:rgba(217,119,6,.14); border-color:rgba(245,158,11,.42); color:#fcd34d; }
+.verify-warning strong { color:inherit; font-weight:800; }
+/* beat Tailwind's .hidden regardless of stylesheet order (both are one class) */
+.verify-warning.hidden { display:none; }
 .log-box { background:#070e1a; border:1px solid #1e3a5f; border-radius:8px; font-family:monospace; font-size:.75rem; height:240px; overflow-y:auto; padding:10px 12px; color:#94a3b8; }
 .log-box .err { color:#f87171; }
 .log-box .ok  { color:#4ade80; }
@@ -122,15 +140,18 @@ select.input-base option { background: #1e293b; }
 @keyframes glowIndigo { 0%,100%{ box-shadow:0 4px 22px rgba(99,102,241,0.40);} 50%{ box-shadow:0 6px 32px rgba(99,102,241,0.72);} }
 @keyframes glowAmber  { 0%,100%{ box-shadow:0 4px 20px rgba(234,179,8,0.28);} 50%{ box-shadow:0 6px 28px rgba(234,179,8,0.52);} }
 @keyframes pkgFloat   { 0%,100%{ transform:translateY(0);} 50%{ transform:translateY(-3px);} }
-.field-label { font-size:.85rem; font-weight:600; color:#cbd5e1; margin-bottom:5px; display:block; }
-.field-desc  { font-size:.8rem; color:#9fb0c6; margin-top:5px; line-height:1.5; }
+.field-label { font-size:.89rem; font-weight:600; color:#cbd5e1; margin-bottom:5px; display:block; }
+.field-desc  { font-size:.855rem; color:#9fb0c6; margin-top:5px; line-height:1.55; }
 .field-desc strong { color:#e2e8f0; }
-.mode-head { display:flex; align-items:center; gap:7px; font-weight:700; font-size:.8rem; color:#e2e8f0; margin-bottom:8px; }
+.mode-head { display:flex; align-items:center; gap:7px; font-weight:700; font-size:.85rem; color:#e2e8f0; margin-bottom:8px; }
 .mode-box  { border:1px solid #2b3b54; background:#101b30; border-radius:10px; padding:12px 14px; transition: border-color .15s, box-shadow .15s; }
 .mode-box:hover { border-color: #3b527a; box-shadow: 0 2px 12px rgba(0,0,0,0.22); }
-.help-list { font-size:.8rem; color:#9fb0c6; line-height:1.6; margin:0; padding-left:0; list-style:none; }
-.help-list li { position:relative; padding-left:16px; margin-bottom:3px; }
-.help-list li::before { content:'•'; position:absolute; left:2px; color:#60a5fa; }
+/* The explanation lists (TX timing and friends) used a fixed pale blue-grey that
+   was authored for the dark builder - on the light surfaces it washed out to
+   roughly 2:1 contrast. Theme variables keep them readable either way. */
+.help-list { font-size:.86rem; color:var(--text); line-height:1.65; margin:0; padding-left:0; list-style:none; }
+.help-list li { position:relative; padding-left:17px; margin-bottom:5px; }
+.help-list li::before { content:'•'; position:absolute; left:2px; color:var(--accent); font-weight:700; }
 .unit-wrap { display:flex; align-items:center; gap:0; }
 .unit-wrap .input-base { border-radius:6px 0 0 6px; }
 .unit-label { background:#1a2744; border:1px solid #334155; border-left:none; padding:6px 8px; border-radius:0 6px 6px 0; font-size:.78rem; color:#94a3b8; white-space:nowrap; }
@@ -451,6 +472,14 @@ select.input-base option{ background:var(--surface); color:var(--text); }
 .btn-slate:hover:not(:disabled){ background:var(--btn-slate-bg-h); }
 .platform-btn{ border:2px solid var(--border); }
 .data-card:hover{ box-shadow:var(--shadow); }
+/* v71: the builder carries a lot of explanatory copy and it was set a step too
+   small to read comfortably. Nudge the small utility sizes up inside the builder
+   only - the id selector outranks Tailwind's own classes, so ordering vs. the
+   CDN-injected stylesheet does not matter. Ground Control is left alone. */
+#app-fw .text-xs      { font-size:.8rem; }
+#app-fw .text-sm      { font-size:.94rem; }
+#app-fw .text-\[11px\]{ font-size:.78rem; }
+#app-fw .text-\[10px\]{ font-size:.73rem; }
 /* keep header/card titles and near-white inline text readable when a card turns light */
 html[data-theme="light"] .card-header .text-white,
 html[data-theme="light"] .card .text-white,
@@ -1656,7 +1685,7 @@ document.addEventListener('DOMContentLoaded', function(){
   <div class="hrd-box">
     <div class="flex items-center justify-between mb-4">
       <h2 class="text-sm font-black text-white uppercase tracking-wider">Humidity Range Calibration</h2>
-      <span id="hrd-stage-badge" class="badge bg-amber-900 text-amber-300">Stage --</span>
+      <span id="hrd-stage-badge" class="badge badge-warn">Stage --</span>
     </div>
     <p class="text-[11px] text-slate-400 mb-4 leading-relaxed">
       Live readings from the sonde. Expose the sensor boom to ~100 %RH (steam above boiling water, sensor pointing up, no condensation).
@@ -1747,7 +1776,7 @@ PAY ATTENTION TO THE CUT-OUT</pre>
         <p class="text-xs text-slate-400">Configure, compile and flash firmware for Vaisala RS41 radiosondes - straight from your browser with the built-in WebUSB flasher.</p>
       </div>
     </div>
-    <div id="fw-badge" class="badge bg-slate-800 text-slate-400">No firmware loaded</div>
+    <div id="fw-badge" class="badge badge-idle">No firmware loaded</div>
   </div>
 </div>
 
@@ -1758,18 +1787,22 @@ PAY ATTENTION TO THE CUT-OUT</pre>
   <div class="card-header px-5 py-3 flex items-center gap-2">
     <span class="text-amber-400 text-lg">🛡️</span>
     <span class="font-bold text-white">Human Verification</span>
-    <span id="verify-pill" class="badge bg-amber-900 text-amber-300 ml-auto">Required</span>
+    <span id="verify-pill" class="badge badge-warn ml-auto">Required</span>
   </div>
   <div class="p-5">
     <div id="verify-done" class="hidden text-sm text-green-400 font-semibold">✓ Verified. Fetching and compiling are unlocked for this session.</div>
     <div id="verify-form">
-      <p class="text-sm text-slate-400 mb-3">Retype the code below to unlock fetching and compiling.</p>
+      <p class="text-sm text-slate-300 mb-3">Retype the code below to unlock fetching and compiling.</p>
       <div class="flex flex-wrap items-center gap-3">
         <img id="captcha-img" alt="verification code" class="rounded-lg border border-slate-700 bg-slate-900" style="height:60px; user-select:none; -webkit-user-select:none; pointer-events:none;" draggable="false">
         <button class="btn btn-slate" type="button" onclick="loadCaptcha()" title="New code"><span>🔄</span></button>
         <input type="text" id="captcha-input" class="input-base font-mono" style="max-width:170px; letter-spacing:.35em; text-transform:uppercase;" maxlength="6" autocomplete="off" placeholder="6 chars" oninput="this.value=this.value.toUpperCase()" onkeydown="if(event.key==='Enter')submitCaptcha()">
         <button class="btn btn-green" type="button" id="btn-verify" onclick="submitCaptcha()"><span>✓</span> Verify</button>
         <span id="verify-msg" class="text-xs text-slate-500"></span>
+      </div>
+      <div class="verify-warning mt-4">
+        <span class="text-base leading-none">⚠️</span>
+        <div><strong>Human verification is not completed yet.</strong> Please do it now - type the code above and press Verify. Until you do, <strong>Fetch latest from GitHub</strong> and <strong>Compile</strong> stay locked. It takes a few seconds and keeps the build server usable for everyone.</div>
       </div>
     </div>
   </div>
@@ -1811,7 +1844,9 @@ PAY ATTENTION TO THE CUT-OUT</pre>
     <span class="section-tag text-indigo-400 ml-auto">Step 2</span>
   </div>
   <div class="p-5">
-    <p class="text-xs text-slate-500 mb-4">Select your PCB revision - printed on the bottom of the board. This also sets which board the single Compile button below targets.</p>
+    <p class="text-xl font-extrabold text-white mb-1 leading-snug">Select your PCB revision</p>
+    <p class="text-base text-slate-300 mb-2 leading-relaxed">The PCB model is printed on the <strong class="text-white">bottom of the PCB</strong>, near the <strong class="text-white">button</strong> and the <strong class="text-white">NFC coil</strong>.</p>
+    <p class="text-sm text-slate-400 mb-4 leading-relaxed">RSM4x4 / RSM4x5 are the revisions made after 2023 and start from <strong class="text-slate-200">V</strong> serials, but RSM4x2 boards still turn up with <strong class="text-slate-200">W</strong> and <strong class="text-slate-200">X</strong> serials. Always check the printed model, not the serial.</p>
     <div class="flex gap-3">
       <button class="platform-btn active-4x4" id="plat-4x4" onclick="selectPlatform('RSM4x4')">
         <!-- LQFP64 icon - larger package -->
@@ -1886,7 +1921,7 @@ PAY ATTENTION TO THE CUT-OUT</pre>
     <span class="font-bold text-white">2 · TX Timing</span>
   </div>
   <div class="p-5">
-    <p class="text-sm text-slate-400 mb-3">GPS-clock synchronised transmission timing. Each mode below has two values:</p>
+    <p class="text-sm text-slate-300 mb-3">GPS-clock synchronised transmission timing. Each mode below has two values:</p>
     <ul class="help-list mb-5">
       <li><strong class="text-white">Interval</strong> - at <strong class="text-white">5 s and above</strong>, transmit every N seconds aligned to the top of the hour (example: 15 transmits at :00, :15, :30, :45). <strong class="text-white">Below 5 s (0-4)</strong> a data mode switches the sonde to <strong class="text-white">simple fast-TX</strong>: no GPS-clock timing, just refresh GPS + sensors, send every enabled mode back-to-back, then wait that many seconds (0 = quickest). Below 5 s the scheduler is oriented for <strong class="text-white">data density, not clock sync</strong> - keep the interval at <strong class="text-white">5 s or above to retain GPS-clock-synced slots and offsets</strong> (e.g. for interleaving several sondes on one frequency). To turn a mode off use its enable switch, not a 0 interval.</li>
       <li><strong class="text-white">Offset</strong> - extra delay added after each interval slot. Example: interval 15, offset 2 transmits at :02, :17, :32, :47. Handy for separating several sondes flying at once.</li>
@@ -1963,7 +1998,7 @@ PAY ATTENTION TO THE CUT-OUT</pre>
   <div class="card-header px-5 py-3 flex items-center gap-2">
     <span class="text-emerald-400 text-lg">🛰️</span>
     <span class="font-bold text-white">5 · Horus Binary V3</span>
-    <span class="badge bg-emerald-900 text-emerald-300 ml-2">Recommended</span>
+    <span class="badge badge-ok ml-2">Recommended</span>
   </div>
   <div class="p-5 grid grid-cols-1 md:grid-cols-2 gap-5">
     <div class="flex items-start gap-3 md:col-span-2">
@@ -2049,7 +2084,7 @@ PAY ATTENTION TO THE CUT-OUT</pre>
       <p class="field-desc">Comma-separated; the sonde cycles through every entry, one per TX window. Use the APRS frequency that is standard for your region. The data recorder and low-altitude fast-TX use the first entry only.</p></div>
     <div><label class="field-label">Callsign</label><input type="text" class="input-base font-mono" id="cfg-aprsCall" value="N0CALL" maxlength="10" oninput="this.value=this.value.toUpperCase()" onchange="cfgChanged()"><p class="field-desc">The station callsign the packet is sent from. Shown as the tracked object on the map. Automatically forced to <strong>UPPERCASE</strong> (APRS callsigns must be uppercase).</p></div>
     <div><label class="field-label">SSID</label><input type="number" class="input-base" id="cfg-aprsSsid" value="11" min="0" max="15" onchange="cfgChanged()"><p class="field-desc">Number appended to the callsign (CALL-11). By convention 11 means a balloon / high-altitude tracker.</p></div>
-    <div class="md:col-span-2"><label class="field-label">Comment</label><input type="text" class="input-base font-mono" id="cfg-aprsComment" value=" NFWv70" maxlength="64" onchange="cfgChanged()"><p class="field-desc">Free text added to the end of every packet (visible next to the station on the map).</p></div>
+    <div class="md:col-span-2"><label class="field-label">Comment</label><input type="text" class="input-base font-mono" id="cfg-aprsComment" value=" NFWv71" maxlength="64" onchange="cfgChanged()"><p class="field-desc">Free text added to the end of every packet (visible next to the station on the map).</p></div>
     <div><label class="field-label">Map icon</label>
       <select class="input-base" id="aprs-symbol-preset" onchange="aprsSymbolPreset()">
         <option value="O">🎈 Balloon</option>
@@ -2840,6 +2875,13 @@ PAY ATTENTION TO THE CUT-OUT</pre>
         <input type="file" id="settings-file-input" accept=".txt,.cfg,.ini,text/plain" class="hidden" onchange="loadSettingsFile(this)">
       </div>
       <p id="settings-load-status" class="text-[11px] text-green-400 mt-2 hidden"></p>
+    </div>
+
+    <!-- Mirror of the verification notice, so it is also visible down here where
+         people actually press Compile. Toggled by setVerified(). -->
+    <div id="compile-verify-warning" class="verify-warning">
+      <span class="text-base leading-none">⚠️</span>
+      <div><strong>Human verification is not completed yet.</strong> Compiling is locked until you complete it in the <a href="#verify-card" onclick="document.getElementById('verify-card').scrollIntoView({behavior:'smooth',block:'center'});return false;" class="underline font-bold">Human Verification</a> section at the top of this page.</div>
     </div>
 
     <button class="btn btn-green" id="btn-compile" onclick="startCompile(currentPlatform)">
@@ -4924,7 +4966,10 @@ function setVerified(ok) {
   document.getElementById('verify-done').classList.toggle('hidden', !ok);
   const pill = document.getElementById('verify-pill');
   pill.textContent = ok ? 'Verified' : 'Required';
-  pill.className = 'badge ml-auto ' + (ok ? 'bg-green-900 text-green-300' : 'bg-amber-900 text-amber-300');
+  pill.className = 'badge ml-auto ' + (ok ? 'badge-ok' : 'badge-warn');
+  // the same reminder sits above the Compile button further down the page
+  const cw = document.getElementById('compile-verify-warning');
+  if (cw) cw.classList.toggle('hidden', ok);
 }
 
 // call when the server rejects a protected action because the session is gone
@@ -5010,7 +5055,7 @@ function updateFwBadge(version, source) {
   loadedFwVersion = version;   // remember it for settings-file version checks
   const el = document.getElementById('fw-badge');
   el.textContent = `${source}: ${version}`;
-  el.className = 'badge bg-green-900 text-green-300';
+  el.className = 'badge badge-ok';
 }
 
 // Parse a firmware version like "v68" / "RS41-NFW v68 ..." to an integer (68), or null.

@@ -1,7 +1,8 @@
 # RS41-NFW Operation manual
 
-This manual describes how an RS41-NFW sonde behaves and how each feature works. It is current for **firmware v70**.
+This manual describes how an RS41-NFW sonde behaves and how each feature works. It is current for **firmware v71**.
 
+> [!NOTE]
 > **Where the settings live:** all user options are in a single file, [`CONFIG.h`](../rs41-nfw_sonde-firmware/CONFIG.h), grouped into clearly numbered sections with a short comment on every line. You do **not** edit the main `.ino`. The easiest way to set everything is the **[NFW Sounding Software](../README.md#rs41-nfw-sounding-software)** ([nfw.flada.ovh](https://nfw.flada.ovh)), which shows the same options as a guided form and compiles the firmware for you. The per-line comments in `CONFIG.h` are always the authoritative reference; this manual explains the *why* and the *how it behaves*.
 
 * [Firmware configuration overview](#firmware-configuration-overview)
@@ -208,6 +209,7 @@ The firmware also reads the **MCU's own internal temperature sensor** (both boar
 
 ### Sensor calibration mode (Vaisala calibration data vs NFW calibrations)
 
+> [!NOTE]
 > **Board support (v70).** Both board families now run the **Vaisala factory calibration**. On **RSM4x4 / RSM4x5 (STM32L412)** you can pick either mode with the switch below (default factory). The older **RSM4x1 / RSM4x2 (STM32F100)** boards are **factory-only**: the NFW calibration path is no longer built for the F100 (the factory maths was moved to single precision so it fits, and dropping NFW frees the room), so those boards always use the manufacturer coefficients. Because the F100 has no NFW fallback, its build **requires** a downloaded factory calibration when the sensor boom is enabled - the Firmware Builder enforces this by asking for the measurement-boom serial before it will compile (unless the boom is disabled, in which case no calibration is needed).
 
 On RSM4x4 / RSM4x5 a master switch, `sensorCalibrationMode` (Section 15b), chooses how sensors are computed - it governs the whole measurement chain. On RSM4x2 / RSM4x1 it is fixed at factory.
@@ -215,6 +217,7 @@ On RSM4x4 / RSM4x5 a master switch, `sensorCalibrationMode` (Section 15b), choos
 * **`1` - NFW algorithms** (RSM4x4 / RSM4x5 only). The in-house calibration and compensation model. A simplified but close approximation that brings any boom to life - even one whose factory calibration data was never received. Readings are good and usable, but not at the manufacturer's accuracy. This mode uses the [Temperature calibration](#temperature-calibration) and [Humidity calibration](#humidity-calibration) routines described below.
 * **`2` - Vaisala factory (default; the only mode on RSM4x2 / RSM4x1).** Reproduces the boom's **original Vaisala factory calibration**, using the per-boom coefficients (temperature polynomials and the full humidity `matrixU` surface) downloaded from SondeHub by serial number. **Expected accuracy is the same you get from a normally received factory sonde** - full manufacturer-grade temperature and humidity. The factory data belongs to one specific boom, so coefficients are never interchangeable between serials.
 
+> [!NOTE]
 > Factory mode is set up in the Sounding Software's sensor-boom section: choose *Factory (Vaisala)* and enter the serial **engraved on the silver measurement boom** (the central part of its structure, not the mainboard). For best results use a matching boom + sonde pair that share the same serial (printed on the styrofoam packaging and on the boom). You may also pair the boom with any mainboard and enter only the boom serial, but because the factory data also captures the original mainboard's small imperfections, expect a deviation of readings with a mismatched board (from empirical home testing) - it may equally well read perfectly, this is just the worst case to be aware of.
 
 In factory mode the NFW start-up calibrations (temperature offset, zero-humidity, capacitance range) are **not** run - the factory coefficients are absolute. Instead, two optional **self-checks** run on start-up. They never change a reading; they only raise a diagnostic flag:
@@ -226,6 +229,7 @@ Ground Control auto-detects the mode and shows the matching controls - the full 
 
 ### Temperature calibration
 
+> [!NOTE]
 > Applies to **NFW mode** only. In Vaisala factory calibrations mode the temperature comes straight from the factory polynomial and no offset calibration is run.
 
 Boom sensors are linear but each has its own offset, which you should correct (Section 16). Choose one method:
@@ -237,6 +241,7 @@ The humidity module's own temperature sensor is corrected automatically against 
 
 ### Humidity calibration
 
+> [!NOTE]
 > Applies to **NFW mode** only. In Vaisala factory calibrations mode humidity comes from the factory `matrixU` calibration surface and none of the routines below are run.
 
 NFW reads humidity from the sensor's **capacitance** and derives RH from a zero-humidity reference plus a temperature compensation (Section 17). Enable the module with `humidityModuleEnable`.
@@ -245,6 +250,7 @@ NFW reads humidity from the sensor's **capacitance** and derives RH from a zero-
 * **Reconditioning** (`reconditioningEnabled`, `reconditioningTemperature`, default 140 C): an optional ~1 minute high-temperature pass that removes contaminants from the sensor before the zero-humidity step. Recommended together with zero-humidity calibration.
 * **Range delta** (`humidityCapacitanceRangeDelta`): the capacitance span between 0 %RH and 100 %RH. The default is an empirical average across many booms. For best accuracy, enable `humidityCalibrationDebug`, expose the sensor to about 100 %RH (above boiling water, sensor pointing up, clear of condensation), record the peak delta, enter it, and turn the debug mode off.
 
+> [!CAUTION]
 > **Safety:** during reconditioning and zero-humidity calibration the white humidity plate becomes very hot (well over 100 C). Keep clear of the sensor boom while the orange LED is blinking, and do not touch the boom for a minute after calibration so the readings can settle.
 
 The sensor has a few seconds of reaction time, longer at low temperatures. Expect roughly 15 %RH accuracy with this method - more than enough for amateur use, though not a laboratory hygrometer.

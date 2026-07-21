@@ -29,37 +29,40 @@ Open the enclosure and take out the PCB. On the back side of it (the one without
 
 `RSM4x1` and `RSM4x2` seem to be really similar and share the same design, the same goes for `RSM4x4` and `RSM4x5`. The first ones get called the old ones, and the `x4 x5` revisions are the new ones. **RS41-NFW project is compatible with all of them.**
 
-<br>
+
 
 This guide describes the hardware of the newer sonde generation, the `RSM414` and `RSM425` revisions. They belong to the same new internal design (the `RSM4x4` / `RSM4x5` family) and share the same components and layout, so the description applies to both. The photos below show an `RSM414` board and, further down, an `RSM425` board.
 
 
 # Key components
-**RSM414 PCB - Front photo**
-<p align="center">
-<img src="./photos/front.JPG" alt="RSM414 PCB - front photo" style="width:90%"/><br>
-</p><br>
+<table>
+<tr>
+<td width="50%" align="center"><b>RSM414 PCB - Front photo</b></td>
+<td width="50%" align="center"><b>RSM414 PCB - Rear photo</b></td>
+</tr>
+<tr>
+<td align="center"><img src="./photos/front.JPG" alt="RSM414 PCB - front photo" width="100%"/></td>
+<td align="center"><img src="./photos/rear.JPG" alt="RSM414 PCB - rear photo" width="100%"/></td>
+</tr>
+</table>
 
-**RSM414 PCB - Rear photo**
-<p align="center">
-<img src="./photos/rear.JPG" alt="RSM414 PCB - rear photo" style="width:90%"/><br>
-</p>
-
-**RSM425 PCB - Front photo**
-<p align="center">
-<img src="./photos/rsm425_front.jpg" alt="RSM425 PCB - front photo" style="width:90%"/><br>
-</p><br>
-
-**RSM425 PCB - Rear photo** (without the RPM411 pressure board)
-<p align="center">
-<img src="./photos/rsm425_back_withoutRPM411.jpg" alt="RSM425 PCB - rear photo, no RPM411" style="width:90%"/><br>
-</p><br>
+<table>
+<tr>
+<td width="50%" align="center"><b>RSM425 PCB - Front photo</b></td>
+<td width="50%" align="center"><b>RSM425 PCB - Rear photo</b> (without the RPM411 pressure board)</td>
+</tr>
+<tr>
+<td align="center"><img src="./photos/rsm425_front.jpg" alt="RSM425 PCB - front photo" width="100%"/></td>
+<td align="center"><img src="./photos/rsm425_back_withoutRPM411.jpg" alt="RSM425 PCB - rear photo, no RPM411" width="100%"/></td>
+</tr>
+</table>
 
 **RSM425 PCB - Rear photo** (with the Vaisala RPM411 pressure board fitted to the internal expansion connector)
 <p align="center">
-<img src="./photos/rsm425_back_withRPM411.jpg" alt="RSM425 PCB - rear photo with RPM411" style="width:90%"/><br>
+<img src="./photos/rsm425_back_withRPM411.jpg" alt="RSM425 PCB - rear photo with RPM411" width="90%"/>
 </p>
 
+> [!NOTE]
 > **Thanks for the RSM4x5 material:** big thanks to **Timo** for gathering the information about the `RSM4x5` revision, and to **Aki Salento** for taking the excellent `RSM4x5` photographs shown above.
 
 
@@ -72,30 +75,30 @@ The same as previous revision.
 
 ### Hard wired logic
 It is exactly the same, though an accurate description maybe useful for somebody.<br>
-Previously mentioned `Q501` P-MOSFET is controlled via a smaller N-MOSFET `Q502`. The sonde is ON if the `Q502` has a HIGH state on the gate, and it powers off when the gate closes.<br>
+Previously mentioned `Q501` P-MOSFET is controlled via a smaller N-MOSFET `Q502`. The sonde is ON if the `Q502` has a HIGH state on the gate, and it powers off when the gate closes.
 
-The sonde can be switched on via NFC 13.56MHz carrier signal on it's coil, which sends a rectified signal to the `Q502` gate.<br>
+The sonde can be switched on via NFC 13.56MHz carrier signal on it's coil, which sends a rectified signal to the `Q502` gate.
 
-The button `S501` on the bottom of the sonde can turn on the sonde via `R507` to bring the `Q502` gate to logic HIGH signal. The button status can also be checked with uC via `R509`/`R513`_`C524` voltage divider. The middle leg of the button voltage divider is connected to the uC IO `PA6`. The button voltage gets slightly higher when it's pressed.<br>
+The button `S501` on the bottom of the sonde can turn on the sonde via `R507` to bring the `Q502` gate to logic HIGH signal. The button status can also be checked with uC via `R509`/`R513`_`C524` voltage divider. The middle leg of the button voltage divider is connected to the uC IO `PA6`. The button voltage gets slightly higher when it's pressed.
 
-The battery voltage can be measured by the MCU via `R508`/`R512`_`C523` voltage divider. The middle leg of this divider is connected to the `PA5` pin of the MCU. <br>
+The battery voltage can be measured by the MCU via `R508`/`R512`_`C523` voltage divider. The middle leg of this divider is connected to the `PA5` pin of the MCU.
 
-Once the `Q502` gets a HIGH signal, it stays open via `R505`, which sends voltage from the battery to the MOSFET gate.<br>
+Once the `Q502` gets a HIGH signal, it stays open via `R505`, which sends voltage from the battery to the MOSFET gate.
 
 The sonde can be turned OFF by setting `PA9` MCU pin HIGH, which opens `Q503` N-MOSFET, that shorts the `Q502` gate directly to the ground. This closes the `Q501` and with that the boost converter EN and VIN pins don't receive power anymore.
 
 
 ## Microcontroller
 <p align="center">
-<img src="./photos/rs41-rsm414_uC.png" alt="pcb - front photo" style="width:40%"/><br>
-</p><br>
+<img src="./photos/rs41-rsm414_uC.png" alt="pcb - front photo" width="40%"/>
+</p>
 
 As you can already know, it is a new STMicroelectronics [**STM32L412RBT6**](https://eu.mouser.com/datasheet/2/389/stm32l412c8-1851177.pdf) in a LQFP64 package. <br>
 Like the previous revision, many of the IOs have RC (resistor-capacitor) low pass filters. <br>
 **NOTE:** This description is a little bit outdated, all pin definitions of both revisions are available in the firmware file.
 
 ## Frontend
-It is very similar to the previous version, please refer to the *radiosonde_hardware* repo.<br>
+It is very similar to the previous version, please refer to the *radiosonde_hardware* repo.
 
 ## GPS
 The GPS module in the new revision is the component that differs the most - this time it is a **uBlox M10050-KB** in a QFN28 package. The circuit around it seems like a standard implementation, with RF filters and probably an LNA chip, and standard coupling capacitors and RC low pass. <br>
@@ -103,7 +106,7 @@ The bad thing is that the only official document I could find about it was [this
 Luckily, the circuit implementation isn't hard to understand, so the UART pins were obvious to find. They are located on the right side of the chip, with RC filters before plated holes to the other side of the PCB, connected to pin 16 of the GPS as RX and 17 as a GPX TX. This GPS UART interface is then connected to the `PB6` and `PB7` pins of the uC.
 
 ## Radio
-Nearly the same as in the previous rev.<br>
+Nearly the same as in the previous rev.
 
 It is a Silicon Labs **Si4032**. It uses the same 26MHz clock as the GPS module, so the RF frequency on the output is different then the one set in the registers. <br>
 `desired_freq * 26/30 = output_freq`<br>
@@ -135,19 +138,20 @@ In the new revisions, connector pinout is left the same, desciription can be fou
 
 The Vaisala **RPM411** is the original BARO-CAP pressure add-on board (as fitted to the RS41-SGP). It plugs into this internal connector on the rear of the sonde; RS41-NFW reads it when `pressureMode = 1`.
 
-**RPM411 pressure board - Front photo**
-<p align="center">
-<img src="./photos/rpm411_front.jpg" alt="Vaisala RPM411 pressure board - front photo" style="width:60%"/><br>
-</p><br>
-
-**RPM411 pressure board - Rear photo**
-<p align="center">
-<img src="./photos/rpm411_back.jpg" alt="Vaisala RPM411 pressure board - rear photo" style="width:60%"/><br>
-</p>
+<table>
+<tr>
+<td width="50%" align="center"><b>RPM411 pressure board - Front photo</b></td>
+<td width="50%" align="center"><b>RPM411 pressure board - Rear photo</b></td>
+</tr>
+<tr>
+<td align="center"><img src="./photos/rpm411_front.jpg" alt="Vaisala RPM411 pressure board - front photo" width="100%"/></td>
+<td align="center"><img src="./photos/rpm411_back.jpg" alt="Vaisala RPM411 pressure board - rear photo" width="100%"/></td>
+</tr>
+</table>
 
 ### NFC interface
 Besides the lack of the `C604` capacitor (but the footprint is still there?) the circuit looks the same as the one before. <br>
-I had no luck for now to implement some decent protocol, because the board doesn't feature any NFC frontend (which means carrier OOK modulation for rx by the sonde and rfid load changing as a tx from sonde).<br>
+I had no luck for now to implement some decent protocol, because the board doesn't feature any NFC frontend (which means carrier OOK modulation for rx by the sonde and rfid load changing as a tx from sonde).
 
 The only thing that it is capable for now (via the hardware side) is that the sonde can be instantly turned ON on detection of the 13.56MHz RFID carrier. You can try this with your NFC-capable smartphone - just turn on the NFC function (the one for the RFID cards) and stick the back of your phone to the back of the sonde or somewhere near the coil on the bottom. The lights should turn ON and the sonde should start working.
 

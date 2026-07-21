@@ -2,7 +2,7 @@
 RS41-NFW - versatile, feature-rich and user-friendly custom firmware for ALL revisions of Vaisala RS41 radiosondes
 Authors: Franek Łada (nevvman, SP5FRA)
 
-Version 69 (public, stable)
+Version 71 (public, stable)
 
 All code and dependencies used or modified here that don't origin from me are described in code comments and repo details.
 https://github.com/Nevvman18/rs41-nfw
@@ -43,7 +43,7 @@ I wish You high, successful flights with a lot of data gathered with this firmwa
 Franek,
 Author of RS41-NFW
 */
-#define NFW_VERSION "RS41-NFW v70, GPL-3.0 Franek Lada (nevvman, SP5FRA)"  //This is the firmware version You are running
+#define NFW_VERSION "RS41-NFW v71, GPL-3.0 Franek Lada (nevvman, SP5FRA)"  //This is the firmware version You are running
 
 //===== Libraries and lib-dependant definitions (nothing to modify)
 /* No libraries are required to be installed, all dependencies are shipped within the project folder. */
@@ -3482,13 +3482,10 @@ void aprsWxFormat(float latitude, float longitude, char* aprsMessage) {
   
   int wxPressure = pressureValue * 10;  // Barometric pressure (hPa * 10)
 
-  // Read additional values
-  int wxPacketNumber = 0;      // Packet number, here as 0, because it could potentially overflow when used as a weather station
-  int wxSatellites = gpsSats;  // GPS satellites
 
   if(pressureMode == 1) {
     snprintf(aprsMessage, 320,
-           "!%s/%s_.../...g...t%03dh%02db%05d U%dmV %s",   
+           "!%s/%s_.../...g...t%03dh%02db%05d U=%dmV %s",   
            latBuffer,                                      // Formatted Latitude buffer
            lonBuffer,                                      // Formatted Longitude buffer
            wxTemperatureF,                                 // Temperature in Fahrenheit
@@ -3500,7 +3497,7 @@ void aprsWxFormat(float latitude, float longitude, char* aprsMessage) {
   }
   else {
     snprintf(aprsMessage, 320,
-           "!%s/%s_.../...g...t%03dh%02d U%dmV %s",   //NOTE!: if You want to report pressure, add 'b%05d' after humidity tag and a wxPressure variable after wxHumidity variable
+           "!%s/%s_.../...g...t%03dh%02d U=%dmV %s",
            latBuffer,                                      // Formatted Latitude buffer
            lonBuffer,                                      // Formatted Longitude buffer
            wxTemperatureF,                                 // Temperature in Fahrenheit
@@ -3512,73 +3509,6 @@ void aprsWxFormat(float latitude, float longitude, char* aprsMessage) {
 
 }
 
-#ifdef RSM4x4
-void aprsRecorderFormat(char* aprsMessage) {
-  // Convert gpsAlt from meters to feet
-  int gpsAltFeet = static_cast<int>(gpsAlt * 3.28084);
-
-  // Convert battery voltage to integer (e.g., 3.75V -> 375)
-  int wxVoltageFormatted = static_cast<int>(readBatteryVoltage() * 100);
-
-  int aprsTemperature = static_cast<int>(
-    (!sensorBoomEnable || sensorBoomFault) ? readAvgIntTemp() : mainTemperatureValue);
-
-  int healthStatus = 0;
-  if (err) {
-    healthStatus = 2;
-  } else {
-    healthStatus = 0;
-  }
-
-  int ledsEnableInt = static_cast<int>(ledsEnable ? 1 : 0);
-  int beganFlyingInt = static_cast<int>(beganFlying ? 1 : 0);
-  int burstDetectedInt = static_cast<int>(burstDetected ? 1 : 0);
-  int radioTemp = static_cast<int>(readRadioTemp());
-  int mvBatUInt = static_cast<int>(readBatteryVoltage() * 1000);
-  int thermistorTempInt = static_cast<int>(readThermistorTemp());
-  int gpsJamWarningInt = static_cast<int>(gpsJamWarning ? 1 : 0);
-  int sensorBoomFaultInt = static_cast<int>(sensorBoomFault ? 1 : 0);
-  int gpsHdopInt = static_cast<int>(gpsHdop);
-
-  int gpsCurrentModeInt = 0;
-  if (gpsOperationMode == 0) {
-    gpsCurrentModeInt = 0;
-  } else {
-    gpsCurrentModeInt = currentGPSPowerMode;
-  }
-
-  // Format the string into the provided aprsMessage buffer (with a 55 character comment)
-  snprintf(
-    aprsMessage, 320,
-    " NFW;%d;%d;%d;%d;%d;%d;%d;%d;%d;%d;%d;%d;%d;%d;%d;%d;%d;%d;%d;%d;%d;%d;%d;%d;%d %s",
-    maxAlt,
-    maxSpeed,
-    maxAscentRate,
-    maxDescentRate,
-    maxMainTemperature,
-    minMainTemperature,
-    maxInternalTemp,
-    minInternalTemp,
-    ledsEnableInt,
-    healthStatus,
-    gpsResetCounter,
-    beganFlyingInt,
-    burstDetectedInt,
-    currentRadioPwrSetting,
-    gpsCurrentModeInt,
-    radioTemp,
-    sensorBoomFaultInt,
-    zeroHumidityCapacitance,
-    humidityCapacitanceRangeDelta,
-    extHeaterPwmStatus,
-    referenceHeaterStatus,
-    mvBatUInt,
-    thermistorTempInt,
-    gpsJamWarningInt,
-    gpsHdopInt,
-    aprsComment.c_str());
-}
-#endif  // RSM4x4 (aprsRecorderFormat)
 
 void redLed() {
   digitalWrite(RED_LED_PIN, LOW);
@@ -4315,20 +4245,7 @@ void ultraPowerSaveHandler() {
           sendAprsPacket(aprsOperationMode);  //send HAB APRS format packet
           radioDisableTx();
 
-          if (dataRecorderEnable) {
-            aprsLocationFormat(gpsLat, gpsLong, aprsLocationMsg);
-            aprsRecorderFormat(aprsOthersMsg);  //dataRecorder format
-
-            aprsPacketNum++;
-
-            radioEnableTx();
-            for (int i = 0; i < 128; i++) {
-              aprsSendMark();
-            }
-
-            sendAprsPacket(1);
-            radioDisableTx();
-          }
+          
         }
         unsigned long modeChangeDelayCallbackTimer = millis() + 180000;   // transmit the last position every 3 minutes
 

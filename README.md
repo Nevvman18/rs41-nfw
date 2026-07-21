@@ -1,8 +1,9 @@
 # RS41-NFW - Versatile, custom firmware for ALL revisions of Vaisala RS41 radiosondes
-## **Vaisala RS41 New Firmware** (*RS41 Nevvman's Firmware*) <br>
+## **Vaisala RS41 New Firmware** (*RS41 Nevvman's Firmware*)
 
-This project is an approach for reusing [all revisions](../hw/README.md#older-vs-newer---how-do-i-know-which-one-im-holding-now) of **Vaisala RS41** radiosonde as amateur tracking and measurement devices for many different purposes - as **balloon trackers**, **atmosphere sounding** devices, weather stations, radio beacons and more. It provides advanced support of **original measurement sensors** (such as **factory-calibrated sensor boom** readings or **RPM411** pressure add-on module measurements), good algorithms and operation modes, **very advanced GPS** support and more.
+This project is an approach for reusing [all revisions](./hw/README.md#older-vs-newer---how-do-i-know-which-one-im-holding-now) of **Vaisala RS41** radiosonde as amateur tracking and measurement devices for many different purposes - as **balloon trackers**, **atmosphere sounding** devices, weather stations, radio beacons and more. It provides advanced support of **original measurement sensors** (such as **factory-calibrated sensor boom** readings or **RPM411** pressure add-on module measurements), good algorithms and operation modes, **very advanced GPS** support and more.
 
+> [!TIP]
 > ## 🎈 Start here - do everything in your browser at [nfw.flada.ovh](https://nfw.flada.ovh)
 > **This is all you need. No Arduino IDE, no toolchain, no desktop flashing tool.** The
 > **NFW Sounding Software** takes you from a blank sonde to a flight-ready one, entirely in
@@ -32,12 +33,12 @@ This project is an approach for reusing [all revisions](../hw/README.md#older-vs
 
 ## RS41-NFW Firmware features
 * **Full support for ALL** RS41 versions (eg. `RSM421`, `RSM412`, `RSM414`, `RSM424`, `RSM425`), including the old and new ones with the '4' at the end of the PCB model
-* **For current, up-to-date list of featurse, please refer to the [firmware project file configuration options](./rs41-nfw_sonde-firmware/rs41-nfw_sonde-firmware.ino), where all features are available with thorough comments and guides.**
+* **For current, up-to-date list of featurse, please refer to the [firmware builder at nfw.flada.ovh](nfw.flada.ovh), which lists all available features, together with guides and descriptions.**
 * Multiple, customizable transmission modes
     * [**Horus Binary 4FSK v3**](https://github.com/xssfox/horusbinaryv3)
         * One of the most efficient radio modes for HAB and other simple telemetry designs, allows for decoding of very weak signals
         * Multi-QRG operation (ability to specify second Horus one, user can modify the code easily to get as much QRGs as wanted on every mode)
-        * User can specify any payload callsign without requesting for ID number, additional sensor fields can be sent easily. Decoder provided by Mark VK5QI.
+        * User can specify any payload callsign without requesting for ID number, additional sensor fields can be sent easily. Encoder provided by Mark VK5QI.
     * [**Horus Binary 4FSK v2**](https://github.com/projecthorus/horusdemodlib/wiki)
         * One of the most efficient radio modes for HAB and other simple telemetry designs, allows for decoding of very weak signals
         * Multi-QRG operation (ability to specify second Horus one, user can modify the code easily to get as much QRGs as wanted on every mode)
@@ -53,14 +54,14 @@ This project is an approach for reusing [all revisions](../hw/README.md#older-vs
         * Customizable wpm speed and dot length
         * Compliant with UKHAS format
     * PIP
-        * Beacon operation, transmitting short beep with a specified interval, which could be used as a foxhunting TX device
+        * Beacon operation, transmitting short beep with a specified interval
 * Thorough support of RS41 hardware, including GPS, radio, power circuitry, heaters etc., timers ...and:
 * **Precise atmospheric measurements from the original silver sensor boom** - external air **temperature** and **relative humidity**, read through hardware timers with custom correction algorithms, using **factory calibration** data, for fast, low-noise output!
 * **Usage of original Vaisala sensor stalk calibration data** - allows to reproduce readings 1:1 of what you see when you receive one! There is also a legacy NFW calibration mode which doesn't use Vaisala calibration data
 * **Simple usage** of sensor boom - just type in the serial number in the sounding software and the firmware will be compiled ready-to-launch, without the need for any hard calibration procedures!
 * Automatic calibration modes - **temperature check**, **humidity check** and reconditioning - all automatic to ensure best accuracy
 * **Onboard pressure sensing** via the original Vaisala **RPM411** BARO-CAP board (RS41-SGP), or a built-in pressure estimation when no sensor is fitted (RS41-SG approach)
-* **Intelligent GPS management** on the RSM4x4 boards - automatic constellation, power and tracking optimisation, u-blox Super-S, and a radio-silence cold-start booster on all boards. One of the best hobbyist GPS HAB trackers
+* **Intelligent GPS management** - automatic constellation, power and tracking optimisation, u-blox Super-S, and a radio-silence cold-start booster on all boards. RSM4x4, together with NFW algorithms, provides on of the best performance in these type of GPS trackers
 * **GPS-clock synchronised scheduler** - every transmission mode fires on a precise, configurable time slot aligned to the top of the hour
 * Detailed in-built **debugging** features via LED status and serial messages
 * Onboard **button** allowing user to shutdown the sonde
@@ -78,6 +79,11 @@ This project is an approach for reusing [all revisions](../hw/README.md#older-vs
 
 
 ## Terms of Use
+
+<details>
+<summary><b>Licensing, permitted use and disclaimer</b> - click to expand</summary>
+
+
 **RS41-NFW** project (author - Franek *nevvman SP5FRA*) is released under the **GNU GPL-3.0 license**, with two clarifications new in this release (full details in [`LICENSING.md`](LICENSING.md)):
 
 * Most of the firmware and the whole Sounding Software stay **GPL-3.0**, now with an explicit **linking exception** so the GPL code and the source-available modules below can legally share one compiled binary.
@@ -86,15 +92,28 @@ This project is an approach for reusing [all revisions](../hw/README.md#older-vs
 This software is **open source** and **free to use for amateur projects**, **which cannot lead to profit** in any kind. This excludes usage of this firmware as a commercial product. **For commercial use, please contact me**. Bundled third-party code (Horus/Golay, STM32 variant files) keeps its own upstream license.
 The creator of this project isn't at all responsible for any kind of harm made by devices operated with these instructions. Follow your local law about radio transmissions and balloon flights. Altough the firmware **tested successfully** on several dozen of flights, keep in mind that it is still a *hobbyst project*.
 
+</details>
+
 
 ## Radiosondes?
-These small electronic devices are used by weather instututes to perform atmospheric sounding and high altitude measurements, up to the stratosphere (HAB - high altitude ballooning). After the flight, usually they are *meaningless* for the launch company, so they can be collected by people (verify this according to the certain launch site). This acvitivty is called *radiosonde hunting*<br><br>
+
+<details>
+<summary><b>What radiosondes are, and how to hunt them</b> - click to expand</summary>
+
+
+These small electronic devices are used by weather instututes to perform atmospheric sounding and high altitude measurements, up to the stratosphere (HAB - high altitude ballooning). After the flight, usually they are *meaningless* for the launch company, so they can be collected by people (verify this according to the certain launch site). This acvitivty is called *radiosonde hunting*
+
 The most simple and costless way of collecting radiosondes is to track them on sites like [radiosondy.info](https://radiosondy.info/) or [SondeHub](https://sondehub.org/) (previously HabHub). <br>
-Another, more advanced way is to hunt them with radio receivers. Most of them transmit on the EU 400-406 MHz radiosonde band, near an amateur 70cm band. You can do that by a simple direction finding with a directional (for example Yagi) antenna and a handheld receiver. <br><br>
-But, currently the best way is to utilize a Software-Defined Radio (SDR, for example an RTL-SDR v3 / v4, Nooelec SDR, RSP1 or HackRF) together with a 70cm band antenna (dipole should work for sondes in air as far as 100km, the best is a high gain Yagi, with this setup you could easily hear a radiosonde hundreds kilometers away) and a specialized software for a computer, laptop or a Raspberry Pi. On the internet you will find lots of tutorials for receiver setup, tracking and hunting of them. Also, mobile tracking devices gain popularity, such as Lilygo TTGO boards flashed with RDZsonde (suggested) or MySondy (alternative to rdz) firmwares. <br><br>
+Another, more advanced way is to hunt them with radio receivers. Most of them transmit on the EU 400-406 MHz radiosonde band, near an amateur 70cm band. You can do that by a simple direction finding with a directional (for example Yagi) antenna and a handheld receiver.
+
+But, currently the best way is to utilize a Software-Defined Radio (SDR, for example an RTL-SDR v3 / v4, Nooelec SDR, RSP1 or HackRF) together with a 70cm band antenna (dipole should work for sondes in air as far as 100km, the best is a high gain Yagi, with this setup you could easily hear a radiosonde hundreds kilometers away) and a specialized software for a computer, laptop or a Raspberry Pi. On the internet you will find lots of tutorials for receiver setup, tracking and hunting of them. Also, mobile tracking devices gain popularity, such as Lilygo TTGO boards flashed with RDZsonde (suggested) or MySondy (alternative to rdz) firmwares.
+
 **Kind note:** After each hunt, either successful or not, please change the radiosonde status on the previously mentioned trakcing sites. This will not only let many people save on fuel and patience, but also allow everyone to take a look on sounding statistics and other things. On the most simple site for tracking (SondeHub) you don't even need to create an account to change the sonde status, which only takes a minute. <br>
-*It's an unpleasant feeling, when after driving dozens of kilometers in search for radiosonde you come across an empty field without any balloon traces.*<br><br>
+*It's an unpleasant feeling, when after driving dozens of kilometers in search for radiosonde you come across an empty field without any balloon traces.*
+
 For more details about HAB and sonde hunting, please look on google and social media, there is a ton of valuable content.
+
+</details>
 
 
 ## RS41-NFW Sounding Software
@@ -117,9 +136,8 @@ Connects directly to the sonde over USB (to the sonde's XDATA UART pins) and tur
 If you don't know how to connect the sonde to your computer via serial adapter, check the [serial connection guide](./fw/FLASHING.md#connecting-the-serial-interface-to-the-sonde).
 
 * **Live telemetry** - decodes the compact serial frames the firmware emits: operation stage, all temperatures, humidity, pressure, diagnostics and debug, battery voltage, radio status and more.
-* **Pre-flight ground check** - a multi-phase guided procedure that walks you through start-up, calibration, sensor and GPS verification, up to the *ready for flight* stage, watching the live stage/LED state as it goes.
+* **Pre-flight ground check** - a multi-phase guided procedure that walks you through start-up, calibration, sensor and GPS verification, up to the *ready for flight* stage, with detailed instructions and diagnostics.
 * **Sensors and charts** - inline charts for the sensor and heater values, a pressure readout, and a GPS with stats and live position pin.
-* **Calibration helper** - surfaces the calibration values the firmware computes (temperature offset, zero-humidity capacitance, humidity range delta) so you can copy them straight back into the Firmware Builder for your next, fully-calibrated build. **Note:** for the **Vaisala factory mode** it downloads the boom's original factory PTU calibration from SondeHub by serial and compiles it into the firmware - no more troublesome calibration steps required, and a near-factory readout accuracy!
 
 
 ## Installation guide
@@ -147,6 +165,7 @@ See: [hw/README.md](./hw/README.md)
 
 
 ## Firmware changelog
+* `v71` - small Firmware Builder improvements and documentation improvements. APRS WX inconsistency corrected.
 * `v70` - a large GNSS overhaul: the receiver is now driven entirely in the native **binary UBX protocol** (NMEA removed), for lower latency, much richer data, and no external-libraries dependency.
   * **Native UBX driver.** Both boards talk UBX only: `UBX-NAV-PVT` on the M10 (RSM4x4/4x5), the legacy `NAV-POSLLH`/`VELNED`/`SOL`/`TIMEUTC` set on the u-blox 6 (RSM4x2/4x1). The reader is event-driven and returns the instant a fresh fix arrives (no more fixed ~1 s NMEA wait). New data: true GPS-computed **vertical speed** (velD), **fix type**, horizontal/vertical/speed **accuracy estimates**, and satellite counts beyond the old NMEA cap of 12. Every config message is **ACK-validated** and retried; a rejected one is logged with its key.
   * **NFW Intelligent GNSS Algorithms** are now **available for all revisions**. On the M10 it adaptively tunes constellations and power tiers by fix strength, and also uses many uBlox algorithms and options; on the G6010 it automatically uses the chip's power-save nav mode. Configurable **cyclic-tracking period**. **Cyclic tracking (M10 PSMCT)** obeys the uBlox rules and works properly.
@@ -167,6 +186,11 @@ See: [hw/README.md](./hw/README.md)
   * **Firmware fixes.** The calculated-pressure path and a couple of other spots moved from double to single-precision math, which drops the double-precision libm from the F100 build (fixes the overflow when switching pressure to *calculations*); added `-fno-strict-aliasing` as an LTO safeguard.
 * `v67` - **Vaisala factory calibration mode** (now the default sensor-boom mode). A new master switch in the sensor-boom section chooses between the **Factory (Vaisala) calibration** data or the **NFW calibration algorithms**, which reproduces the boom's original factory calibration - the full temperature polynomials and the humidity matrix surface fetched from SondeHub by the measurement-boom serial number - for manufacturer-grade temperature and humidity, the same accuracy you get from a normally received factory sonde. In factory mode the two optional **self-checks** run on start-up: a **temperature check** (to ensure that temperature sensors are working properly) and a **humidity check** (one-minute reconditioning at ~138 °C, then verifies a dry reading during so-called zero-humidity check at ~135 °C), each with its own operation stage and a diagnostic flag. New **MCU internal temperature** reading on both board families, also folded into the averaged board temperature. The `$NFW` telemetry now carries the measurement mode, MCU temperature, the check flags and the boom serial, and drops unused raw fields (sensor frequencies, resistances and capacitances) for simplicity; **Ground Control auto-detects the mode**, shows the matching command set and a brand-new diagnostics panel. The battery panel shows the pack voltage and a low-voltage warning before flight. Options that apply only to RSM4x4 now show or hide automatically with the selected board, and default `buttonMode` is **0**, as Mark suggested. On new RSM4x4 / RSM4x5 both calibration modes are available and selectable. The older **STM32F100 boards (RSM4x1 / RSM4x2) run the NFW calibration only**: the factory (Vaisala) chain is not compiled there - the F100's flash and 8 KB RAM cannot hold the per-boom coefficients plus the double-precision Vaisala maths - so the Firmware Builder hides the factory option for those boards and they use the proven NFW algorithms. Of course you can compile from source and modify the braces to fit your needs. Ground Control: a separate **Power** tab, a **battery-voltage** and **MCU-temperature** chart, small **OK / FAULT** badges on the temperature and humidity charts, and a **log live-sync** (auto-scroll pauses when you scroll up). Docs improvements and stability checks.
 * `v66` - **Brand-new, fully stable transmission scheduler** - rewritten from the ground up so every mode fires on its exact GPS-clock time slot, with the timing jitter of earlier versions gone. **Full, proper OIF411 ozone support** - complete decode of the Vaisala OIF411 ECC instrument over the XDATA port, with ozone partial pressure and ppbv computed and transmitted to ground. The firmware now uses the **board's external TCXO** as the radio reference, for more stable transmission frequency. **NFW Sounding Software** released ([nfw.flada.ovh](https://nfw.flada.ovh)) - a browser-based firmware builder and ground station that replaces the previous *Ground Control Software*, the *gcs_webserial* prototype and the standalone *dataRecorder decoder* (all three removed from the repo). All user settings moved to a dedicated `CONFIG.h` file, which the builder edits for you. Data Recorder reworked: it now rides dedicated Horus V3 pages (packet A - GPS quality, packet B - flight statistics, packet C - thermal/heater state) at a configurable interval, and runs on the RSM4x2 too (the older 64 KB board is now built with LTO so everything fits). New robust flight detection - the sonde declares flight after a configurable climb above the launch baseline (`flightStartClimbThreshold`, default 150 m), which works at any launch elevation and any ascent rate, replacing the old fixed-altitude trigger. Status-LED scheme clarified (5 quick green blinks = setup complete, red blinks = error). Docs overhaul.
+
+<details>
+<summary><b>Older releases</b> (<code>v65</code> and below) - click to expand</summary>
+
+
 * `v65` - great code size optimisation (Horus V3 fits with all other freatures on the RSM4x2), lowering RSM4x2 memory usage down to 90%. GPS parser rewritten - now reports up to 99 satellites (no 12 GNSS SVS limits). RSM4x4 big GPS improvements - message and navigation rates optimised, intelligent GPS constellation management (user can select whether the sonde should focus on power efficiency or tracking performance, sonde automatically switches according to the signal quality), automatic GPS PSM modes, u-Blox Super-S technology, for further receiver sensitivity, trakcing performance and jamming-mitigation. GPS satellite filter optimisation - receiver now uses many more satellites for position calculation (can be sometimes over 30 sats). Final fix for overflow problems - dataRecorder is currently available in Horus V3 extraSensors (sent every 3 minutes). Others.
 * `v64` - APRS WX pressure bugfix
 * `v63` - Scheduler overflow issue, now program will happily run infinitely (auto reset is every 7 days). Docs.
@@ -215,6 +239,8 @@ See: [hw/README.md](./hw/README.md)
 * `v21` - added support for old RS41 models (`RSM412`)
 * `v20` - initial public release, releases before this were never published
 
+</details>
+
 
 ## People responsible for this project
 * Authors
@@ -244,4 +270,4 @@ See: [hw/README.md](./hw/README.md)
 * [**RS41ng - issues discussion about new models and supporting them**](https://github.com/mikaelnousiainen/RS41ng/issues/92)
 * [*RS41HUP* - also inspiration](https://github.com/darksidelemm/RS41HUP)<br>
 * [*radiosonde_hardware* - made reversing the new version easier](https://github.com/bazjo/radiosonde_hardware)<br>
-* [*Horus Binary* - awesome HAB radio protocol](https://github.com/projecthorus/horusdemodlib)<br>
+* [*Horus Binary* - awesome HAB radio protocol](https://github.com/projecthorus/horusdemodlib)

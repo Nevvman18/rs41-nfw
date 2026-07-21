@@ -1,15 +1,16 @@
 # Firmware compile
 
+> [!TIP]
 > ## You probably do not need this guide anymore
 > The **[NFW Sounding Software](../README.md#rs41-nfw-sounding-software)** ([nfw.flada.ovh](https://nfw.flada.ovh)) compiles the firmware for you in the browser. You select your board, set every option through a guided form, click compile, and flash the sonde **straight from your browser** - **no Arduino IDE, no STM32 core, no board variant files and no libraries to install**.
 >
 > The manual setup below is only worth following if you specifically want to build locally (for example to modify the source code by hand).
 
-This firmware was written in the Arduino IDE. It is a beginner-friendly IDE with support of tons of different MCUs, made with one of the largest communities that work with embedded coding.<br>
+This firmware was written in the Arduino IDE. It is a beginner-friendly IDE with support of tons of different MCUs, made with one of the largest communities that work with embedded coding.
 
 **NOTE:** The [New sondes compiler configuration guide](#new-sondes-compiler-configuration-guide) setup has to be done **only** if you have newer version of sondes, eg. `RSM414`. The older versions have the compiler definitions set in the default core package. The sonde version can be determined [here](../hw/README.md#older-vs-newer---how-do-i-know-which-one-im-holding-now).
 
-All the steps shown here may look hard and confusing, but doing everything step-by-step should do everything for you. This thing will take 5 minutes.<br>
+All the steps shown here may look hard and confusing, but doing everything step-by-step should do everything for you. This thing will take 5 minutes.
 
 * [Adding an STM32 core](#adding-an-stm32-core-to-the-arduino-ide-board-manager)
 * [New sondes compiler configuration guide](#new-sondes-compiler-configuration-guide)
@@ -29,9 +30,9 @@ To make things work, the Arduino IDE has to use the STM32 core to provide functi
 
 
 ## New sondes compiler configuration guide
-If you have a **newer** sonde version, you have to follow this guide. <br>
+If you have a **newer** sonde version, you have to follow this guide.
 
-To make sure that everything will work properly, the internal IDE configuration has to be changed. <br>
+To make sure that everything will work properly, the internal IDE configuration has to be changed.
 
 What we need to do is to add a **new board variant**. Arduino defines it as an *additional folder that is compiled together with the core and allows platform developers to easily add specific configurations.*
 
@@ -56,7 +57,7 @@ After you correctly added the official STM32 core to Arduino IDE board manager, 
 * **Your IDE should now be good to go**
 
 ## Board selection
-This depends on the PCB version you have. The simplest way to find it is to read the model printed on the bottom of the PCB - it is marked `RSM4x` followed by the revision digit (e.g. `RSM425`, `RSM414`, `RSM412`). A trailing `4` or `5` means a newer board (STM32L412); a `1` or `2` means an older board (STM32F100). <br>
+This depends on the PCB version you have. The simplest way to find it is to read the model printed on the bottom of the PCB - it is marked `RSM4x` followed by the revision digit (e.g. `RSM425`, `RSM414`, `RSM412`). A trailing `4` or `5` means a newer board (STM32L412); a `1` or `2` means an older board (STM32F100).
 
 * Open Arduino IDE
   * For older versions (eg. `RSM412`):
@@ -84,6 +85,6 @@ Currently needed libraries for this project (only one):
     * In Arduino IDE, go to **(IDE) Sketch -> Include Library... -> Add .ZIP Library** and select the already downloaded .zip file.
     * After a while, it should be installed, the progress can be seen on the bottom of the IDE.
 
-<br>
+
 
 **Your compilation environment is now fully set-up!**
