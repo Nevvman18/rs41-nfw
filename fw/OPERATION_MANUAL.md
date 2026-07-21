@@ -1,6 +1,9 @@
 # RS41-NFW Operation manual
 
-This manual describes how an RS41-NFW sonde behaves and how each feature works. It is current for **firmware v73**.
+This manual describes how an RS41-NFW sonde behaves and how each feature works.
+
+> [!TIP]
+> It is very hard to maintain such a large document all by myself. I do not guarantee that today while You are reading it all guides mentioned here are up-to-date. Instead - **for most recent information, refer to the [Firmware Builder at nfw.flada.ovh](https://nfw.flada.ovh)** - a web-based firmware builder with browser-flashing of the RS41 sondes. All options have long descriptions and you can be assured that the descriptions and manuals there are up-to-date. Thanks!
 
 > [!NOTE]
 > **Where the settings live:** all user options are in a single file, [`CONFIG.h`](../rs41-nfw_sonde-firmware/CONFIG.h), grouped into clearly numbered sections with a short comment on every line. You do **not** edit the main `.ino`. The easiest way to set everything is the **[NFW Sounding Software](../README.md#rs41-nfw-sounding-software)** ([nfw.flada.ovh](https://nfw.flada.ovh)), which shows the same options as a guided form and compiles the firmware for you. The per-line comments in `CONFIG.h` are always the authoritative reference; this manual explains the *why* and the *how it behaves*.

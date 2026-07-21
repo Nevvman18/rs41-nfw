@@ -272,7 +272,7 @@ On Windows the ST-Link normally binds to ST's own driver, which the browser cann
 4. Set the target driver on the right to **WinUSB** and click **Replace Driver** (or *Install Driver*).
 5. Reconnect the ST-Link. The browser can now see it.
 
-> [!WARNING]
+> [!NOTE]
 > Swapping to WinUSB means STM32CubeProgrammer / the ST-Link GUI may no longer see this ST-Link until you restore ST's driver (Zadig -> pick the ST driver again, or reinstall the ST-Link driver). HOWEVER - when I have tested, while having the STM32Cube installed, the ST's drivers actually support WebUSB flashing - therefore just click the Check ST-Link Access button after compiling.
 
 ### Linux: allow non-root access (udev rule)
@@ -308,8 +308,6 @@ Both board families flash in the browser:
 * **`RSM4x2` / `RSM4x1` (STM32F100)** - via the `webstlink` library's STM32FP driver.
 * **`RSM4x4` / `RSM4x5` (STM32L412)** - via an STM32L4 flash + unlock driver added for RS41-NFW (upstream `webstlink` has none).
 
-> [!WARNING]
-> **Experimental.** The L4 driver and the automatic unlock below were written against the STM32 reference manuals and are newer than the desktop methods. They are recoverable (SWD stays open), but keep an ST-Link + OpenOCD handy and prefer a spare sonde until you have flashed one successfully.
 
 ### Automatic unlock (factory-new sondes)
 

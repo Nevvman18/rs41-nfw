@@ -2,16 +2,13 @@ services:
   souding-software:
     build: ./backend
     ports:
-      - "30014:5000"
+      - "5005:5000"
     volumes:
       - ./workspace:/workspace          # repos + sketch + build cache (local dir, create before first run)
       - ./logs:/logs                    # compile history: logs/YYYY-MM-DD_HH-MM-SS/ (config + bin + log)
       - ./backend/static:/app/static:ro # served files, mounted read-only
     environment:
-      - ALLOW_ZIP_UPLOAD=1              # set to 0 before publishing to allow GitHub fetch only
-      # Optional analytics: a raw HTML snippet injected into the page <head>.
-      # Leave unset/empty to inject nothing. Example (Umami) - keep it on ONE line:
-      # - ANALYTICS_HEAD=<script defer src="https://analytics.example.com/script.js" data-website-id="YOUR-UUID"></script>
+      - ALLOW_ZIP_UPLOAD=0
       - ANALYTICS_HEAD=
     restart: unless-stopped
 
