@@ -92,7 +92,7 @@ select.input-base option { background: #1e293b; }
 }
 .toggle input:checked + .toggle-slider { background:#3b82f6; box-shadow: 0 0 0 3px rgba(59,130,246,0.2); }
 .toggle input:checked + .toggle-slider::before { transform:translateX(18px); background:#fff; }
-.badge { display:inline-flex; align-items:center; gap:4px; padding:3px 10px; border-radius:99px; font-size:.74rem; font-weight:700; letter-spacing:.01em; }
+.badge { display:inline-flex; align-items:center; gap:4px; padding:3px 10px; border-radius:99px; font-size:var(--fw-micro,.75rem); font-weight:700; letter-spacing:.01em; }
 /* Status pills. The old bg-*-900 + text-*-300 pairs were authored for the dark
    builder and turned dark-on-dark once light mode became the default, so the
    "GitHub: vXX" and "Required / Verified" pills were unreadable. These are solid
@@ -102,13 +102,12 @@ select.input-base option { background: #1e293b; }
 /* idle chip sits on the page background, not on a card, so it needs the stronger
    border to stay visible in light mode where surface and page are near-identical */
 .badge-idle { background:var(--surface); color:var(--text-muted); border:1px solid var(--border-strong); }
-/* "Verification still needed" notice at the foot of the verification card and
-   above the Compile button. */
-.verify-warning { display:flex; gap:10px; align-items:flex-start; padding:11px 14px; border-radius:10px;
-  background:rgba(217,119,6,.10); border:1px solid rgba(217,119,6,.45); color:#a54d08;
-  font-size:.87rem; line-height:1.55; }
-html[data-theme="dark"] .verify-warning { background:rgba(217,119,6,.14); border-color:rgba(245,158,11,.42); color:#fcd34d; }
-.verify-warning strong { color:inherit; font-weight:800; }
+/* "Verification still needed" reminder. Deliberately just a line of text with a
+   small warning glyph - the action it points at is two fields away, so a full
+   panel was louder than the message needed to be. */
+.verify-warning { display:flex; gap:7px; align-items:baseline; font-size:.845rem; line-height:1.5; color:#a54d08; }
+html[data-theme="dark"] .verify-warning { color:#fbbf24; }
+.verify-warning .sign { flex-shrink:0; font-size:.9em; }
 /* beat Tailwind's .hidden regardless of stylesheet order (both are one class) */
 .verify-warning.hidden { display:none; }
 .log-box { background:#070e1a; border:1px solid #1e3a5f; border-radius:8px; font-family:monospace; font-size:.75rem; height:240px; overflow-y:auto; padding:10px 12px; color:#94a3b8; }
@@ -140,16 +139,16 @@ html[data-theme="dark"] .verify-warning { background:rgba(217,119,6,.14); border
 @keyframes glowIndigo { 0%,100%{ box-shadow:0 4px 22px rgba(99,102,241,0.40);} 50%{ box-shadow:0 6px 32px rgba(99,102,241,0.72);} }
 @keyframes glowAmber  { 0%,100%{ box-shadow:0 4px 20px rgba(234,179,8,0.28);} 50%{ box-shadow:0 6px 28px rgba(234,179,8,0.52);} }
 @keyframes pkgFloat   { 0%,100%{ transform:translateY(0);} 50%{ transform:translateY(-3px);} }
-.field-label { font-size:.89rem; font-weight:600; color:#cbd5e1; margin-bottom:5px; display:block; }
-.field-desc  { font-size:.855rem; color:#9fb0c6; margin-top:5px; line-height:1.55; }
+.field-label { font-size:var(--fw-body,.88rem); font-weight:600; color:#cbd5e1; margin-bottom:5px; display:block; }
+.field-desc  { font-size:var(--fw-small,.845rem); color:#9fb0c6; margin-top:5px; line-height:1.55; }
 .field-desc strong { color:#e2e8f0; }
-.mode-head { display:flex; align-items:center; gap:7px; font-weight:700; font-size:.85rem; color:#e2e8f0; margin-bottom:8px; }
+.mode-head { display:flex; align-items:center; gap:7px; font-weight:700; font-size:var(--fw-body,.88rem); color:#e2e8f0; margin-bottom:8px; }
 .mode-box  { border:1px solid #2b3b54; background:#101b30; border-radius:10px; padding:12px 14px; transition: border-color .15s, box-shadow .15s; }
 .mode-box:hover { border-color: #3b527a; box-shadow: 0 2px 12px rgba(0,0,0,0.22); }
 /* The explanation lists (TX timing and friends) used a fixed pale blue-grey that
    was authored for the dark builder - on the light surfaces it washed out to
    roughly 2:1 contrast. Theme variables keep them readable either way. */
-.help-list { font-size:.86rem; color:var(--text); line-height:1.65; margin:0; padding-left:0; list-style:none; }
+.help-list { font-size:var(--fw-small,.845rem); color:var(--text); line-height:1.65; margin:0; padding-left:0; list-style:none; }
 .help-list li { position:relative; padding-left:17px; margin-bottom:5px; }
 .help-list li::before { content:'•'; position:absolute; left:2px; color:var(--accent); font-weight:700; }
 .unit-wrap { display:flex; align-items:center; gap:0; }
@@ -250,7 +249,7 @@ html[data-theme="dark"] .verify-warning { background:rgba(217,119,6,.14); border
 .lp-cta-row { display:flex; flex-wrap:wrap; gap:14px; }
 .lp-btn {
   display:inline-flex; align-items:center; gap:9px; padding:14px 26px; border-radius:11px;
-  font-weight:600; font-size:.92rem; letter-spacing:.01em; cursor:pointer; border:1px solid transparent;
+  font-family:inherit; background:none; font-weight:600; font-size:.92rem; letter-spacing:.01em; cursor:pointer; border:1px solid transparent;
   transition:transform .16s ease, box-shadow .22s ease, background .2s ease, border-color .2s ease; text-decoration:none;
 }
 .lp-btn:active { transform:scale(.98); }
@@ -387,7 +386,7 @@ html[data-theme="dark"] .verify-warning { background:rgba(217,119,6,.14); border
 }
 .lp-ico svg { width:23px; height:23px; display:block; }
 .lp-card h3 { font-family:'Big Shoulders Display',sans-serif; font-weight:600; font-size:1.42rem; letter-spacing:.02em; text-transform:uppercase; margin:0 0 9px; color:var(--ink); }
-.lp-card p { color:var(--soft); font-size:.98rem; line-height:1.64; margin:0; }
+.lp-card p { color:var(--soft); font-size:.99rem; line-height:1.64; margin:0; }
 
 /* walkthrough steps */
 .lp-steps { display:flex; flex-direction:column; gap:16px; }
@@ -418,6 +417,18 @@ html[data-theme="dark"] .verify-warning { background:rgba(217,119,6,.14); border
 .lp-foot { text-align:center; padding:40px 28px 64px; color:var(--faint); font-size:.84rem; line-height:1.8; border-top:1px solid var(--line); }
 .lp-foot a { color:var(--accent); text-decoration:none; }
 .lp-foot a:hover { text-decoration:underline; }
+
+/* Keyboard focus. Nothing in the app showed a focus ring, so tabbing through it
+   was invisible; :focus-visible keeps mouse clicks clean while making keyboard
+   navigation obvious. */
+#app-home .lp-btn:focus-visible { outline:2px solid var(--accent); outline-offset:3px; }
+#app-home a:focus-visible { outline:2px solid var(--accent); outline-offset:2px; border-radius:4px; }
+.sw-btn:focus-visible { outline:2px solid #93b4ff; outline-offset:2px; }
+#app-fw .btn:focus-visible,
+#app-fw summary:focus-visible,
+#app-fw .platform-btn:focus-visible { outline:2px solid var(--accent); outline-offset:2px; }
+#app-fw .input-base:focus-visible { outline:2px solid var(--accent); outline-offset:1px; }
+#app-fw .toggle input:focus-visible + .toggle-slider { outline:2px solid var(--accent); outline-offset:2px; }
 /* ============================================================
    THEME SYSTEM  (light default, dark via html[data-theme="dark"])
    Added in v68. The Firmware Builder chrome (.card etc.) used to be hard-dark,
@@ -472,14 +483,27 @@ select.input-base option{ background:var(--surface); color:var(--text); }
 .btn-slate:hover:not(:disabled){ background:var(--btn-slate-bg-h); }
 .platform-btn{ border:2px solid var(--border); }
 .data-card:hover{ box-shadow:var(--shadow); }
-/* v71: the builder carries a lot of explanatory copy and it was set a step too
-   small to read comfortably. Nudge the small utility sizes up inside the builder
-   only - the id selector outranks Tailwind's own classes, so ordering vs. the
+/* v71: Firmware Builder type scale. The builder had accumulated one-off sizes
+   (a paragraph could end up larger than the card title above it), so the steps
+   live here in one place and everything maps onto them:
+     title  card headers and the prompts that act as headers
+     lead   section intro lines
+     body   field labels
+     small  descriptions, help lists
+     micro  badges, units, footnotes
+   The id selector outranks Tailwind's own classes, so ordering against the
    CDN-injected stylesheet does not matter. Ground Control is left alone. */
-#app-fw .text-xs      { font-size:.8rem; }
-#app-fw .text-sm      { font-size:.94rem; }
-#app-fw .text-\[11px\]{ font-size:.78rem; }
-#app-fw .text-\[10px\]{ font-size:.73rem; }
+#app-fw{
+  --fw-title:1.02rem; --fw-lead:.93rem; --fw-body:.88rem; --fw-small:.845rem; --fw-micro:.75rem;
+}
+#app-fw .card-header .font-bold { font-size:var(--fw-title); }
+#app-fw .text-sm      { font-size:var(--fw-lead); }
+#app-fw .text-base    { font-size:var(--fw-lead); }
+#app-fw .text-xs      { font-size:var(--fw-small); }
+#app-fw .text-\[11px\]{ font-size:.79rem; }
+#app-fw .text-\[10px\]{ font-size:.74rem; }
+/* prompts that function as a heading inside a card body */
+#app-fw .fw-prompt { font-size:var(--fw-title); font-weight:700; color:var(--text-strong); line-height:1.35; }
 /* keep header/card titles and near-white inline text readable when a card turns light */
 html[data-theme="light"] .card-header .text-white,
 html[data-theme="light"] .card .text-white,
@@ -728,8 +752,8 @@ document.addEventListener('DOMContentLoaded', function(){
           compiles a ready-to-flash binary for you. No toolchain to install, no source editing required.
         </p>
         <div class="lp-cta-row">
-          <a class="lp-btn lp-btn-main" onclick="switchApp('fw')">Build my firmware &rarr;</a>
-          <a class="lp-btn lp-btn-ghost" onclick="switchApp('gcs')">Open Ground Control</a>
+          <button type="button" class="lp-btn lp-btn-main" onclick="switchApp('fw')">Build my firmware &rarr;</button>
+          <button type="button" class="lp-btn lp-btn-ghost" onclick="switchApp('gcs')">Open Ground Control</button>
           <a class="lp-btn lp-btn-git" href="https://github.com/Nevvman18/rs41-nfw" target="_blank" rel="noopener">
             <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0016 8c0-4.42-3.58-8-8-8z"/></svg>
             GitHub
@@ -898,7 +922,7 @@ document.addEventListener('DOMContentLoaded', function(){
         <h2>Ready to build?</h2>
         <p>Pick your board, set your callsign, click compile. You'll have a flashable firmware binary in seconds.</p>
         <div class="lp-cta-row" style="justify-content:center">
-          <a class="lp-btn lp-btn-main" onclick="switchApp('fw')">Open the Firmware Builder &rarr;</a>
+          <button type="button" class="lp-btn lp-btn-main" onclick="switchApp('fw')">Open the Firmware Builder &rarr;</button>
           <a class="lp-btn lp-btn-git" href="https://github.com/Nevvman18/rs41-nfw" target="_blank" rel="noopener">View the project on GitHub</a>
         </div>
       </div>
@@ -1800,9 +1824,9 @@ PAY ATTENTION TO THE CUT-OUT</pre>
         <button class="btn btn-green" type="button" id="btn-verify" onclick="submitCaptcha()"><span>✓</span> Verify</button>
         <span id="verify-msg" class="text-xs text-slate-500"></span>
       </div>
-      <div class="verify-warning mt-4">
-        <span class="text-base leading-none">⚠️</span>
-        <div><strong>Human verification is not completed yet.</strong> Please do it now - type the code above and press Verify. Until you do, <strong>Fetch latest from GitHub</strong> and <strong>Compile</strong> stay locked. It takes a few seconds and keeps the build server usable for everyone.</div>
+      <div class="verify-warning mt-3">
+        <span class="sign" aria-hidden="true">⚠</span>
+        <span>Not verified yet - type the code above to unlock fetching and compiling.</span>
       </div>
     </div>
   </div>
@@ -1844,9 +1868,9 @@ PAY ATTENTION TO THE CUT-OUT</pre>
     <span class="section-tag text-indigo-400 ml-auto">Step 2</span>
   </div>
   <div class="p-5">
-    <p class="text-xl font-extrabold text-white mb-1 leading-snug">Select your PCB revision</p>
-    <p class="text-base text-slate-300 mb-2 leading-relaxed">The PCB model is printed on the <strong class="text-white">bottom of the PCB</strong>, near the <strong class="text-white">button</strong> and the <strong class="text-white">NFC coil</strong>.</p>
-    <p class="text-sm text-slate-400 mb-4 leading-relaxed">RSM4x4 / RSM4x5 are the revisions made after 2023 and start from <strong class="text-slate-200">V</strong> serials, but RSM4x2 boards still turn up with <strong class="text-slate-200">W</strong> and <strong class="text-slate-200">X</strong> serials. Always check the printed model, not the serial.</p>
+    <p class="fw-prompt mb-1">Select your PCB revision</p>
+    <p class="field-desc mb-1">The PCB model is printed on the <strong>bottom of the PCB</strong>, near the <strong>button</strong> and the <strong>NFC coil</strong>.</p>
+    <p class="field-desc mb-4">RSM4x4 / RSM4x5 are the revisions made after 2023 and start from <strong>V</strong> serials, but RSM4x2 boards still turn up with <strong>W</strong> and <strong>X</strong> serials. Always check the printed model, not the serial.</p>
     <div class="flex gap-3">
       <button class="platform-btn active-4x4" id="plat-4x4" onclick="selectPlatform('RSM4x4')">
         <!-- LQFP64 icon - larger package -->
@@ -2880,8 +2904,8 @@ PAY ATTENTION TO THE CUT-OUT</pre>
     <!-- Mirror of the verification notice, so it is also visible down here where
          people actually press Compile. Toggled by setVerified(). -->
     <div id="compile-verify-warning" class="verify-warning">
-      <span class="text-base leading-none">⚠️</span>
-      <div><strong>Human verification is not completed yet.</strong> Compiling is locked until you complete it in the <a href="#verify-card" onclick="document.getElementById('verify-card').scrollIntoView({behavior:'smooth',block:'center'});return false;" class="underline font-bold">Human Verification</a> section at the top of this page.</div>
+      <span class="sign" aria-hidden="true">⚠</span>
+      <span>Compiling is locked - <a href="#verify-card" onclick="document.getElementById('verify-card').scrollIntoView({behavior:'smooth',block:'center'});return false;" class="underline">complete the human verification</a> at the top of this page.</span>
     </div>
 
     <button class="btn btn-green" id="btn-compile" onclick="startCompile(currentPlatform)">
