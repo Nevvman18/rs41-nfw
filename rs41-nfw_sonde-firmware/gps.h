@@ -185,6 +185,7 @@ public:
 
   // Parser diagnostics
   uint16_t frameErrors = 0;         // UBX frames that failed the checksum
+  uint8_t  parseState() const { return st; }   // current frame-machine state (freeze diagnosis)
 
   // UBX message class/id constants (also used by the TX/config side)
   static const uint8_t CLS_NAV = 0x01, CLS_MON = 0x0A, CLS_CFG = 0x06;

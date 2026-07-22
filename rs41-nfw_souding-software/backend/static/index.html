@@ -2108,7 +2108,7 @@ PAY ATTENTION TO THE CUT-OUT</pre>
       <p class="field-desc">Comma-separated; the sonde cycles through every entry, one per TX window. Use the APRS frequency that is standard for your region. The data recorder and low-altitude fast-TX use the first entry only.</p></div>
     <div><label class="field-label">Callsign</label><input type="text" class="input-base font-mono" id="cfg-aprsCall" value="N0CALL" maxlength="10" oninput="this.value=this.value.toUpperCase()" onchange="cfgChanged()"><p class="field-desc">The station callsign the packet is sent from. Shown as the tracked object on the map. Automatically forced to <strong>UPPERCASE</strong> (APRS callsigns must be uppercase).</p></div>
     <div><label class="field-label">SSID</label><input type="number" class="input-base" id="cfg-aprsSsid" value="11" min="0" max="15" onchange="cfgChanged()"><p class="field-desc">Number appended to the callsign (CALL-11). By convention 11 means a balloon / high-altitude tracker.</p></div>
-    <div class="md:col-span-2"><label class="field-label">Comment</label><input type="text" class="input-base font-mono" id="cfg-aprsComment" value=" NFWv74" maxlength="64" onchange="cfgChanged()"><p class="field-desc">Free text added to the end of every packet (visible next to the station on the map).</p></div>
+    <div class="md:col-span-2"><label class="field-label">Comment</label><input type="text" class="input-base font-mono" id="cfg-aprsComment" value=" NFWv75" maxlength="64" onchange="cfgChanged()"><p class="field-desc">Free text added to the end of every packet (visible next to the station on the map).</p></div>
     <div><label class="field-label">Map icon</label>
       <select class="input-base" id="aprs-symbol-preset" onchange="aprsSymbolPreset()">
         <option value="O">🎈 Balloon</option>
@@ -2156,7 +2156,8 @@ PAY ATTENTION TO THE CUT-OUT</pre>
     <div><label class="field-label">Frequency</label><div class="unit-wrap"><input type="number" step="0.001" class="input-base font-mono" id="cfg-rttyFrequencyMhz" value="434.6" onchange="cfgChanged()"><span class="unit-label">MHz</span></div></div>
     <div><label class="field-label">Bit period</label><div class="unit-wrap"><input type="number" class="input-base" id="cfg-rttyBitDelay" value="10000" onchange="cfgChanged()"><span class="unit-label">µs</span></div>
       <p class="field-desc">22000 ≈ 45 Bd · 13333 ≈ 75 Bd · 10000 ≈ 100 Bd.</p></div>
-    <div><label class="field-label">Callsign (RTTY &amp; Morse, shared)</label><input type="text" class="input-base font-mono" id="cfg-CALLSIGN" value="N0CALL" maxlength="16" onchange="cfgChanged()"></div>
+    <div><label class="field-label">Callsign (RTTY &amp; Morse, shared)</label><input type="text" class="input-base font-mono" id="cfg-CALLSIGN" value="N0CALL" maxlength="16" oninput="syncSharedCallsign(this)" onchange="cfgChanged()">
+      <p class="field-desc">One setting shared with Morse - editing either field changes both.</p></div>
     <div><label class="field-label">TX power</label><select class="input-base" id="cfg-rttyRadioPower" onchange="cfgChanged()">
             <option value="0">0 - -1 dBm (~0.8 mW)</option>
             <option value="1">1 - 2 dBm (~1.6 mW)</option>
@@ -2180,8 +2181,14 @@ PAY ATTENTION TO THE CUT-OUT</pre>
     <div class="flex items-start gap-3 md:col-span-2">
       <label class="toggle mt-1"><input type="checkbox" id="cfg-morseEnable" onchange="cfgChanged()"><span class="toggle-slider"></span></label>
       <div><span class="text-white font-bold cursor-pointer" onclick="toggleCheck('cfg-morseEnable')">Enable Morse TX</span>
-      <p class="field-desc">CW carrier keyed in Morse code. Two modes: <strong>telemetry</strong> (live data, keyed with the shared callsign set in the RTTY section) or <strong>beacon</strong> (a fixed custom text you set below).</p></div>
+      <p class="field-desc">CW carrier keyed in Morse code. Two modes: <strong>telemetry</strong> (live data, keyed with the callsign below) or <strong>beacon</strong> (a fixed custom text you set below).</p></div>
     </div>
+    <!-- Mirror of cfg-CALLSIGN (RTTY card): RTTY and Morse share ONE firmware CALLSIGN
+         variable, but the RTTY card is RSM4x4-only, which made the callsign impossible
+         to set on RSM4x2. The id has no cfg- prefix so collectConfig() never picks it
+         up as a second variable; syncSharedCallsign() keeps the two inputs identical. -->
+    <div><label class="field-label">Callsign (RTTY &amp; Morse, shared)</label><input type="text" class="input-base font-mono" id="morseCallsignMirror" value="N0CALL" maxlength="16" oninput="syncSharedCallsign(this)" onchange="cfgChanged()">
+      <p class="field-desc">One setting shared with RTTY - editing either field changes both.</p></div>
     <div><label class="field-label">Frequency</label><div class="unit-wrap"><input type="number" step="0.001" class="input-base font-mono" id="cfg-morseFrequencyMhz" value="434.6" onchange="cfgChanged()"><span class="unit-label">MHz</span></div></div>
     <div><label class="field-label">Unit time</label><div class="unit-wrap"><input type="number" class="input-base" id="cfg-morseUnitTime" value="40" onchange="cfgChanged()"><span class="unit-label">ms</span></div>
       <p class="field-desc">Dot = 1 unit, dash = 3 units. Lower = faster.</p></div>
@@ -5164,6 +5171,7 @@ function applyConfigToForm(cfg) {
   updatePressureModeOptions(); // hide/snap estimated-pressure (mode 2) to the board
   updateSensorCalVisibility(); // show/snap the factory-calibration panel to the board
   disableCyclicIfConflict(); // a loaded B1C/SBAS + cyclic combo can't run - reflect the firmware fail-safe (silent)
+  syncSharedCallsign(); // push the loaded CALLSIGN into the Morse-card mirror input
   cfgChanged(); // sync conditional sections (e.g. OIF411 visibility) + preset detection
   configDirty = false; // applyConfigToForm is called on load - mark clean after sync
 }
@@ -5226,6 +5234,19 @@ function aprsSymbolPreset() {
     box.classList.add('hidden');
   }
   cfgChanged();
+}
+
+// RTTY and Morse share one firmware CALLSIGN variable. Only cfg-CALLSIGN (RTTY card) is
+// collected; morseCallsignMirror (Morse card, visible on every board) just follows it and
+// writes edits back, so on RSM4x2 - where the RTTY card is hidden - the callsign can still
+// be set. Called with the edited input while typing, or with no argument to push the
+// loaded cfg-CALLSIGN value into the mirror (applyConfigToForm).
+function syncSharedCallsign(src) {
+  const main   = document.getElementById('cfg-CALLSIGN');
+  const mirror = document.getElementById('morseCallsignMirror');
+  if (!main || !mirror) return;
+  if (src === mirror) main.value = mirror.value;
+  else                mirror.value = main.value;
 }
 
 function syncAprsSymbolUI() {

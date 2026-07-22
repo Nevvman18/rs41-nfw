@@ -188,7 +188,7 @@ constexpr float aprsFreqTable[] = {432.5};
 // lowAltitudeFastTxMode uses the first entry only.
 
 char aprsCall[]   = "N0CALL";       // Your amateur radio callsign - USE UPPERCASE LETTERS ONLY (lowercase may not be decoded correctly; the firmware does not convert case)
-String aprsComment = " NFWv74";     // Comment appended to every APRS packet
+String aprsComment = " NFWv75";     // Comment appended to every APRS packet
 
 constexpr char aprsSsid          = 11;       // Callsign SSID
 constexpr char aprsDigi[]        = "WIDE2";  // Digipeater callsign

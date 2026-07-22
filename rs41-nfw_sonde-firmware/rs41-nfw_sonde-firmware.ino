@@ -43,7 +43,7 @@ I wish You high, successful flights with a lot of data gathered with this firmwa
 Franek,
 Author of RS41-NFW
 */
-#define NFW_VERSION "RS41-NFW v74, GPL-3.0 Franek Lada (nevvman, SP5FRA)"  //This is the firmware version You are running
+#define NFW_VERSION "RS41-NFW v75, GPL-3.0 Franek Lada (nevvman, SP5FRA)"  //This is the firmware version You are running
 
 //===== Libraries and lib-dependant definitions (nothing to modify)
 /* No libraries are required to be installed, all dependencies are shipped within the project folder. */
@@ -2287,6 +2287,31 @@ void ozoneHandler() {
   }
 }
 
+// Publish the parser's current values into the gps* globals that telemetry, the
+// interface and flight computing read. Split out of gpsHandler() so the scheduler's
+// lightweight pre-TX drain path can publish too: during a dense TX schedule the full
+// gpsHandler() can be skipped for a long stretch (every moment within 2.5 s of a slot),
+// and when only the drain ran, the fresh decoded fix never reached these globals -
+// every reading the user sees froze even though the receiver and parser were fine.
+// [RS41-NFW-SA] Source-Available Module - NOT under GPL-3.0. See LICENSING.md and LICENSE.source-available.
+void gpsCommitReadings() {
+  gpsTime = gps.time.value() / 100;
+  gpsHours = gps.time.hour();
+  gpsMinutes = gps.time.minute();
+  gpsSeconds = gps.time.second();
+  gpsLat = gps.location.lat();
+  gpsLong = gps.location.lng();
+  gpsAltFresh = gps.navUpdated;    // a fresh position solution was committed this cycle
+  gps.navUpdated = false;
+  gpsAlt = gps.altitude.meters();
+  gpsSpeed = gps.speed.mps();
+  gpsSpeedKph = gps.speed.kmph();
+  gpsSats = gps.satellites.value();
+  gpsHdop = gps.hdop.hdop();        // NAV-PVT/NAV-SOL pDOP (see CONFIG note)
+
+  verticalVelocityCalculationHandler();
+}
+
 // [RS41-NFW-SA] Source-Available Module - NOT under GPL-3.0. See LICENSING.md and LICENSE.source-available.
 void gpsHandler() {
 
@@ -2335,9 +2360,11 @@ void gpsHandler() {
     // within half the budget, poll the receiver to force an immediate reply.
     unsigned long start = millis();
     bool gotFix = false, polled = false;
+    uint16_t rxThisCycle = 0;   // bytes drained this cycle - freeze diagnosis (0 = receiver/UART silent)
 
     while (millis() - start < gpsReadBudgetMs) {
       while (gpsSerial.available()) {
+        rxThisCycle++;
         if (gps.encode((uint8_t)gpsSerial.read())) gotFix = true;  // fresh position solution
       }
       if (gotFix) break;                          // freshest data in hand - return now
@@ -2363,25 +2390,11 @@ void gpsHandler() {
       sendUbxPoll(UbxGnss::CLS_NAV, UbxGnss::NAV_SAT);
       unsigned long t = millis();
       while (millis() - t < 450 && !gps.navSatUpdated) {   // ~730 B multi-GNSS frame + poll latency
-        while (gpsSerial.available()) gps.encode((uint8_t)gpsSerial.read());
+        while (gpsSerial.available()) { rxThisCycle++; gps.encode((uint8_t)gpsSerial.read()); }
       }
     }
 
-    gpsTime = gps.time.value() / 100;
-    gpsHours = gps.time.hour();
-    gpsMinutes = gps.time.minute();
-    gpsSeconds = gps.time.second();
-    gpsLat = gps.location.lat();
-    gpsLong = gps.location.lng();
-    gpsAltFresh = gps.navUpdated;    // a fresh position solution was committed this cycle
-    gps.navUpdated = false;
-    gpsAlt = gps.altitude.meters();
-    gpsSpeed = gps.speed.mps();
-    gpsSpeedKph = gps.speed.kmph();
-    gpsSats = gps.satellites.value();
-    gpsHdop = gps.hdop.hdop();        // NAV-PVT/NAV-SOL pDOP (see CONFIG note)
-
-    verticalVelocityCalculationHandler();
+    gpsCommitReadings();
 
     if (xdataPortMode == 1) {
       static unsigned long _lastGpsLog = 0;
@@ -2394,6 +2407,13 @@ void gpsHandler() {
         xdataSerial.print(F("m sats=")); xdataSerial.print(gpsSats);
         xdataSerial.print(F(" hdop=")); xdataSerial.print(gpsHdop, 1);
         xdataSerial.print(F(" vv=")); xdataSerial.print(vVCalc, 1); xdataSerial.print(F("m/s"));
+        // Freeze diagnosis: bytes drained this cycle, checksum failures, config NAKs,
+        // age of the last committed position (s) and the parser state it sits in.
+        xdataSerial.print(F(" rx="));   xdataSerial.print(rxThisCycle);
+        xdataSerial.print(F(" err="));  xdataSerial.print(gps.frameErrors);
+        xdataSerial.print(F(" nak="));  xdataSerial.print(gpsCfgNakCount);
+        xdataSerial.print(F(" fixAge=")); xdataSerial.print(gps.location.age() / 1000);
+        xdataSerial.print(F(" pst="));  xdataSerial.print(gps.parseState());
 #ifdef RSM4x4
         // Watch cyclic tracking here: tier reaches 3 (or 2 aggressive) to request PSMCT, and
         // psm shows what the M10 is actually doing - 0 off (continuous), 3 tracking,
@@ -2405,16 +2425,41 @@ void gpsHandler() {
       }
     }
 
+    // Freeze alarm: a valid time reading that has stopped refreshing for >15 s means the
+    // whole GPS pipeline stalled (the receiver streams at gpsUpdateRateHz and is polled
+    // besides). Print what the pipeline saw this cycle so the failing stage is identifiable:
+    // rx=0 -> no bytes at all (receiver/UART dead); rx>0 with err climbing -> corrupted
+    // stream; rx>0, err stable -> frames arrive but nothing decodes (parser/state issue).
+    if (xdataPortMode == 1 && gps.time.isValid() && gps.time.age() > 15000UL) {
+      static unsigned long _lastStaleWarn = 0;
+      if (millis() - _lastStaleWarn > 10000UL) {
+        _lastStaleWarn = millis();
+        xdataSerial.print(F("[warn]: GPS STALE "));
+        xdataSerial.print(gps.time.age() / 1000);
+        xdataSerial.print(F("s rx="));  xdataSerial.print(rxThisCycle);
+        xdataSerial.print(F(" err=")); xdataSerial.print(gps.frameErrors);
+        xdataSerial.print(F(" pst=")); xdataSerial.print(gps.parseState());
+        xdataSerial.print(F(" nak=")); xdataSerial.println(gpsCfgNakCount);
+      }
+    }
+
     if (gpsTimeoutWatchdog > 0) {
-      // Check if GPS timer counter is inactive and no fix
-      if (!gpsTimeoutCounterActive && gpsSats < 3) {
+      // "GPS unhealthy" = no fix, OR the decoded solutions stopped refreshing outright
+      // (receiver/UART dead). The sat count alone is NOT enough: in a freeze it just
+      // holds its last good value (e.g. 17), which kept this watchdog from ever firing
+      // and left the sonde without position for the rest of the flight.
+      bool gpsDataStale = gps.location.isValid() && gps.location.age() > 60000UL;
+      bool gpsUnhealthy = (gpsSats < 3) || gpsDataStale;
+
+      // Check if GPS timer counter is inactive and GPS is unhealthy
+      if (!gpsTimeoutCounterActive && gpsUnhealthy) {
         gpsTimerBegin = millis();        // Start the timer
         gpsTimeoutCounterActive = true;  // Mark timer as active
       }
 
       // Check if timeout has occurred
       if (gpsTimeoutCounterActive && millis() - gpsTimerBegin > gpsTimeoutWatchdog) {
-        if (gpsSats < 3) {                  //If GPS still has no fix after timeout, restart it
+        if (gpsUnhealthy) {                 //If GPS is still unhealthy after timeout, restart it
           gpsTimeoutCounterActive = false;  // Reset the timer state
           gpsTimerBegin = 0;                // Clear the timer
           restartGPS();                     // Handle GPS timeout recovery
@@ -5254,6 +5299,12 @@ void schedulerLoop() {
       xdataSerial.print(millis() / 60000UL);
       xdataSerial.print(F("m sats="));
       xdataSerial.print(gpsSats);
+      // gpsRd = seconds since the full gpsHandler() last ran (starvation check),
+      // tAge = seconds since the last decoded UBX time (data-flow check).
+      xdataSerial.print(F(" gpsRd="));
+      xdataSerial.print((millis() - sch_lastGps) / 1000UL);
+      xdataSerial.print(F(" tAge="));
+      xdataSerial.print(gps.time.isValid() ? (gps.time.age() / 1000UL) : 9999UL);
       xdataSerial.print(F(" bat="));
       xdataSerial.print(readBatteryVoltage(), 2);
       xdataSerial.print(F("V T="));
@@ -5439,6 +5490,11 @@ void schedulerLoop() {
       sch_lastGps = millis();
     } else if (gpsOperationMode != 0 && gpsAge > 2000UL) {
       while (gpsSerial.available()) gps.encode((uint8_t)gpsSerial.read());
+      // Publish what the drain decoded. Without this, a schedule dense enough to keep
+      // txImminent true continuously (e.g. 10 s Horus slots + ~5 s transmissions + an
+      // APRS collision shifting the phase) froze every gps* global indefinitely while
+      // the parser itself stayed perfectly up to date.
+      gpsCommitReadings();
     }
 
     if (!txImminent || ozAge > 15000UL) {
@@ -5537,8 +5593,8 @@ void schedulerLoop() {
         if (!en || nxt == 0 || nxt == 0xFFFFFFFFUL) return;
         if (nowMs < nxt) return;
         // Minimum-interval guard, measured in millis() so it survives a GPS clock
-        // re-alignment: never let a mode fire again less than half its period after it
-        // last actually transmitted (which would double-transmit, e.g. APRS at xx:00 and
+        // re-alignment: never let a mode fire again less than half its period after its
+        // last transmission STARTED (which would double-transmit, e.g. APRS at xx:00 and
         // again ~10 s later). Crucially we HOLD the slot here rather than skip it: leaving
         // nxt untouched lets the mode fire the instant the minimum spacing is met, one
         // loop later, so spacing is enforced without ever dropping a transmission. The
@@ -5588,6 +5644,15 @@ void schedulerLoop() {
           xdataSerial.print(F("[sch]: TX ")); xdataSerial.println(modeNames[pickIdx]);
         }
 
+        // Stamp the minimum-interval guard at the TX *start*, not after it. The guard
+        // enforces spacing between transmission starts; stamping after a long TX (~5 s)
+        // inflated the effective guard to TX-duration + half-period. With a short period
+        // (e.g. 10 s Horus) that is nearly the whole period, so once an APRS collision
+        // shifted the phase, every slot fired ~3 s late forever ("phase lock") and the
+        // free window the scheduler needs to run the full gpsHandler() never came back -
+        // GPS readings froze for good.
+        sch_lastTxHw[pickIdx] = millis();
+
         switch (pickIdx) {
           case 0: pipTx();     sch_tickTime(); sch_nextPipMs     = sch_nextSlot(sch_sysMs, pipTimeSyncSeconds,     pipTimeSyncOffsetSeconds);     break;
           case 1: horusV3Tx(); sch_tickTime(); sch_nextHorusV3Ms = sch_nextSlot(sch_sysMs, horusV3TimeSyncSeconds, horusV3TimeSyncOffsetSeconds); break;
@@ -5600,8 +5665,6 @@ void schedulerLoop() {
           #endif
           case 5: morseTx();   sch_tickTime(); sch_nextMorseMs   = sch_nextSlot(sch_sysMs, morseTimeSyncSeconds,   morseTimeSyncOffsetSeconds);   break;
         }
-        sch_lastTxHw[pickIdx] = millis();   // for the minimum-interval guard in checkMode
-
         // A transmission blocks for seconds, during which the GPS UART fills with a
         // backlog of NAV-PVT frames. Reading those FIFO would feed the clock timestamps
         // that are already seconds old, making it lurch (the large-adj oscillation and

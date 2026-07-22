@@ -165,6 +165,11 @@ See: [hw/README.md](./hw/README.md)
 
 
 ## Firmware changelog
+* `v75` - critical fix: GPS readings in certain conditions could freeze.
+  * **GPS freeze fixed.** With short transmission intervals plus an APRS transmission landing between the slots, the internal scheduler could enter a state where every moment looked "too close to a transmission" to run the full GPS read. The receiver and the UBX parser kept working the whole time, but the decoded values never got published, so time, position, speed and satellite counts all froze at their last values while the sonde kept transmitting them.
+  * **GPS watchdog reworked.** The watchdog only acted when the satellite count dropped below 3 - but in a freeze the count just holds its last good value, so it never fired. It now also restarts the receiver when decoded positions stop refreshing for over a minute, whatever the satellite count says.
+  * **GPS diagnostics.** The debug serial output now reports bytes received, frame checksum errors, config NAKs, fix age and the parser state every 30 s, plus a "GPS STALE" alarm and scheduler-health fields in the heartbeat line, so any similar issue immediately shows which stage failed.
+  * **Firmware Builder.** The shared RTTY / Morse callsign can now also be edited from the Morse card. On RSM4x2 the RTTY section is hidden (RTTY is RSM4x4-only), which made the callsign impossible to set - issue 56 resolved. The two fields mirror each other live and still compile to the single shared setting.
 * `v74` - heaters power optimisation after burst.
   * **Heating.** New **heaters power optimisation** (`heatersPowerOptimisation`, default on): during the fast fall right after burst the heaters fight the airflow and lose, so descending faster than 14 m/s lowers the reference-area heating target by 3 C, and faster than 18 m/s lowers it by 6 C and switches the humidity module heater off entirely. Slower descent is not altered at all and normal heating returns automatically as the fall slows. The minimum humidity-module heating target is now **-40 C**, due to it's sillicon properties.
   * **Firmware Builder.** The heaters power optimisation toggle on the heating card, and the browser flasher notes were cleaned up now that it has proven itself.
