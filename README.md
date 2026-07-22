@@ -165,7 +165,10 @@ See: [hw/README.md](./hw/README.md)
 
 
 ## Firmware changelog
-* `v73` - factory-locked RSM4x2 sondes now flash correctly from the browser, and Horus v3 stops sending disabled sensors.
+* `v74` - heaters power optimisation after burst.
+  * **Heating.** New **heaters power optimisation** (`heatersPowerOptimisation`, default on): during the fast fall right after burst the heaters fight the airflow and lose, so descending faster than 14 m/s lowers the reference-area heating target by 3 C, and faster than 18 m/s lowers it by 6 C and switches the humidity module heater off entirely. Slower descent is not altered at all and normal heating returns automatically as the fall slows. The minimum humidity-module heating target is now **-40 C**, due to it's sillicon properties.
+  * **Firmware Builder.** The heaters power optimisation toggle on the heating card, and the browser flasher notes were cleaned up now that it has proven itself.
+* `v73` - factory-locked RSM4x2 sondes now flash correctly from the browser.
   * **Locked RSM4x2 flashing fixed.** A never-unlocked RSM4x2 reported "no sonde detected on the ST-Link" even with correct wiring. [Issue 55](https://github.com/Nevvman18/rs41-nfw/issues/55) fixed.
 * `v72` - Horus frames encoding improvement.
   * **Horus v3 omits disabled sensors.** With `pressureMode 0` the pressure field was still sent as a present 0.0 hPa, which a receiver cannot tell apart from a real reading. It is now left out of the frame entirely. The data recorder packets had the same issue for pressure, main temperature, heater temperature and humidity.

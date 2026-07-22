@@ -188,7 +188,7 @@ constexpr float aprsFreqTable[] = {432.5};
 // lowAltitudeFastTxMode uses the first entry only.
 
 char aprsCall[]   = "N0CALL";       // Your amateur radio callsign - USE UPPERCASE LETTERS ONLY (lowercase may not be decoded correctly; the firmware does not convert case)
-String aprsComment = " NFWv73";     // Comment appended to every APRS packet
+String aprsComment = " NFWv74";     // Comment appended to every APRS packet
 
 constexpr char aprsSsid          = 11;       // Callsign SSID
 constexpr char aprsDigi[]        = "WIDE2";  // Digipeater callsign
@@ -686,6 +686,15 @@ constexpr float   seaLevelPressure = 1013.25;  // MSL pressure (hPa) - used only
      Keeps the sensor above humicapMinimumTemperature and defrostingOffset K
      above the air temperature to prevent frosting and condensation.
      Recommended for all flights with the sensor boom installed (≤18 h).
+
+   Heaters power optimisation:
+     Acts only during descent, after burst. Falling fast through thin air the
+     airflow strips heat away faster than the heaters can supply it, so holding
+     the full targets there only wastes battery:
+       descent above 18 m/s - reference target lowered by 6 °C, humidity module heater off
+       descent above 14 m/s - reference target lowered by 3 °C
+     At slower descent rates heating is not altered at all, and normal heating
+     resumes automatically as the fall slows down. Never changes anything on ascent.
    ============================================================ */
 
 bool          referenceHeating                          = true;
@@ -693,8 +702,10 @@ constexpr int8_t referenceAreaTargetTemperature         = 18;  // Target tempera
 
 bool          humidityModuleHeating                     = true;
 constexpr int8_t defrostingOffset                       = 5;   // K above air temp to prevent frost
-constexpr int8_t humicapMinimumTemperature              = -44; // °C - humicap accuracy degrades below this
+constexpr int8_t humicapMinimumTemperature              = -40; // °C - humicap accuracy degrades below this
 constexpr int8_t humidityModuleHeatingTemperatureThreshold = 45; // Heating activates below this °C (upper cap on module heating)
+
+bool          heatersPowerOptimisation                  = true; // Lower heating targets during the fast fall after burst (see above)
 
 
 /* ============================================================

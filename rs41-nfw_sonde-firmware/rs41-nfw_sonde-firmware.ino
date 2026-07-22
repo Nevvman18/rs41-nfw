@@ -43,7 +43,7 @@ I wish You high, successful flights with a lot of data gathered with this firmwa
 Franek,
 Author of RS41-NFW
 */
-#define NFW_VERSION "RS41-NFW v73, GPL-3.0 Franek Lada (nevvman, SP5FRA)"  //This is the firmware version You are running
+#define NFW_VERSION "RS41-NFW v74, GPL-3.0 Franek Lada (nevvman, SP5FRA)"  //This is the firmware version You are running
 
 //===== Libraries and lib-dependant definitions (nothing to modify)
 /* No libraries are required to be installed, all dependencies are shipped within the project folder. */
@@ -4747,23 +4747,49 @@ void flightHeatingHandler() {
   if (millis() - _lastHeat < 1000UL) return;
   _lastHeat = millis();
 
+  // Heaters power optimisation (heatersPowerOptimisation) - descent-only stages.
+  // Right after burst the sonde falls fast through thin air and the airflow strips heat
+  // away faster than the heaters can supply it, so holding full targets only wastes battery:
+  //   stage 2 - descent above 18 m/s: reference target -6 C, humidity module heater off
+  //   stage 1 - descent above 14 m/s: reference target -3 C
+  //   stage 0 - slower descent (or ascent / option off): normal heating, nothing altered
+  // Normal heating re-enters automatically as the fall slows; 1 m/s of hysteresis on the
+  // way down so GPS vertical-velocity noise does not toggle the stages every second.
+  static uint8_t heaterOptStage = 0;
+  if (heatersPowerOptimisation && burstDetected) {
+    float descentRate = -vVCalc;  // vVCalc is negative while falling
+    if (descentRate > 18) {
+      heaterOptStage = 2;
+    } else if (heaterOptStage == 2 && descentRate < 17) {
+      heaterOptStage = (descentRate > 14) ? 1 : 0;
+    } else if (heaterOptStage == 0 && descentRate > 14) {
+      heaterOptStage = 1;
+    } else if (heaterOptStage == 1 && descentRate < 13) {
+      heaterOptStage = 0;
+    }
+  } else {
+    heaterOptStage = 0;
+  }
+
   if (referenceHeating) {
     float cutOutTemp = readThermistorTemp();  //maintaining reference area temperature of ~20*C
+    // power optimisation stages lower the target during a fast fall after burst
+    float refTarget = referenceAreaTargetTemperature - ((heaterOptStage == 2) ? 6.0f : (heaterOptStage == 1) ? 3.0f : 0.0f);
 
-    if (cutOutTemp >= referenceAreaTargetTemperature + 3) {
+    if (cutOutTemp >= refTarget + 3) {
       selectReferencesHeater(0);  // Heating off when target+3 < temperature
-    } else if (cutOutTemp > referenceAreaTargetTemperature + 1 && cutOutTemp < referenceAreaTargetTemperature + 3) {
+    } else if (cutOutTemp > refTarget + 1 && cutOutTemp < refTarget + 3) {
       selectReferencesHeater(1);  // Low power when target+3 > temperature > target+1
-    } else if (cutOutTemp <= referenceAreaTargetTemperature + 1 && cutOutTemp > referenceAreaTargetTemperature - 1) {
+    } else if (cutOutTemp <= refTarget + 1 && cutOutTemp > refTarget - 1) {
       selectReferencesHeater(2);  // Medium power when target+1 >= temperature > target -1
-    } else if (cutOutTemp <= referenceAreaTargetTemperature - 1 && cutOutTemp > referenceAreaTargetTemperature - 3.5) {
+    } else if (cutOutTemp <= refTarget - 1 && cutOutTemp > refTarget - 3.5) {
       // If at low power (1), only increase to medium (2), not high (3)
       if (referenceHeaterStatus < 2) {
         selectReferencesHeater(2);  // Gradual increase from 1 to 2
       } else {
         selectReferencesHeater(3);  // If already at 2, allow 3
       }
-    } else if (cutOutTemp <= referenceAreaTargetTemperature - 3.5) {
+    } else if (cutOutTemp <= refTarget - 3.5) {
       selectReferencesHeater(3);  // Ensure high power if temp drops too much
     } else {
       selectReferencesHeater(0);
@@ -4771,13 +4797,21 @@ void flightHeatingHandler() {
 
     if (xdataPortMode == 1) {
       xdataSerial.print("[info]: RefHeat T=");
-      xdataSerial.println(cutOutTemp);
+      xdataSerial.print(cutOutTemp);
+      if (heaterOptStage > 0) {
+        xdataSerial.print(" optStage=");
+        xdataSerial.print(heaterOptStage);
+      }
+      xdataSerial.println();
     }
   }
 
-  //humidity module heating algorithm - above -40C target is equal to air_temp+offset, below -40C ambient temp the module maintains -40C
+  //humidity module heating algorithm - target is air_temp+offset, but never below humicapMinimumTemperature (-40C default);
+  //at power optimisation stage 2 (descent above 18 m/s after burst) the module heater is switched off entirely
   if (humidityModuleHeating && !sensorBoomFault) {
-    if (extHeaterTemperatureValue < humidityModuleHeatingTemperatureThreshold) {
+    if (heaterOptStage == 2) {
+      extHeaterHandler(false, 0, 0);
+    } else if (extHeaterTemperatureValue < humidityModuleHeatingTemperatureThreshold) {
       extHeaterHandler(true, max((float)humicapMinimumTemperature, mainTemperatureValue + defrostingOffset), extHeaterTemperatureValue);
     } else {
       extHeaterHandler(false, 0, 0);

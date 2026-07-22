@@ -2108,7 +2108,7 @@ PAY ATTENTION TO THE CUT-OUT</pre>
       <p class="field-desc">Comma-separated; the sonde cycles through every entry, one per TX window. Use the APRS frequency that is standard for your region. The data recorder and low-altitude fast-TX use the first entry only.</p></div>
     <div><label class="field-label">Callsign</label><input type="text" class="input-base font-mono" id="cfg-aprsCall" value="N0CALL" maxlength="10" oninput="this.value=this.value.toUpperCase()" onchange="cfgChanged()"><p class="field-desc">The station callsign the packet is sent from. Shown as the tracked object on the map. Automatically forced to <strong>UPPERCASE</strong> (APRS callsigns must be uppercase).</p></div>
     <div><label class="field-label">SSID</label><input type="number" class="input-base" id="cfg-aprsSsid" value="11" min="0" max="15" onchange="cfgChanged()"><p class="field-desc">Number appended to the callsign (CALL-11). By convention 11 means a balloon / high-altitude tracker.</p></div>
-    <div class="md:col-span-2"><label class="field-label">Comment</label><input type="text" class="input-base font-mono" id="cfg-aprsComment" value=" NFWv73" maxlength="64" onchange="cfgChanged()"><p class="field-desc">Free text added to the end of every packet (visible next to the station on the map).</p></div>
+    <div class="md:col-span-2"><label class="field-label">Comment</label><input type="text" class="input-base font-mono" id="cfg-aprsComment" value=" NFWv74" maxlength="64" onchange="cfgChanged()"><p class="field-desc">Free text added to the end of every packet (visible next to the station on the map).</p></div>
     <div><label class="field-label">Map icon</label>
       <select class="input-base" id="aprs-symbol-preset" onchange="aprsSymbolPreset()">
         <option value="O">🎈 Balloon</option>
@@ -2741,6 +2741,11 @@ PAY ATTENTION TO THE CUT-OUT</pre>
       <div><span class="field-label cursor-pointer" onclick="toggleCheck('cfg-humidityModuleHeating')">Humidity module heating</span>
       <p class="field-desc">Automatically (via a <strong>PID algorithm</strong>) <strong>heats the humidity module slightly</strong> to keep it above air temperature so condensation and frost cannot form on it, and also holds the sensor's silicon out of the unfavourable temperature range where its response efficiency and precision drop sharply - <strong>so you get noticeably better readings in extreme conditions.</strong> <strong class="text-emerald-300">Recommended</strong>: it improves accuracy (cloud, icing, high humidity), draws very little power, and runs fully autonomously and intelligently.</p></div>
     </div>
+    <div class="flex items-start gap-3 md:col-span-2">
+      <label class="toggle mt-1"><input type="checkbox" id="cfg-heatersPowerOptimisation" checked onchange="cfgChanged()"><span class="toggle-slider"></span></label>
+      <div><span class="field-label cursor-pointer" onclick="toggleCheck('cfg-heatersPowerOptimisation')">Heaters power optimisation</span>
+      <p class="field-desc">Saves battery during the <strong>fast fall right after burst</strong>. Descending faster than 14 m/s lowers the reference heating target by 3 °C; faster than 18 m/s lowers it by 6 °C and switches the humidity module heater off entirely - in that thin, fast airflow the heat would be stripped away anyway. At slower descent rates nothing is altered, and <strong>normal heating comes back automatically</strong> as the fall slows. Does nothing on ascent. <strong class="text-emerald-300">Recommended</strong>.</p></div>
+    </div>
   </div>
 </div>
 
@@ -2961,7 +2966,7 @@ PAY ATTENTION TO THE CUT-OUT</pre>
 
         <div id="webusb-log" class="flash-log hidden"></div>
 
-        <p id="webusb-l4-note" class="flash-note">This writes to your sonde and, on a factory-locked one, mass-erases it while clearing protection. It is newer than the desktop tools - keep an ST-Link and OpenOCD handy, and try a spare sonde first. A failed SWD flash is always recoverable.</p>
+        <p id="webusb-l4-note" class="flash-note">This writes to your sonde and, on a factory-locked one, mass-erases it while clearing protection.</p>
 
         <!-- Wiring guide -->
         <details class="flash-details">
@@ -5122,7 +5127,7 @@ const FW_BOOL_FIELDS = new Set([
   'humidityModuleEnable','reconditioningEnabled','zeroHumidityCalibration',
   'humidityCalibrationDebug',
   'factoryTemperatureCheck','factoryHumidityCheck',   // RSM4x4 factory-mode self-checks
-  'referenceHeating','humidityModuleHeating',
+  'referenceHeating','humidityModuleHeating','heatersPowerOptimisation',
   'autoResetEnable',
   'dataRecorderEnable','dataRecorderFlightNoiseFiltering',
 ]);
@@ -5473,8 +5478,7 @@ function renderFlashHelp(platform, binName) {
 
 // WebUSB / ST-Link access check. Read-only: it just asks the browser for the ST-Link
 // so the user can confirm the OS access step (Zadig on Windows, udev on Linux) worked.
-// It does not touch the sonde. The actual write is still done with the commands below
-// or a desktop tool while the one-click flasher is in beta.
+// It does not touch the sonde - the actual write is done by the browser flasher.
 const STLINK_USB_VENDOR = 0x0483;   // STMicroelectronics; ST-Link V2 / V2-1 / V3
 async function webusbPickStlink() {
   const status = document.getElementById('webusb-status');

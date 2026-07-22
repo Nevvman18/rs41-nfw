@@ -269,7 +269,10 @@ The sensor has a few seconds of reaction time, longer at low temperatures. Expec
 
 Two independent heaters (Section 19), both PWM / PID controlled:
 * **Reference area heating** (`referenceHeating`): keeps the PCB cutout (where the reference resistors sit) near `referenceAreaTargetTemperature` to improve temperature accuracy. Guideline targets: 18 C with the original Vaisala styrofoam housing, 8 C with an improvised wind cover, 0 C for a bare PCB (very power-hungry). Recommended for flights up to about 18 h on 2xAA; disable on 1xAA or without the boom.
-* **Humidity module heating** (`humidityModuleHeating`): keeps the sensor `defrostingOffset` K (default 5 K) above air temperature and never below `humicapMinimumTemperature`, preventing frost and condensation. Activates below `humidityModuleHeatingTemperatureThreshold`. Recommended whenever the boom is installed. The PID constants live in Section 25; do not change them unless you know what you are doing.
+* **Humidity module heating** (`humidityModuleHeating`): keeps the sensor `defrostingOffset` K (default 5 K) above air temperature and never below `humicapMinimumTemperature` (default -40 C), preventing frost and condensation. Activates below `humidityModuleHeatingTemperatureThreshold`. Recommended whenever the boom is installed. The PID constants live in Section 25; do not change them unless you know what you are doing.
+
+One shared power feature on top of them:
+* **Heaters power optimisation** (`heatersPowerOptimisation`, default on): acts only during descent, after burst. Falling faster than 14 m/s lowers the reference-area target by 3 C; faster than 18 m/s lowers it by 6 C and switches the humidity module heater off entirely. In that thin, fast airflow the heat is stripped away faster than the heaters can supply it, so holding the full targets there only wastes battery. At slower descent rates heating is not altered at all, and normal heating resumes automatically as the fall slows down (with about 1 m/s of hysteresis so GPS vertical-velocity noise does not flip the stages). It never changes anything on ascent.
 
 
 ## GNSS
