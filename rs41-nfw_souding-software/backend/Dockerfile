@@ -29,10 +29,15 @@ USER builder
 # first fetch) without anything ever needing root.
 # NOTE: the platform ID is "STMicroelectronics:stm32" (the package vendor name), NOT
 # "STM32:stm32". Using the wrong ID gives the misleading "Platform not found" error.
+# PIN the core version. The firmware is written for the 2.x core API (e.g. the
+# HardwareSerial name(RX, TX) pin constructor); core 3.0.0 is a breaking major that
+# removes it and fails the build. Leaving this unpinned means a plain image rebuild
+# silently jumps to whatever is newest and breaks compilation, so keep it fixed to the
+# last known-good 2.x and only bump it deliberately after a test build of both boards.
 RUN STM32_URL="https://github.com/stm32duino/BoardManagerFiles/raw/main/package_stmicroelectronics_index.json" && \
     arduino-cli config init && \
     arduino-cli core update-index --additional-urls "$STM32_URL" && \
-    arduino-cli core install STMicroelectronics:stm32 --additional-urls "$STM32_URL" && \
+    arduino-cli core install STMicroelectronics:stm32@2.10.1 --additional-urls "$STM32_URL" && \
     rm -rf /home/builder/.arduino15/staging \
            /home/builder/.arduino15/tmp/* \
            /home/builder/.arduino15/packages/STMicroelectronics/tools/STM32_SVD

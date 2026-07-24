@@ -2108,7 +2108,7 @@ PAY ATTENTION TO THE CUT-OUT</pre>
       <p class="field-desc">Comma-separated; the sonde cycles through every entry, one per TX window. Use the APRS frequency that is standard for your region. The data recorder and low-altitude fast-TX use the first entry only.</p></div>
     <div><label class="field-label">Callsign</label><input type="text" class="input-base font-mono" id="cfg-aprsCall" value="N0CALL" maxlength="10" oninput="this.value=this.value.toUpperCase()" onchange="cfgChanged()"><p class="field-desc">The station callsign the packet is sent from. Shown as the tracked object on the map. Automatically forced to <strong>UPPERCASE</strong> (APRS callsigns must be uppercase).</p></div>
     <div><label class="field-label">SSID</label><input type="number" class="input-base" id="cfg-aprsSsid" value="11" min="0" max="15" onchange="cfgChanged()"><p class="field-desc">Number appended to the callsign (CALL-11). By convention 11 means a balloon / high-altitude tracker.</p></div>
-    <div class="md:col-span-2"><label class="field-label">Comment</label><input type="text" class="input-base font-mono" id="cfg-aprsComment" value=" NFWv76" maxlength="64" onchange="cfgChanged()"><p class="field-desc">Free text added to the end of every packet (visible next to the station on the map).</p></div>
+    <div class="md:col-span-2"><label class="field-label">Comment</label><input type="text" class="input-base font-mono" id="cfg-aprsComment" value=" NFWv77" maxlength="64" onchange="cfgChanged()"><p class="field-desc">Free text added to the end of every packet (visible next to the station on the map).</p></div>
     <div><label class="field-label">Map icon</label>
       <select class="input-base" id="aprs-symbol-preset" onchange="aprsSymbolPreset()">
         <option value="O">🎈 Balloon</option>
@@ -2361,6 +2361,29 @@ PAY ATTENTION TO THE CUT-OUT</pre>
         <span class="badge bg-indigo-500/20 text-indigo-300 border border-indigo-500/40 ml-1 align-middle">RSM4x4 only</span>
         <span class="badge bg-emerald-500/15 text-emerald-300 border border-emerald-500/40 ml-1 align-middle">Recommended for recovery</span>
       <p class="field-desc">20 minutes after landing the sonde powers down the GPS and sensors and transmits only its last known position (Horus + APRS) every 3 minutes. This <strong class="text-emerald-300">lowers power consumption significantly</strong>, so the sonde keeps beaconing far longer on its remaining battery - giving you the best chance to find and recover it.</p></div>
+    </div>
+
+    <!-- Estimated power draw (RSM4x4 only). Recomputed from the current settings by
+         updatePowerEstimate() on every cfgChanged() and on platform/config load. -->
+    <div class="md:col-span-2 mode-box rsm4x4-only" id="power-estimate-box">
+      <div class="mode-head"><span class="text-yellow-300">⚡</span> Estimated power draw
+        <span class="badge bg-indigo-500/20 text-indigo-300 border border-indigo-500/40 ml-1 align-middle">RSM4x4 only</span>
+      </div>
+      <p class="field-desc mb-3">Rough current draw at <strong>3 V measured across the factory battery terminals</strong>, from your current settings. Estimates only - real draw varies with temperature, battery internal resistance and satellite conditions.</p>
+
+      <div id="power-startup-row" class="flex items-center justify-between gap-3 py-2 border-b border-slate-700/60">
+        <div class="text-xs text-slate-300">Startup - humidity check / zero-RH calibration
+          <p class="field-desc mt-0.5">The humidity sensor is heated to force 0 %RH for the first minute after power-on.</p></div>
+        <div class="text-right whitespace-nowrap"><span class="font-mono font-bold text-amber-300">400-600 mA</span><div class="text-[10px] text-slate-400">first ~1 min</div></div>
+      </div>
+
+      <div class="flex items-center justify-between gap-3 py-2">
+        <div class="text-xs text-slate-300">Average in-flight
+          <p class="field-desc mt-0.5" id="power-breakdown">-</p></div>
+        <div class="text-right whitespace-nowrap"><span id="power-avg-value" class="font-mono font-bold text-emerald-300">-- mA</span><div class="text-[10px] text-slate-400">continuous</div></div>
+      </div>
+
+      <p class="field-desc mt-2">Note: the radio adds about <strong>75 mA while transmitting</strong>. That is not in the average above, since it is only drawn during each packet - consumption throughout the flight varies with radio usage.</p>
     </div>
   </div>
 </div>
@@ -4412,6 +4435,7 @@ function setPlatform(p) {
   // it follows the board reported in the telemetry frame, not this builder selection.
   const is4x4 = (p === 'RSM4x4');
   document.querySelectorAll('#app-fw .rsm4x4-only').forEach(el => { el.style.display = is4x4 ? '' : 'none'; });
+  updatePowerEstimate();   // recompute (or skip on RSM4x2) the power-draw estimate for the new board
 }
 
 // Estimated pressure (mode 2) is RSM4x4-only: it does not fit the RSM4x2 flash. Hide the
@@ -4521,6 +4545,50 @@ function cfgChanged() {
   updateM10Visibility();
   applyBoomDependentUI();
   updateSensorCalVisibility();   // hide/show the calibration section with the sensor-boom toggle
+  updatePowerEstimate();         // refresh the RSM4x4 power-draw estimate from the new settings
+}
+
+// Estimated power draw (RSM4x4 only). Rough continuous current at 3 V across the factory
+// battery terminals, summed from the subsystems each setting turns on. Base figures come
+// from bench measurements; this is a guide, not a spec (temperature, battery internal
+// resistance and satellite conditions all move it). The radio's transmit draw is called
+// out separately in the UI because it is only drawn during each packet, not continuously.
+function updatePowerEstimate() {
+  if (currentPlatform !== 'RSM4x4') return;   // the box is hidden on RSM4x2 anyway
+  const chk = id => { const el = document.getElementById(id); return !!(el && el.checked); };
+  const val = id => { const el = document.getElementById(id); return el ? String(el.value) : ''; };
+
+  let mA = 48;                     // base PCB: GPS off, no sensors, no heaters
+  const parts = ['base 48'];
+
+  if (val('cfg-pressureMode') === '1')  { mA += 23; parts.push('RPM411 +23'); }   // RPM411 barometer connected
+  if (chk('cfg-sensorBoomEnable'))      { mA += 5;  parts.push('boom +5'); }
+  if (chk('cfg-humidityModuleHeating')) { mA += 22; parts.push('hum-heat +22'); }
+  if (chk('cfg-referenceHeating'))      { mA += 22; parts.push('ref-heat +22'); }
+
+  const gpsMode = val('cfg-gpsOperationMode');
+  if (gpsMode === '1')      { mA += 45; parts.push('GPS always-on +45'); }
+  else if (gpsMode === '2') {
+    // Cyclic tracking is the defining power-saver of the energy-efficient profile; with it
+    // on the M10 sleeps between fixes, so the intelligent tier draws noticeably less.
+    if (chk('cfg-m10CyclicTracking')) { mA += 25; parts.push('GPS efficient +25'); }
+    else                              { mA += 32; parts.push('GPS intelligent +32'); }
+  }
+  // gpsMode '0' (GNSS disabled) adds nothing.
+
+  const avg = document.getElementById('power-avg-value');
+  if (avg) avg.textContent = '~' + mA + ' mA';
+  const bd = document.getElementById('power-breakdown');
+  if (bd) bd.textContent = parts.join('  ') + '  =  ~' + mA + ' mA';
+
+  // Startup humidity-heating spike: only when the humidity self-check (factory mode) or the
+  // zero-RH calibration (NFW mode) is actually enabled, and the boom + humidity module are on.
+  const calMode = val('cfg-sensorCalibrationMode');
+  const startupRuns = chk('cfg-sensorBoomEnable') && chk('cfg-humidityModuleEnable') && (
+        (calMode === '2' && chk('cfg-factoryHumidityCheck')) ||
+        (calMode === '1' && chk('cfg-zeroHumidityCalibration')));
+  const srow = document.getElementById('power-startup-row');
+  if (srow) srow.style.display = startupRuns ? '' : 'none';
 }
 
 // ── Advisory popups ─────────────────────────────────────────────────────────────

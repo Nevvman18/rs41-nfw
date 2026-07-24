@@ -165,6 +165,10 @@ See: [hw/README.md](./hw/README.md)
 
 
 ## Firmware changelog
+* `v77` - GPS-disabled fixes and a power-draw estimator in the Firmware Builder.
+  * **GPS disabled no longer enters radio-quiet mode.** With the GNSS set to disabled (mode 0) the satellite count is always 0, which tricked the radio-quiet acquisition helper into thinking it was waiting for a fix - so the sonde went silent for the whole quiet window and held the status LED orange, for a receiver that was intentionally off. Quiet mode is now skipped entirely when the GNSS is disabled.
+  * **Status LED goes green when GPS is disabled.** As a direct result of the above, with the GNSS off and no faults detected the LED now shows green (all-OK) instead of being stuck orange (as if searching for a fix).
+  * **Estimated power draw in the Firmware Builder (RSM4x4).** The Power Management section now shows the rough current draw at 3 V across the factory battery terminals for your current settings: the ~400-600 mA humidity-check / zero-RH calibration spike in the first minute after power-on, and the average in-flight draw built up from the base PCB and each subsystem you enable (RPM411, sensor boom, humidity and reference heating, and the GPS mode). The transmit draw (~75 mA) is called out separately, since it is only pulled during each packet.
 * `v76` - two critical fixes (RPM411 pressure spikes and GPS resets) plus sensor-boom power-saving improvements.
   * **RPM411 pressure/temperature spikes fixed.** Once every few minutes a single frame from the RPM411 pressure sensor decoded to garbage.
   * **GPS spurious resets fixed.**
