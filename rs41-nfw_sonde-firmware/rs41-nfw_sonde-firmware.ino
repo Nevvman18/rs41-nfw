@@ -43,7 +43,7 @@ I wish You high, successful flights with a lot of data gathered with this firmwa
 Franek,
 Author of RS41-NFW
 */
-#define NFW_VERSION "RS41-NFW v75, GPL-3.0 Franek Lada (nevvman, SP5FRA)"  //This is the firmware version You are running
+#define NFW_VERSION "RS41-NFW v76, GPL-3.0 Franek Lada (nevvman, SP5FRA)"  //This is the firmware version You are running
 
 //===== Libraries and lib-dependant definitions (nothing to modify)
 /* No libraries are required to be installed, all dependencies are shipped within the project folder. */
@@ -615,6 +615,7 @@ bool rpm411Error = false;
 bool lastRpm411ErrorState = false;  // tracks previous RPM411 state so the status is logged only on change (avoids [info] spam)
 float rpm411Pressure = 0.0;
 float rpm411InternalTemperature = 0.0;
+bool rpm411FrameValid = false;      // did the last readout decode into physically sane temperature+pressure (see RPM411ParseReadings)
 uint8_t RPM411ReadingsData[33];
 
 //===== Radio config functions
@@ -2457,18 +2458,23 @@ void gpsHandler() {
         gpsTimeoutCounterActive = true;  // Mark timer as active
       }
 
-      // Check if timeout has occurred
+      // Cancel the countdown the moment the GPS recovers. The reset must only fire after the
+      // receiver has been continuously unhealthy for the whole gpsTimeoutWatchdog window - a
+      // brief dip to a few / zero satellites (a common, self-healing event) should NOT be able
+      // to arm a timer minutes ago and then trip a reset now. Without this the timer kept its
+      // old start time across a recovery and reset the receiver even though it was fixing again.
+      if (gpsTimeoutCounterActive && !gpsUnhealthy) {
+        gpsTimeoutCounterActive = false;
+        gpsTimerBegin = 0;
+      }
+
+      // Reset only after the full window of uninterrupted unhealthiness has elapsed.
       if (gpsTimeoutCounterActive && millis() - gpsTimerBegin > gpsTimeoutWatchdog) {
-        if (gpsUnhealthy) {                 //If GPS is still unhealthy after timeout, restart it
-          gpsTimeoutCounterActive = false;  // Reset the timer state
-          gpsTimerBegin = 0;                // Clear the timer
-          restartGPS();                     // Handle GPS timeout recovery
-          delay(1000);
-          initGPS();
-        } else {                            // Reset all timer variables and don't do anything, cause the GPS works ok
-          gpsTimeoutCounterActive = false;  // Reset the timer state
-          gpsTimerBegin = 0;                // Clear the timer
-        }
+        gpsTimeoutCounterActive = false;  // Reset the timer state
+        gpsTimerBegin = 0;                // Clear the timer
+        restartGPS();                     // Handle GPS timeout recovery
+        delay(1000);
+        initGPS();
       }
     }
 
@@ -6194,6 +6200,7 @@ void readRPM411() {
 
   if (!isDataReceived) {
     rpm411Error = true;
+    rpm411FrameValid = false;
 
     if (xdataPortMode == 1 && !lastRpm411ErrorState) {
       xdataSerial.println("[err]: RPM411 connection error");
@@ -6238,8 +6245,8 @@ void RPM411ParseConfigData() {
 
 void RPM411ParseReadings() {
   if(!rpm411Error) {
-    int totalLength = 33; 
-  
+    int totalLength = 33;
+
     int tempStart = totalLength - 13;     // Index 20
     int pressureStart = totalLength - 9;  // Index 24
 
@@ -6248,14 +6255,42 @@ void RPM411ParseReadings() {
     tempBytes[1] = RPM411ReadingsData[tempStart + 1];
     tempBytes[2] = RPM411ReadingsData[tempStart + 2];
     tempBytes[3] = RPM411ReadingsData[tempStart + 3];
-    memcpy(&rpm411InternalTemperature, tempBytes, 4);
+    float t;
+    memcpy(&t, tempBytes, 4);
 
     uint8_t pressureBytes[4];
     pressureBytes[0] = RPM411ReadingsData[pressureStart];
     pressureBytes[1] = RPM411ReadingsData[pressureStart + 1];
     pressureBytes[2] = RPM411ReadingsData[pressureStart + 2];
     pressureBytes[3] = RPM411ReadingsData[pressureStart + 3];
-    memcpy(&rpm411Pressure, pressureBytes, 4);
+    float p;
+    memcpy(&p, pressureBytes, 4);
+
+    // A misaligned or not-yet-ready SPI readout still clears the "not all 0xFF" gate in
+    // readRPM411() (the RPM411 answers with 0x00 or a byte-shifted frame, not 0xFF), but the
+    // temperature/pressure words then decode to garbage: NaN/Inf, a tiny denormal near zero,
+    // or a value far outside anything physical. The old code published that straight into the
+    // globals, so once every few minutes the raw pressure collapsed toward 0 - squeaking past
+    // the "> 0" guard as a denormal and dragging the Kalman estimate down into a visible spike -
+    // while the internal temperature dropped to 0. Validate both words first and, on a bad
+    // frame, keep the last good readings instead of publishing garbage.
+    bool tOk = !isnan(t) && !isinf(t) && t > -100.0f && t < 100.0f;
+    bool pOk = !isnan(p) && !isinf(p) && p >= 0.1f   && p < 1200.0f;  // 0.1 hPa floor
+
+    if (tOk && pOk) {
+      rpm411InternalTemperature = t;
+      rpm411Pressure = p;
+      rpm411FrameValid = true;
+    } else {
+      rpm411FrameValid = false;   // hold the previous good readings; skip the Kalman update
+      if (xdataPortMode == 1) {
+        static unsigned long _lastBadFrameLog = 0;
+        if (millis() - _lastBadFrameLog >= 10000UL) {
+          _lastBadFrameLog = millis();
+          xdataSerial.println(F("[warn]: RPM411 bad frame dropped"));
+        }
+      }
+    }
   }
 }
 
@@ -6273,7 +6308,10 @@ void pressureHandler() {
     else {
       readRPM411();
 
-      if(rpm411Pressure < 1200 && rpm411Pressure > 0) {
+      // Only feed a freshly validated reading into the filter. A dropped/garbage frame
+      // (rpm411FrameValid == false) leaves the last good pressure in place rather than
+      // spiking the estimate.
+      if(rpm411FrameValid && rpm411Pressure < 1200 && rpm411Pressure > 0) {
         pressureValue = kalmanFilter(rpm411Pressure, pressureKalmanEst, pressureKalmanErrorEst, pressureKalmanError, pressureKalmanQ);
       }
 

@@ -204,7 +204,7 @@ The boom measurements are taken with **hardware timers** and custom correction a
 
 On start-up the firmware self-tests the boom and flags a temperature fault, a humidity-module fault, or a whole-boom problem with the red LED and on the serial log.
 
-`sensorBoomPowerSaving` reduces how often the boom is read to save power, with default measurement interval of 30s.
+`sensorBoomPowerSaving` reduces how often the boom is read to save power, on the fixed `sensorBoomPowerSavingInterval` (default **10 s**). It is **recommended to set this interval equal to your transmission interval**, so the boom is read exactly once per frame: the data stays as fresh as the telemetry, and the measurement circuits idle the rest of the time - cutting measurement-circuit power by up to about **50%** (at a 10 s frame) versus reading the boom continuously in the gaps between transmissions.
 
 External temperature is sent in Horus V3/V2, APRS, APRS WX, Morse and RTTY; humidity is sent in Horus V3/V2 and APRS WX.
 
@@ -286,7 +286,7 @@ The single-band M10 tracks GPS + Galileo + SBAS plus a secondary GNSS chosen by 
 
 Other GPS settings:
 * `ubloxGpsAirborneMode` (Airborne 1G dynamic model) - keep true; required to keep a fix above 18 km.
-* `gpsTimeoutWatchdog` - resets the GPS module after this long without a valid fix (default 15 min). Helps it recover a fix faster.
+* `gpsTimeoutWatchdog` - resets the GPS module only after it has been continuously unhealthy (no fix, or decoded positions stopped refreshing) for this long (default 15 min). A brief dip to a few or zero satellites does not arm a reset - the countdown is cancelled the moment the fix recovers, so a self-healing wobble can no longer trip a spurious mid-flight reset. Helps it recover a genuinely stuck receiver faster. 0 disables it.
 * **`improvedGpsPerformance`** - the Si4032 radio emits wideband spurious noise that desensitises the GPS receiver. While the sonde has fewer than 4 satellites, the radio is silenced for `radioSilenceDuration` (default 2 min), which dramatically speeds up cold starts. `disableGpsImprovementInFlight` (default true) stops this during flight to avoid up to ~2 min data gaps; set it false only if you fly in very high interference. `improvedGpsHoldAfterFix` (default 20 s) keeps the radio silent for that much longer *after* a fix is acquired, so the fix can settle and gather more satellites before the first transmission (which briefly desensitises the receiver) hits it; losing the fix restarts the hold, and it is still capped by `radioSilenceDuration`. Set it to 0 to resume the instant a fix is acquired.
 * **`simultaneousGnssSetup`** (default true) - decides when the GPS is powered up during boot, independently of `improvedGpsPerformance`. On (default), the GPS is brought up at the very start and searches for satellites in parallel with hardware setup and sensor-boom calibration; with the boom fitted, calibration takes a while and the receiver uses that time to get a head start on its first fix, so the sonde reaches a valid position much sooner, at the cost of a little extra RF during calibration. Off holds the GPS on reset through setup and calibration and powers it up only afterwards, keeping the sensitive ring-oscillator temperature/humidity measurements fully radio-quiet at the cost of a slower first fix.
 

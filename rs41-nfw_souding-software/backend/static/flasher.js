@@ -47,7 +47,7 @@ const FLASH_BASE = 0x08000000;
 // server is already updated. Printing the version means a stale module is obvious at a glance
 // instead of being diagnosed from odd behaviour.
 const NFW_FLASHER_NAME  = 'RS41-NFW Builder Flasher';
-const NFW_FLASHER_BUILD = 'v73';
+const NFW_FLASHER_BUILD = 'v76';
 const NFW_FLASHER_ID    = NFW_FLASHER_NAME + ' ' + NFW_FLASHER_BUILD;
 
 // MCU types we accept per board (matched against webstlink's detected type string).

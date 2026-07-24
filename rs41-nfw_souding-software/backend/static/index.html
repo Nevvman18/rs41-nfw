@@ -2108,7 +2108,7 @@ PAY ATTENTION TO THE CUT-OUT</pre>
       <p class="field-desc">Comma-separated; the sonde cycles through every entry, one per TX window. Use the APRS frequency that is standard for your region. The data recorder and low-altitude fast-TX use the first entry only.</p></div>
     <div><label class="field-label">Callsign</label><input type="text" class="input-base font-mono" id="cfg-aprsCall" value="N0CALL" maxlength="10" oninput="this.value=this.value.toUpperCase()" onchange="cfgChanged()"><p class="field-desc">The station callsign the packet is sent from. Shown as the tracked object on the map. Automatically forced to <strong>UPPERCASE</strong> (APRS callsigns must be uppercase).</p></div>
     <div><label class="field-label">SSID</label><input type="number" class="input-base" id="cfg-aprsSsid" value="11" min="0" max="15" onchange="cfgChanged()"><p class="field-desc">Number appended to the callsign (CALL-11). By convention 11 means a balloon / high-altitude tracker.</p></div>
-    <div class="md:col-span-2"><label class="field-label">Comment</label><input type="text" class="input-base font-mono" id="cfg-aprsComment" value=" NFWv75" maxlength="64" onchange="cfgChanged()"><p class="field-desc">Free text added to the end of every packet (visible next to the station on the map).</p></div>
+    <div class="md:col-span-2"><label class="field-label">Comment</label><input type="text" class="input-base font-mono" id="cfg-aprsComment" value=" NFWv76" maxlength="64" onchange="cfgChanged()"><p class="field-desc">Free text added to the end of every packet (visible next to the station on the map).</p></div>
     <div><label class="field-label">Map icon</label>
       <select class="input-base" id="aprs-symbol-preset" onchange="aprsSymbolPreset()">
         <option value="O">🎈 Balloon</option>
@@ -2391,8 +2391,8 @@ PAY ATTENTION TO THE CUT-OUT</pre>
     </div>
   </div>
   <div class="p-5 grid grid-cols-1 md:grid-cols-2 gap-5">
-    <div><label class="field-label">Receiver timeout watchdog</label><div class="unit-wrap"><input type="number" class="input-base" id="cfg-gpsTimeoutWatchdog" value="1200000" onchange="cfgChanged()"><span class="unit-label">ms</span></div>
-      <p class="field-desc">Resets the receiver if there is no valid fix for this long. 0 = disabled. Recommended 1200000 (20 min).</p></div>
+    <div><label class="field-label">Receiver timeout watchdog</label><div class="unit-wrap"><input type="number" class="input-base" id="cfg-gpsTimeoutWatchdog" value="900000" onchange="cfgChanged()"><span class="unit-label">ms</span></div>
+      <p class="field-desc">Resets the receiver only if it stays unhealthy (no fix) for this long without interruption - a brief drop to a few satellites does not count. 0 = disabled. Recommended 900000 (15 min).</p></div>
     <div><label class="field-label">GNSS update rate</label>
       <select class="input-base" id="cfg-gpsUpdateRateHz" onchange="cfgChanged()">
         <option value="1">1 Hz - lowest power</option>
@@ -2553,10 +2553,10 @@ PAY ATTENTION TO THE CUT-OUT</pre>
     <div class="flex items-start gap-3">
       <label class="toggle mt-1"><input type="checkbox" id="cfg-sensorBoomPowerSaving" onchange="cfgChanged()"><span class="toggle-slider"></span></label>
       <div><span class="field-label cursor-pointer" onclick="toggleCheck('cfg-sensorBoomPowerSaving')">Sensor boom power saving</span>
-      <p class="field-desc">Energy saver for the measurement circuit. When on, the boom is read strictly on the fixed interval below, regardless of CPU load. When off, the boom is read as often as there is spare time between transmissions (and forced at least every 10 s).</p></div>
+      <p class="field-desc">Energy saver for the measurement circuit. When on, the boom is read strictly on the fixed interval below, regardless of CPU load. When off, the boom is read as often as there is spare time between transmissions (and forced at least every 10 s). <strong class="text-emerald-300">Recommended:</strong> set the interval below to match your transmission interval, so the boom is read once per frame - the data stays as fresh as the telemetry while the measurement circuits idle the rest of the time, cutting measurement-circuit power by up to ~50%.</p></div>
     </div>
-    <div><label class="field-label">Power-saving read interval</label><div class="unit-wrap"><input type="number" class="input-base" id="cfg-sensorBoomPowerSavingInterval" value="30000" min="1000" onchange="cfgChanged()"><span class="unit-label">ms</span></div>
-      <p class="field-desc">Used only when power saving is on. Default 30000 (30 s).</p></div>
+    <div><label class="field-label">Power-saving read interval</label><div class="unit-wrap"><input type="number" class="input-base" id="cfg-sensorBoomPowerSavingInterval" value="10000" min="1000" onchange="cfgChanged()"><span class="unit-label">ms</span></div>
+      <p class="field-desc">Used only when power saving is on. Default 10000 (10 s). Best set equal to your transmission interval.</p></div>
 
     <!-- Sensor calibration mode. RSM4x4/RSM4x5: selectable (NFW or factory). RSM4x2/RSM4x1: factory (Vaisala) only. -->
     <div id="sensorcal-mode-wrap" class="md:col-span-2 mode-box">

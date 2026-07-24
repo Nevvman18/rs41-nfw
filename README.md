@@ -165,6 +165,10 @@ See: [hw/README.md](./hw/README.md)
 
 
 ## Firmware changelog
+* `v76` - two critical fixes (RPM411 pressure spikes and GPS resets) plus sensor-boom power-saving improvements.
+  * **RPM411 pressure/temperature spikes fixed.** Once every few minutes a single frame from the RPM411 pressure sensor decoded to garbage.
+  * **GPS spurious resets fixed.**
+  * **Firmware Builder improvements.**
 * `v75` - critical fix: GPS readings in certain conditions could freeze.
   * **GPS freeze fixed.** With short transmission intervals plus an APRS transmission landing between the slots, the internal scheduler could enter a state where every moment looked "too close to a transmission" to run the full GPS read. The receiver and the UBX parser kept working the whole time, but the decoded values never got published, so time, position, speed and satellite counts all froze at their last values while the sonde kept transmitting them.
   * **GPS watchdog reworked.** The watchdog only acted when the satellite count dropped below 3 - but in a freeze the count just holds its last good value, so it never fired. It now also restarts the receiver when decoded positions stop refreshing for over a minute, whatever the satellite count says.

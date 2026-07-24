@@ -188,7 +188,7 @@ constexpr float aprsFreqTable[] = {432.5};
 // lowAltitudeFastTxMode uses the first entry only.
 
 char aprsCall[]   = "N0CALL";       // Your amateur radio callsign - USE UPPERCASE LETTERS ONLY (lowercase may not be decoded correctly; the firmware does not convert case)
-String aprsComment = " NFWv75";     // Comment appended to every APRS packet
+String aprsComment = " NFWv76";     // Comment appended to every APRS packet
 
 constexpr char aprsSsid          = 11;       // Callsign SSID
 constexpr char aprsDigi[]        = "WIDE2";  // Digipeater callsign
@@ -444,9 +444,11 @@ constexpr bool gpsHardwareJammingMonitor = true;  // poll the 0..255 CW jamming 
      2 = Ultra power saving  (8 deg elevation, high C/N0) */
 constexpr uint8_t gpsTrackingProfile = 0;
 
-/* GPS timeout watchdog - resets the GPS module if no valid fix for this many ms.
-   0 = disabled. Recommended: 1200000 ms (20 min). */
-unsigned long gpsTimeoutWatchdog = 1200000;
+/* GPS timeout watchdog - resets the GPS module only after it stays unhealthy (no fix, or
+   solutions stopped refreshing) for this many ms without interruption. A brief dip to a few
+   or zero satellites does not count - the countdown is cancelled the moment the fix recovers.
+   0 = disabled. Recommended: 900000 ms (15 min). */
+unsigned long gpsTimeoutWatchdog = 900000;
 
 /* Improved GPS fix performance:
    While GPS has fewer than 4 satellites, the Si4032 radio is silenced for
@@ -493,8 +495,12 @@ unsigned long     gpsPowerSaveDebounce = 60000;  // Min interval before climbing
    ============================================================ */
 
 bool sensorBoomEnable      = true;   // Enable sensor boom measurements and diagnostics
-constexpr bool sensorBoomPowerSaving = false;  // Power saving: read the boom only every sensorBoomPowerSavingInterval
-unsigned long sensorBoomPowerSavingInterval = 30000; // Boom read interval in power-saving mode (ms), default 30000 = 30 s
+constexpr bool sensorBoomPowerSaving = false;  // Power saving: read the boom only every sensorBoomPowerSavingInterval.
+                                               // Recommended: set the interval below to match your transmission interval, so the
+                                               // boom is read once per frame. The data stays as fresh as the telemetry and the
+                                               // measurement circuits sit idle the rest of the time - up to ~50% less measurement
+                                               // power at a 10 s frame versus reading continuously between transmissions.
+unsigned long sensorBoomPowerSavingInterval = 10000; // Boom read interval in power-saving mode (ms), default 10000 = 10 s (match to your TX interval)
 
 
 /* ============================================================
